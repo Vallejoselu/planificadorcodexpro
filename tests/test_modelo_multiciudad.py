@@ -23,6 +23,7 @@ from database.database import (
     obtener_restaurante_turnos,
     obtener_restaurantes
 )
+from database.schema import SCHEMA_VERSION_ACTUAL
 
 
 class TestModeloMulticiudad(unittest.TestCase):
@@ -46,6 +47,7 @@ class TestModeloMulticiudad(unittest.TestCase):
 
         tablas = self._tablas()
         self.assertIn("ciudades", tablas)
+        self.assertIn("schema_version", tablas)
         self.assertIn("restaurante_turnos", tablas)
         self.assertIn("demanda_restaurante", tablas)
         self.assertIn("repartidor_ciudades", tablas)
@@ -56,6 +58,15 @@ class TestModeloMulticiudad(unittest.TestCase):
         self.assertEqual(len(restaurantes), 1)
         self.assertEqual(restaurantes[0][1], "BK antiguo")
         self.assertEqual(restaurantes[0][10], CIUDAD_SIN_CIUDAD)
+
+        conexion = database.conectar()
+        version = conexion.execute("""
+        SELECT version
+        FROM schema_version
+        WHERE id=1
+        """).fetchone()[0]
+        conexion.close()
+        self.assertEqual(version, SCHEMA_VERSION_ACTUAL)
 
     def test_migracion_repetida_no_duplica_sin_ciudad(self):
 
@@ -70,6 +81,73 @@ class TestModeloMulticiudad(unittest.TestCase):
         ]
 
         self.assertEqual(len(ciudades), 1)
+
+    def test_conexion_activa_claves_foraneas(self):
+
+        crear_base_datos()
+
+        conexion = database.conectar()
+        valor = conexion.execute("PRAGMA foreign_keys").fetchone()[0]
+        conexion.close()
+
+        self.assertEqual(valor, 1)
+
+    def test_claves_foraneas_rechazan_registros_huerfanos(self):
+
+        crear_base_datos()
+
+        conexion = database.conectar()
+
+        with self.assertRaises(sqlite3.IntegrityError):
+
+            conexion.execute("""
+            INSERT INTO restaurante_turnos(
+                restaurante_id,
+                nombre,
+                hora_inicio,
+                hora_fin,
+                duracion
+            )
+            VALUES(999,'Turno huerfano','12:00','16:00',4)
+            """)
+
+        conexion.close()
+
+    def test_schema_version_existe_y_es_idempotente(self):
+
+        crear_base_datos()
+        crear_base_datos()
+
+        conexion = database.conectar()
+        filas = conexion.execute("""
+        SELECT id, version
+        FROM schema_version
+        """).fetchall()
+        conexion.close()
+
+        self.assertEqual(filas, [(1, SCHEMA_VERSION_ACTUAL)])
+
+    def test_migracion_repetida_no_actualiza_schema_version_si_no_cambia(self):
+
+        crear_base_datos()
+        conexion = database.conectar()
+        aplicado_en = conexion.execute("""
+        SELECT aplicado_en
+        FROM schema_version
+        WHERE id=1
+        """).fetchone()[0]
+        conexion.close()
+
+        crear_base_datos()
+        conexion = database.conectar()
+        aplicado_en_repetido = conexion.execute("""
+        SELECT aplicado_en
+        FROM schema_version
+        WHERE id=1
+        """).fetchone()[0]
+        conexion.close()
+
+        self.assertEqual(aplicado_en_repetido, aplicado_en)
 
     def test_varias_ciudades_y_restaurantes_por_ciudad(self):
 

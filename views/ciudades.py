@@ -13,13 +13,10 @@ from PySide6.QtWidgets import (
     QWidget
 )
 
-from database.database import (
-    actualizar_ciudad,
-    insertar_ciudad,
-    obtener_ciudad,
-    obtener_ciudades
-)
+from repositories.ciudades_repository import CiudadesRepository
 from ui.widgets import configure_table
+
+ciudades_repository = CiudadesRepository()
 
 
 class VistaCiudades(QWidget):
@@ -67,7 +64,7 @@ class VistaCiudades(QWidget):
 
     def cargar_tabla(self):
 
-        datos = obtener_ciudades()
+        datos = ciudades_repository.listar_todas()
         self.tabla.setRowCount(len(datos))
 
         for fila, ciudad in enumerate(datos):
@@ -111,7 +108,7 @@ class VistaCiudades(QWidget):
 
             return
 
-        ciudad = obtener_ciudad(id_ciudad)
+        ciudad = ciudades_repository.obtener_por_id(id_ciudad)
         dialogo = DialogoCiudad(ciudad)
 
         if dialogo.exec():
@@ -154,7 +151,7 @@ class DialogoCiudad(QDialog):
 
             if self.ciudad:
 
-                actualizar_ciudad(
+                ciudades_repository.actualizar(
                     self.ciudad[0],
                     self.nombre.text(),
                     int(self.activo.isChecked())
@@ -162,7 +159,7 @@ class DialogoCiudad(QDialog):
 
             else:
 
-                insertar_ciudad(
+                ciudades_repository.crear(
                     self.nombre.text(),
                     int(self.activo.isChecked())
                 )

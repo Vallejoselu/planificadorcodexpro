@@ -18,16 +18,14 @@ from PySide6.QtWidgets import (
 
 from PySide6.QtCore import Qt
 
-from database.database import (
-    actualizar_restaurante,
-    guardar_demanda_restaurante,
-    guardar_restaurante_turnos,
-    insertar_restaurante,
-    obtener_ciudades,
-    obtener_demanda_restaurante,
-    obtener_repartidores,
-    obtener_restaurante_turnos
-)
+from repositories.ciudades_repository import CiudadesRepository
+from repositories.repartidores_repository import RepartidoresRepository
+from repositories.restaurantes_repository import RestaurantesRepository
+
+
+ciudades_repository = CiudadesRepository()
+repartidores_repository = RepartidoresRepository()
+restaurantes_repository = RestaurantesRepository()
 
 
 class NuevoRestaurante(QDialog):
@@ -176,13 +174,13 @@ class NuevoRestaurante(QDialog):
 
         self.ciudad.clear()
 
-        for ciudad in obtener_ciudades(solo_activas=True):
+        for ciudad in ciudades_repository.listar_activas():
 
             self.ciudad.addItem(ciudad[1], ciudad[0])
 
     def cargar_repartidores(self):
 
-        for repartidor in obtener_repartidores():
+        for repartidor in repartidores_repository.listar_activos():
 
             item = QListWidgetItem(repartidor[1])
             item.setData(Qt.UserRole, repartidor[0])
@@ -242,7 +240,9 @@ class NuevoRestaurante(QDialog):
                 "duracion": turno[6],
                 "activo": turno[7]
             }
-            for turno in obtener_restaurante_turnos(self.restaurante[0])
+            for turno in restaurantes_repository.listar_turnos(
+                self.restaurante[0]
+            )
             if turno[7]
         ]
         self.demandas = [
@@ -254,7 +254,9 @@ class NuevoRestaurante(QDialog):
                 "repartidores_necesarios": demanda[5],
                 "activo": demanda[6]
             }
-            for demanda in obtener_demanda_restaurante(self.restaurante[0])
+            for demanda in restaurantes_repository.listar_demanda(
+                self.restaurante[0]
+            )
             if demanda[6]
         ]
         self.refrescar_turnos()
@@ -388,7 +390,7 @@ class NuevoRestaurante(QDialog):
 
         if self.restaurante:
 
-            actualizar_restaurante(
+            restaurantes_repository.actualizar(
                 self.restaurante[0],
                 self.nombre.text(),
                 self.direccion.text(),
@@ -404,7 +406,7 @@ class NuevoRestaurante(QDialog):
 
         else:
 
-            restaurante_id = insertar_restaurante(
+            restaurante_id = restaurantes_repository.crear(
 
                 self.nombre.text(),
 
@@ -435,11 +437,13 @@ class NuevoRestaurante(QDialog):
 
     def guardar_configuracion_operativa(self, restaurante_id):
 
-        guardar_restaurante_turnos(
+        restaurantes_repository.guardar_turnos(
             restaurante_id,
             self.turnos_propios
         )
-        turnos_guardados = obtener_restaurante_turnos(restaurante_id)
+        turnos_guardados = restaurantes_repository.listar_turnos(
+            restaurante_id
+        )
         ids_por_nombre = {
             turno[2]: turno[0]
             for turno in turnos_guardados
@@ -468,4 +472,4 @@ class NuevoRestaurante(QDialog):
                 "activo": demanda.get("activo", 1)
             })
 
-        guardar_demanda_restaurante(restaurante_id, demandas)
+        restaurantes_repository.guardar_demanda(restaurante_id, demandas)

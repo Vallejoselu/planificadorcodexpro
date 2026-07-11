@@ -10,13 +10,11 @@ from PySide6.QtWidgets import (
     QMessageBox,
 )
 
-from database.database import (
-    eliminar_turno,
-    obtener_turno,
-    obtener_turnos
-)
+from repositories.turnos_repository import TurnosRepository
 from ui.widgets import configure_table
 from views.nuevo_turno import NuevoTurno
+
+turnos_repository = TurnosRepository()
 
 
 class VistaTurnos(QWidget):
@@ -108,7 +106,7 @@ class VistaTurnos(QWidget):
 
     def cargar_tabla(self):
 
-        datos = obtener_turnos()
+        datos = turnos_repository.listar_todos()
 
         self.tabla.setRowCount(len(datos))
 
@@ -199,7 +197,7 @@ class VistaTurnos(QWidget):
 
             return
 
-        turno = obtener_turno(id_turno)
+        turno = turnos_repository.obtener_por_id(id_turno)
 
         ventana = NuevoTurno(turno)
 
@@ -225,6 +223,6 @@ class VistaTurnos(QWidget):
 
         if respuesta == QMessageBox.Yes:
 
-            eliminar_turno(id_turno)
+            turnos_repository.desactivar(id_turno)
 
             self.cargar_tabla()

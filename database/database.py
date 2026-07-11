@@ -1,607 +1,59 @@
-import sqlite3
-from datetime import date, datetime, timedelta
+from datetime import datetime
 
-from utils.paths import BASE_DIR, database_path, ensure_user_directories
+from database.connection import conectar as conectar_con_pragmas
+from database.migrations import (
+    agregar_columna_si_no_existe as migrar_columna_si_no_existe,
+    columnas_tabla as columnas_tabla_migracion,
+    crear_base_datos as ejecutar_migraciones
+)
+from database.schema import (
+    CIUDAD_SIN_CIUDAD,
+    DESCANSOS_VALIDOS,
+    DIAS_INICIO_DESCANSO,
+    DIAS_SEMANA,
+    FECHA_INICIO_SEMANA_LEGADO,
+    HORAS_CONTRATO,
+    OPCIONES_DISPONIBILIDAD,
+    PROVEEDORES_INTEGRACION,
+    TIPOS_TURNO,
+    TURNOS_DISPONIBILIDAD
+)
+from models import (
+    AsignacionCalendario,
+    Repartidor,
+    Restaurante,
+    Turno
+)
+from services.descansos import descanso_es_valido, siguiente_descanso_valido
+from services.fechas import normalizar_fecha_inicio_semana
+from utils.paths import database_path
 
 RUTA_BD = database_path()
-FECHA_INICIO_SEMANA_LEGADO = "1970-01-05"
-HORAS_CONTRATO = (10, 20, 25, 30, 35, 40)
-DIAS_SEMANA = (
-    "lunes",
-    "martes",
-    "miercoles",
-    "jueves",
-    "viernes",
-    "sabado",
-    "domingo"
-)
-DESCANSOS_VALIDOS = (
-    ("lunes", "martes"),
-    ("martes", "miercoles"),
-    ("miercoles", "jueves"),
-    ("jueves", "viernes")
-)
-DIAS_INICIO_DESCANSO = tuple(
-    descanso[0]
-    for descanso in DESCANSOS_VALIDOS
-)
-TURNOS_DISPONIBILIDAD = (
-    "comida",
-    "noche"
-)
-OPCIONES_DISPONIBILIDAD = (
-    "Comidas",
-    "Cenas",
-    "Ambos",
-    "No disponible"
-)
-TIPOS_TURNO = (
-    "Comida",
-    "Cena",
-    "Turno partido",
-    "Personalizado"
-)
-PROVEEDORES_INTEGRACION = (
-    "shipday",
-    "glovo",
-    "uber",
-    "api_generica"
-)
-CIUDAD_SIN_CIUDAD = "Sin ciudad"
 
 
 def conectar():
 
-    ensure_user_directories()
-
-    return sqlite3.connect(RUTA_BD)
+    return conectar_con_pragmas(RUTA_BD)
 
 
 def agregar_columna_si_no_existe(cursor, tabla, columna, definicion):
 
-    columnas = columnas_tabla(cursor, tabla)
-
-    if columna not in columnas:
-
-        cursor.execute(
-            f"ALTER TABLE {tabla} ADD COLUMN {columna} {definicion}"
-        )
+    return migrar_columna_si_no_existe(
+        cursor,
+        tabla,
+        columna,
+        definicion
+    )
 
 
 def columnas_tabla(cursor, tabla):
 
-    cursor.execute(f"PRAGMA table_info({tabla})")
-
-    return [
-        fila[1]
-        for fila in cursor.fetchall()
-    ]
-
-
-def normalizar_fecha_inicio_semana(fecha_inicio_semana=None):
-
-    if fecha_inicio_semana is None:
-
-        return FECHA_INICIO_SEMANA_LEGADO
-
-    if isinstance(fecha_inicio_semana, datetime):
-
-        fecha = fecha_inicio_semana.date()
-
-    elif isinstance(fecha_inicio_semana, date):
-
-        fecha = fecha_inicio_semana
-
-    else:
-
-        fecha = datetime.strptime(
-            str(fecha_inicio_semana),
-            "%Y-%m-%d"
-        ).date()
-
-    inicio = fecha - timedelta(days=fecha.weekday())
-
-    return inicio.isoformat()
+    return columnas_tabla_migracion(cursor, tabla)
 
 
 def crear_base_datos():
 
-    conexion = conectar()
-
-    cursor = conexion.cursor()
-
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS ciudades(
-
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-
-        nombre TEXT NOT NULL UNIQUE,
-
-        activo INTEGER DEFAULT 1
-    )
-    """)
-
-    cursor.execute("""
-    INSERT OR IGNORE INTO ciudades(nombre, activo)
-    VALUES(?,1)
-    """,(CIUDAD_SIN_CIUDAD,))
-
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS repartidores(
-
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-
-        nombre TEXT NOT NULL,
-
-        horas INTEGER NOT NULL,
-
-        zona TEXT,
-
-        doble_turno INTEGER DEFAULT 1,
-
-        puede_hasta_la_una INTEGER DEFAULT 1,
-
-        prioridad_comida INTEGER DEFAULT 50,
-
-        prioridad_noche INTEGER DEFAULT 50,
-
-        prioridad_grela INTEGER DEFAULT 50,
-
-        activo INTEGER DEFAULT 1,
-
-        observaciones TEXT
-    )
-    """)
-
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS restaurantes(
-
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-
-        nombre TEXT NOT NULL,
-
-        direccion TEXT,
-
-        zona TEXT,
-
-        telefono TEXT,
-
-        prioridad INTEGER DEFAULT 50,
-
-        activo INTEGER DEFAULT 1,
-
-        observaciones TEXT
-    )
-    """)
-
-    for columna, definicion in (
-        ("ciudad_principal_id", "INTEGER"),
-        ("restaurante_principal_id", "INTEGER"),
-        ("apoyo_flexible", "INTEGER DEFAULT 0"),
-        ("horas_complementarias", "INTEGER DEFAULT 0"),
-        ("max_horas_diarias", "REAL DEFAULT 10"),
-        ("max_dias_consecutivos", "INTEGER DEFAULT 5")
-    ):
-
-        agregar_columna_si_no_existe(
-            cursor,
-            "repartidores",
-            columna,
-            definicion
-        )
-
-    agregar_columna_si_no_existe(
-        cursor,
-        "restaurantes",
-        "horario_comida",
-        "TEXT"
-    )
-
-    agregar_columna_si_no_existe(
-        cursor,
-        "restaurantes",
-        "horario_cena",
-        "TEXT"
-    )
-
-    agregar_columna_si_no_existe(
-        cursor,
-        "restaurantes",
-        "ciudad_id",
-        "INTEGER"
-    )
-
-    cursor.execute("""
-    UPDATE restaurantes
-    SET ciudad_id=(
-        SELECT id
-        FROM ciudades
-        WHERE nombre=?
-    )
-    WHERE ciudad_id IS NULL
-    """,(CIUDAD_SIN_CIUDAD,))
-
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS restaurante_repartidores(
-
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-
-        restaurante_id INTEGER NOT NULL,
-
-        repartidor_id INTEGER NOT NULL,
-
-        activo INTEGER DEFAULT 1,
-
-        FOREIGN KEY(restaurante_id) REFERENCES restaurantes(id),
-
-        FOREIGN KEY(repartidor_id) REFERENCES repartidores(id)
-    )
-    """)
-
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS restaurante_turnos(
-
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-
-        restaurante_id INTEGER NOT NULL,
-
-        nombre TEXT NOT NULL,
-
-        hora_inicio TEXT NOT NULL,
-
-        hora_fin TEXT NOT NULL,
-
-        cruza_medianoche INTEGER DEFAULT 0,
-
-        duracion REAL NOT NULL,
-
-        activo INTEGER DEFAULT 1,
-
-        FOREIGN KEY(restaurante_id) REFERENCES restaurantes(id)
-    )
-    """)
-
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS demanda_restaurante(
-
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-
-        restaurante_id INTEGER NOT NULL,
-
-        turno_restaurante_id INTEGER NOT NULL,
-
-        fecha TEXT,
-
-        dia_semana TEXT,
-
-        repartidores_necesarios INTEGER NOT NULL,
-
-        activo INTEGER DEFAULT 1,
-
-        FOREIGN KEY(restaurante_id) REFERENCES restaurantes(id),
-
-        FOREIGN KEY(turno_restaurante_id) REFERENCES restaurante_turnos(id)
-    )
-    """)
-
-    cursor.execute("""
-    CREATE UNIQUE INDEX IF NOT EXISTS idx_demanda_restaurante_fecha_unica
-    ON demanda_restaurante(
-        restaurante_id,
-        turno_restaurante_id,
-        fecha
-    )
-    WHERE activo=1
-    AND fecha IS NOT NULL
-    """)
-
-    cursor.execute("""
-    CREATE UNIQUE INDEX IF NOT EXISTS idx_demanda_restaurante_dia_unico
-    ON demanda_restaurante(
-        restaurante_id,
-        turno_restaurante_id,
-        dia_semana
-    )
-    WHERE activo=1
-    AND dia_semana IS NOT NULL
-    """)
-
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS repartidor_ciudades(
-
-        repartidor_id INTEGER NOT NULL,
-
-        ciudad_id INTEGER NOT NULL,
-
-        activo INTEGER DEFAULT 1,
-
-        UNIQUE(repartidor_id, ciudad_id),
-
-        FOREIGN KEY(repartidor_id) REFERENCES repartidores(id),
-
-        FOREIGN KEY(ciudad_id) REFERENCES ciudades(id)
-    )
-    """)
-
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS repartidor_restaurantes_autorizados(
-
-        repartidor_id INTEGER NOT NULL,
-
-        restaurante_id INTEGER NOT NULL,
-
-        activo INTEGER DEFAULT 1,
-
-        UNIQUE(repartidor_id, restaurante_id),
-
-        FOREIGN KEY(repartidor_id) REFERENCES repartidores(id),
-
-        FOREIGN KEY(restaurante_id) REFERENCES restaurantes(id)
-    )
-    """)
-
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS contratos(
-
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-
-        nombre TEXT NOT NULL,
-
-        horas INTEGER NOT NULL,
-
-        activo INTEGER DEFAULT 1,
-
-        observaciones TEXT
-    )
-    """)
-
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS descansos(
-
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-
-        repartidor_id INTEGER NOT NULL,
-
-        dia_inicio TEXT NOT NULL,
-
-        dia_fin TEXT NOT NULL,
-
-        activo INTEGER DEFAULT 1,
-
-        observaciones TEXT,
-
-        FOREIGN KEY(repartidor_id) REFERENCES repartidores(id)
-    )
-    """)
-
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS disponibilidad(
-
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-
-        repartidor_id INTEGER NOT NULL,
-
-        dia TEXT NOT NULL,
-
-        turno TEXT,
-
-        disponible INTEGER DEFAULT 1,
-
-        observaciones TEXT,
-
-        FOREIGN KEY(repartidor_id) REFERENCES repartidores(id)
-    )
-    """)
-
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS vacaciones(
-
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-
-        repartidor_id INTEGER NOT NULL,
-
-        fecha_inicio TEXT NOT NULL,
-
-        fecha_fin TEXT NOT NULL,
-
-        activo INTEGER DEFAULT 1,
-
-        observaciones TEXT,
-
-        FOREIGN KEY(repartidor_id) REFERENCES repartidores(id)
-    )
-    """)
-
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS bajas(
-
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-
-        repartidor_id INTEGER NOT NULL,
-
-        fecha_inicio TEXT NOT NULL,
-
-        fecha_fin TEXT,
-
-        activa INTEGER DEFAULT 1,
-
-        observaciones TEXT,
-
-        FOREIGN KEY(repartidor_id) REFERENCES repartidores(id)
-    )
-    """)
-
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS preferencias(
-
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-
-        repartidor_id INTEGER NOT NULL,
-
-        restaurante_id INTEGER,
-
-        zona TEXT,
-
-        turno TEXT,
-
-        prioridad INTEGER DEFAULT 50,
-
-        observaciones TEXT,
-
-        FOREIGN KEY(repartidor_id) REFERENCES repartidores(id),
-
-        FOREIGN KEY(restaurante_id) REFERENCES restaurantes(id)
-    )
-    """)
-
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS turnos(
-
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-
-        tipo TEXT NOT NULL,
-
-        nombre TEXT NOT NULL,
-
-        hora_inicio TEXT NOT NULL,
-
-        hora_fin TEXT NOT NULL,
-
-        color TEXT NOT NULL,
-
-        duracion REAL NOT NULL,
-
-        activo INTEGER DEFAULT 1
-    )
-    """)
-
-    agregar_columna_si_no_existe(
-        cursor,
-        "turnos",
-        "turno_restaurante_id",
-        "INTEGER"
-    )
-
-    cursor.execute("""
-    CREATE UNIQUE INDEX IF NOT EXISTS idx_turnos_turno_restaurante_unico
-    ON turnos(turno_restaurante_id)
-    WHERE turno_restaurante_id IS NOT NULL
-    """)
-
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS calendario_semanal(
-
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-
-        fecha_inicio_semana TEXT NOT NULL DEFAULT '1970-01-05',
-
-        dia TEXT NOT NULL,
-
-        turno_id INTEGER NOT NULL,
-
-        restaurante_id INTEGER NOT NULL,
-
-        repartidor_id INTEGER,
-
-        FOREIGN KEY(turno_id) REFERENCES turnos(id),
-
-        FOREIGN KEY(restaurante_id) REFERENCES restaurantes(id),
-
-        FOREIGN KEY(repartidor_id) REFERENCES repartidores(id)
-    )
-    """)
-
-    agregar_columna_si_no_existe(
-        cursor,
-        "calendario_semanal",
-        "repartidor_id",
-        "INTEGER"
-    )
-
-    agregar_columna_si_no_existe(
-        cursor,
-        "calendario_semanal",
-        "fecha_inicio_semana",
-        "TEXT NOT NULL DEFAULT '1970-01-05'"
-    )
-
-    cursor.execute("""
-    UPDATE calendario_semanal
-    SET fecha_inicio_semana=?
-    WHERE fecha_inicio_semana IS NULL
-    OR TRIM(fecha_inicio_semana)=''
-    """,(FECHA_INICIO_SEMANA_LEGADO,))
-
-    cursor.execute("""
-    CREATE UNIQUE INDEX IF NOT EXISTS idx_calendario_semana_unico
-    ON calendario_semanal(
-        fecha_inicio_semana,
-        dia,
-        turno_id,
-        restaurante_id,
-        COALESCE(repartidor_id, -1)
-    )
-    """)
-
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS integraciones_api(
-
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-
-        proveedor TEXT NOT NULL UNIQUE,
-
-        nombre TEXT NOT NULL,
-
-        activo INTEGER DEFAULT 0,
-
-        base_url TEXT,
-
-        credenciales_referencia TEXT,
-
-        opciones TEXT,
-
-        fecha_actualizacion TEXT
-    )
-    """)
-
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS integraciones_eventos(
-
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-
-        proveedor TEXT NOT NULL,
-
-        tipo TEXT NOT NULL,
-
-        estado TEXT NOT NULL,
-
-        mensaje TEXT,
-
-        creado_en TEXT DEFAULT CURRENT_TIMESTAMP
-    )
-    """)
-
-    for proveedor, nombre in (
-        ("shipday", "Shipday"),
-        ("glovo", "Glovo"),
-        ("uber", "Uber"),
-        ("api_generica", "API generica")
-    ):
-
-        cursor.execute("""
-        INSERT OR IGNORE INTO integraciones_api(
-            proveedor,
-            nombre,
-            activo
-        )
-        VALUES(?,?,0)
-        """,(
-            proveedor,
-            nombre
-        ))
-
-    conexion.commit()
-    conexion.close()
+    ejecutar_migraciones(RUTA_BD)
 
 
 def validar_horas_contratadas(horas):
@@ -625,22 +77,6 @@ def validar_descanso(dia_inicio, dia_fin):
         )
 
     return dia_inicio, dia_fin
-
-
-def descanso_es_valido(dia_inicio, dia_fin):
-
-    return (dia_inicio, dia_fin) in DESCANSOS_VALIDOS
-
-
-def siguiente_descanso_valido(dia_inicio):
-
-    for inicio, fin in DESCANSOS_VALIDOS:
-
-        if inicio == dia_inicio:
-
-            return fin
-
-    return DESCANSOS_VALIDOS[0][1]
 
 
 def obtener_descansos_invalidos():
@@ -1357,6 +793,14 @@ def obtener_repartidores():
     return datos
 
 
+def obtener_repartidores_modelo():
+
+    return [
+        Repartidor.from_row(repartidor)
+        for repartidor in obtener_repartidores()
+    ]
+
+
 def obtener_repartidor(id_repartidor):
 
     crear_base_datos()
@@ -1715,6 +1159,14 @@ def obtener_restaurantes():
     return datos
 
 
+def obtener_restaurantes_modelo():
+
+    return [
+        Restaurante.from_row(restaurante)
+        for restaurante in obtener_restaurantes()
+    ]
+
+
 def obtener_restaurante(id_restaurante):
 
     crear_base_datos()
@@ -2015,6 +1467,14 @@ def obtener_turnos():
     return datos
 
 
+def obtener_turnos_modelo():
+
+    return [
+        Turno.from_row(turno)
+        for turno in obtener_turnos()
+    ]
+
+
 def obtener_turno(id_turno):
 
     crear_base_datos()
@@ -2270,6 +1730,14 @@ def obtener_calendario_semanal(fecha_inicio_semana=None):
     conexion.close()
 
     return datos
+
+
+def obtener_calendario_semanal_modelo(fecha_inicio_semana=None):
+
+    return [
+        AsignacionCalendario.from_row(asignacion)
+        for asignacion in obtener_calendario_semanal(fecha_inicio_semana)
+    ]
 
 
 def guardar_turno_calendario(

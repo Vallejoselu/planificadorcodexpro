@@ -10,13 +10,13 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import QDate
 
-from database.database import normalizar_fecha_inicio_semana
 from services.exportador import (
     exportar_csv,
     exportar_excel,
     exportar_pdf,
     normalizar_ruta
 )
+from services.fechas import normalizar_fecha_inicio_semana
 
 
 class VistaExportaciones(QWidget):

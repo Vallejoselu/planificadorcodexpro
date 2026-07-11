@@ -17,21 +17,23 @@ from PySide6.QtWidgets import (
 
 from PySide6.QtCore import Qt
 
-from database.database import (
+from database.schema import (
     DIAS_INICIO_DESCANSO,
     DIAS_SEMANA,
     HORAS_CONTRATO,
-    OPCIONES_DISPONIBILIDAD,
-    actualizar_repartidor,
-    insertar_repartidor,
-    obtener_ciudades,
-    obtener_restaurantes,
-    siguiente_descanso_valido
+    OPCIONES_DISPONIBILIDAD
 )
+from repositories.ciudades_repository import CiudadesRepository
+from repositories.repartidores_repository import RepartidoresRepository
+from repositories.restaurantes_repository import RestaurantesRepository
+from services.descansos import siguiente_descanso_valido
 from services.rule_engine import dias_no_disponibles, tiene_dias_consecutivos
 
 
 DESCANSO_NO_NECESARIO_TEXTO = "No necesario por disponibilidad semanal"
+ciudades_repository = CiudadesRepository()
+repartidores_repository = RepartidoresRepository()
+restaurantes_repository = RestaurantesRepository()
 
 
 class NuevoRepartidor(QDialog):
@@ -195,7 +197,7 @@ class NuevoRepartidor(QDialog):
         self.ciudad_principal.addItem("Sin ciudad principal", None)
         self.ciudades_autorizadas.clear()
 
-        for ciudad in obtener_ciudades(solo_activas=True):
+        for ciudad in ciudades_repository.listar_activas():
 
             self.ciudad_principal.addItem(ciudad[1], ciudad[0])
             item = QListWidgetItem(ciudad[1])
@@ -206,11 +208,7 @@ class NuevoRepartidor(QDialog):
         self.restaurante_principal.addItem("Sin restaurante principal", None)
         self.restaurantes_autorizados.clear()
 
-        for restaurante in obtener_restaurantes():
-
-            if not restaurante[6]:
-
-                continue
+        for restaurante in restaurantes_repository.listar_activos():
 
             self.restaurante_principal.addItem(restaurante[1], restaurante[0])
             item = QListWidgetItem(restaurante[1])
@@ -376,9 +374,9 @@ class NuevoRepartidor(QDialog):
                 descanso_fin = None
 
             funcion = (
-                actualizar_repartidor
+                repartidores_repository.actualizar
                 if self.repartidor
-                else insertar_repartidor
+                else repartidores_repository.crear
             )
             argumentos = []
 

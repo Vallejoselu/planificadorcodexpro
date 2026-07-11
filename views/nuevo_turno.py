@@ -16,11 +16,10 @@ from PySide6.QtWidgets import (
 
 from PySide6.QtCore import QTime
 
-from database.database import (
-    TIPOS_TURNO,
-    actualizar_turno,
-    insertar_turno
-)
+from database.schema import TIPOS_TURNO
+from repositories.turnos_repository import TurnosRepository
+
+turnos_repository = TurnosRepository()
 
 
 class NuevoTurno(QDialog):
@@ -158,7 +157,7 @@ class NuevoTurno(QDialog):
 
             if self.turno:
 
-                actualizar_turno(
+                turnos_repository.actualizar(
                     self.turno[0],
                     self.tipo.currentText(),
                     self.nombre.text(),
@@ -171,7 +170,7 @@ class NuevoTurno(QDialog):
 
             else:
 
-                insertar_turno(
+                turnos_repository.crear(
                     self.tipo.currentText(),
                     self.nombre.text(),
                     self.hora_inicio.time().toString("HH:mm"),
