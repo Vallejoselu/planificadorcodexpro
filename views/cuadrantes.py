@@ -350,7 +350,10 @@ class VistaCuadrantes(QWidget):
         sin_cubrir = [
             incidencia
             for incidencia in incidencias
-            if incidencia.get("motivo") == "No hay repartidor disponible"
+            if (
+                incidencia.get("motivo") == "No hay repartidor disponible"
+                or incidencia.get("regla") == "minimo de repartidores por turno"
+            )
         ]
         turnos_cubiertos = sum(
             len(asignaciones)
