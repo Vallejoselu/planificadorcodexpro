@@ -10,13 +10,11 @@ from PySide6.QtWidgets import (
     QMessageBox,
 )
 
-from repositories.repartidores_repository import RepartidoresRepository
-from services.descansos import descanso_es_valido
-from services.rule_engine import dias_no_disponibles, tiene_dias_consecutivos
+from services.repartidores_service import RepartidoresService
 from ui.widgets import configure_table
 from views.nuevo_repartidor import NuevoRepartidor
 
-repartidores_repository = RepartidoresRepository()
+repartidores_service = RepartidoresService()
 
 
 class VistaRepartidores(QWidget):
@@ -103,7 +101,7 @@ class VistaRepartidores(QWidget):
 
     def cargar_tabla(self):
 
-        datos = repartidores_repository.listar_activos()
+        datos = repartidores_service.listar_activos()
 
         self.tabla.setRowCount(len(datos))
 
@@ -137,7 +135,7 @@ class VistaRepartidores(QWidget):
                 fila,
                 4,
                 QTableWidgetItem(
-                    self.formatear_descanso(r)
+                    repartidores_service.formatear_descanso(r)
                 )
             )
 
@@ -145,7 +143,7 @@ class VistaRepartidores(QWidget):
                 fila,
                 5,
                 QTableWidgetItem(
-                    self.formatear_disponibilidad(r[11])
+                    repartidores_service.formatear_disponibilidad(r[11])
                     if len(r) > 11
                     else ""
                 )
@@ -182,7 +180,7 @@ class VistaRepartidores(QWidget):
             )
             return
 
-        repartidor = repartidores_repository.obtener_por_id(id_repartidor)
+        repartidor = repartidores_service.obtener_por_id(id_repartidor)
 
         if not repartidor:
 
@@ -224,7 +222,7 @@ class VistaRepartidores(QWidget):
 
             return
 
-        repartidores_repository.desactivar(id_repartidor)
+        repartidores_service.desactivar(id_repartidor)
         self.cargar_tabla()
 
     # ======================================
@@ -246,57 +244,3 @@ class VistaRepartidores(QWidget):
         return int(item.text())
 
     # ======================================
-
-    def formatear_descanso(self, repartidor):
-
-        if not repartidor[9] or not repartidor[10]:
-
-            no_laborables = dias_no_disponibles({
-                "disponibilidad": repartidor[11] if len(repartidor) > 11 else {}
-            })
-
-            if tiene_dias_consecutivos(no_laborables):
-
-                return "No necesario por disponibilidad semanal"
-
-            return "Pendiente de configurar"
-
-        descanso = f"{repartidor[9]} - {repartidor[10]}"
-
-        if not descanso_es_valido(repartidor[9], repartidor[10]):
-
-            return descanso + " (no valido: corregir manualmente)"
-
-        return descanso
-
-    # ======================================
-
-    def formatear_disponibilidad(self, disponibilidad):
-
-        if not disponibilidad:
-
-            return ""
-
-        etiquetas = []
-
-        for dia, turnos in disponibilidad.items():
-
-            if "comida" in turnos and "noche" in turnos:
-
-                valor = "ambos"
-
-            elif "comida" in turnos:
-
-                valor = "comidas"
-
-            elif "noche" in turnos:
-
-                valor = "cenas"
-
-            else:
-
-                valor = "no"
-
-            etiquetas.append(f"{dia}: {valor}")
-
-        return " | ".join(etiquetas)

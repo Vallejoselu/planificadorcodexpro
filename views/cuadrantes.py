@@ -20,21 +20,12 @@ from PySide6.QtGui import QColor, QBrush, QUndoCommand, QUndoStack
 from PySide6.QtCore import Qt, QDate
 
 from database.schema import DIAS_SEMANA
-from repositories.calendario_repository import CalendarioRepository
-from repositories.ciudades_repository import CiudadesRepository
-from repositories.repartidores_repository import RepartidoresRepository
-from repositories.restaurantes_repository import RestaurantesRepository
-from repositories.turnos_repository import TurnosRepository
-from services.planning_engine import PlanningEngine
+from services.cuadrantes_service import CuadrantesService
 from services.fechas import normalizar_fecha_inicio_semana
 from ui.widgets import configure_table
 
 
-calendario_repository = CalendarioRepository()
-ciudades_repository = CiudadesRepository()
-repartidores_repository = RepartidoresRepository()
-restaurantes_repository = RestaurantesRepository()
-turnos_repository = TurnosRepository()
+cuadrantes_service = CuadrantesService()
 
 
 class VistaCuadrantes(QWidget):
@@ -194,34 +185,24 @@ class VistaCuadrantes(QWidget):
 
     def generar_cuadrante(self):
 
-        if not self.repartidores:
+        try:
+
+            generacion = cuadrantes_service.generar_cuadrante(
+                self.contexto_cuadrante(),
+                self.fecha_inicio_semana()
+            )
+
+        except ValueError as error:
 
             QMessageBox.warning(
                 self,
                 "Generar cuadrante",
-                "No hay repartidores activos."
+                str(error)
             )
             return
 
-        if not self.restaurantes:
-
-            QMessageBox.warning(
-                self,
-                "Generar cuadrante",
-                "No hay restaurantes activos."
-            )
-            return
-
-        if not self.turnos and not self.restaurante_turnos:
-
-            QMessageBox.warning(
-                self,
-                "Generar cuadrante",
-                "No hay turnos activos."
-            )
-            return
-
-        resultado, asignaciones = self.generar_resultado_cuadrante()
+        resultado = generacion["resultado"]
+        asignaciones = generacion["asignaciones"]
 
         if not self.mostrar_resumen_generacion(resultado):
 
@@ -233,7 +214,10 @@ class VistaCuadrantes(QWidget):
 
                 return
 
-        self.guardar_asignaciones_generadas(asignaciones)
+        cuadrantes_service.guardar_cuadrante(
+            self.fecha_inicio_semana(),
+            asignaciones
+        )
         self.cargar_datos()
 
         QMessageBox.information(
@@ -244,158 +228,16 @@ class VistaCuadrantes(QWidget):
 
     # ======================================
 
-    def generar_resultado_cuadrante(self):
+    def contexto_cuadrante(self):
 
-        if self.hay_demanda_multiciudad():
-
-            resultado = PlanningEngine().generar_multiciudad(
-                self.repartidores,
-                self.ciudades,
-                self.restaurantes,
-                self.restaurante_turnos,
-                self.demandas_restaurante,
-                fecha_inicio=self.fecha_inicio_semana()
-            )
-
-            return (
-                resultado,
-                self.convertir_resultado_multiciudad_a_asignaciones(
-                    resultado
-                )
-            )
-
-        turnos_engine, mapa_turnos = self.preparar_turnos_engine()
-        fecha_inicio = self.fecha_inicio_semana()
-        resultado = PlanningEngine().generar(
-            self.repartidores,
-            self.restaurantes,
-            turnos_engine,
-            fecha_inicio=fecha_inicio
-        )
-
-        return (
-            resultado,
-            self.convertir_resultado_a_asignaciones(
-                resultado,
-                mapa_turnos
-            )
-        )
-
-    # ======================================
-
-    def hay_demanda_multiciudad(self):
-
-        return any(
-            demanda[6]
-            for demanda in self.demandas_restaurante
-        )
-
-    # ======================================
-
-    def preparar_turnos_engine(self):
-
-        turnos_engine = []
-        mapa_turnos = {}
-
-        for turno in self.turnos:
-
-            clave = self.clave_turno_engine(turno)
-
-            if clave in mapa_turnos:
-
-                continue
-
-            mapa_turnos[clave] = turno[0]
-            turnos_engine.append({
-                "nombre": clave,
-                "horas": float(turno[6] or 0),
-                "hora_inicio": turno[3],
-                "hora_fin": turno[4]
-            })
-
-        return turnos_engine, mapa_turnos
-
-    # ======================================
-
-    def clave_turno_engine(self, turno):
-
-        texto = f"{turno[1]} {turno[2]}".lower()
-
-        if "comida" in texto:
-
-            return "comida"
-
-        if "cena" in texto or "noche" in texto:
-
-            return "noche"
-
-        return str(turno[2]).strip().lower().replace(" ", "_")
-
-    # ======================================
-
-    def convertir_resultado_a_asignaciones(self, resultado, mapa_turnos):
-
-        asignaciones = {}
-
-        for dia, turnos_dia in resultado.get("horario", {}).items():
-
-            for nombre_turno, elementos in turnos_dia.items():
-
-                turno_id = mapa_turnos.get(nombre_turno)
-
-                if turno_id is None:
-
-                    continue
-
-                clave = (dia, turno_id)
-
-                for elemento in elementos:
-
-                    asignacion = {
-                        "restaurante_id": elemento["restaurante_id"],
-                        "repartidor_id": elemento.get("repartidor_id")
-                    }
-
-                    if asignacion not in asignaciones.setdefault(clave, []):
-
-                        asignaciones[clave].append(asignacion)
-
-        return asignaciones
-
-    # ======================================
-
-    def convertir_resultado_multiciudad_a_asignaciones(self, resultado):
-
-        asignaciones = {}
-
-        for dia, turnos_dia in resultado.get("horario", {}).items():
-
-            for elementos in turnos_dia.values():
-
-                for elemento in elementos:
-
-                    turno_restaurante_id = elemento.get(
-                        "turno_restaurante_id"
-                    )
-
-                    if not turno_restaurante_id:
-
-                        continue
-
-                    clave = (
-                        dia,
-                        ("restaurante_turno", turno_restaurante_id)
-                    )
-                    asignacion = {
-                        "restaurante_id": elemento["restaurante_id"],
-                        "repartidor_id": elemento.get("repartidor_id")
-                    }
-
-                    if asignacion not in asignaciones.setdefault(clave, []):
-
-                        asignaciones[clave].append(asignacion)
-
-        return asignaciones
+        return {
+            "ciudades": self.ciudades,
+            "turnos": self.turnos,
+            "restaurantes": self.restaurantes,
+            "restaurante_turnos": self.restaurante_turnos,
+            "demandas_restaurante": self.demandas_restaurante,
+            "repartidores": self.repartidores
+        }
 
     # ======================================
 
@@ -403,128 +245,16 @@ class VistaCuadrantes(QWidget):
 
         dialogo = DialogoResumenGeneracion(
             self,
-            self.texto_resumen_generacion(resultado)
+            cuadrantes_service.texto_resumen_generacion(resultado)
         )
 
         return dialogo.exec() == QDialog.Accepted
 
     # ======================================
 
-    def texto_resumen_generacion(self, resultado):
-
-        resumen = resultado.get("resumen", [])
-        incidencias = resultado.get("incidencias", [])
-        sin_cubrir = [
-            incidencia
-            for incidencia in incidencias
-            if (
-                incidencia.get("motivo") == "No hay repartidor disponible"
-                or incidencia.get("regla") == "minimo de repartidores por turno"
-            )
-        ]
-        turnos_cubiertos = sum(
-            len(asignaciones)
-            for turnos_dia in resultado.get("horario", {}).values()
-            for asignaciones in turnos_dia.values()
-        )
-        horas_totales = sum(
-            item.get("horas", 0)
-            for item in resumen
-        )
-        repartidores_asignados = [
-            item
-            for item in resumen
-            if item.get("horas", 0) > 0
-        ]
-
-        lineas = [
-            "Resumen del cuadrante",
-            "",
-            f"Repartidores asignados: {len(repartidores_asignados)}",
-            f"Turnos cubiertos: {turnos_cubiertos}",
-            f"Turnos sin cubrir: {len(sin_cubrir)}",
-            f"Horas totales: {horas_totales:g}",
-            "",
-            "Repartidores"
-        ]
-
-        if repartidores_asignados:
-
-            for item in repartidores_asignados:
-
-                lineas.append(
-                    f"- {item['nombre']}: {item['horas']:g} h"
-                )
-
-        else:
-
-            lineas.append("- Ninguno")
-
-        lineas.extend([
-            "",
-            "Turnos sin cubrir"
-        ])
-
-        if sin_cubrir:
-
-            for incidencia in sin_cubrir:
-
-                lineas.append(
-                    "- "
-                    + self.texto_incidencia(incidencia)
-                )
-
-        else:
-
-            lineas.append("- Ninguno")
-
-        lineas.extend([
-            "",
-            "Incidencias"
-        ])
-
-        if incidencias:
-
-            for incidencia in incidencias:
-
-                lineas.append(
-                    "- "
-                    + self.texto_incidencia(incidencia)
-                )
-
-        else:
-
-            lineas.append("- Ninguna")
-
-        return "\n".join(lineas)
-
-    # ======================================
-
-    def texto_incidencia(self, incidencia):
-
-        datos = [
-            incidencia.get("dia"),
-            incidencia.get("turno"),
-            incidencia.get("restaurante")
-        ]
-        cabecera = " / ".join([
-            dato
-            for dato in datos
-            if dato
-        ])
-        motivo = incidencia.get("motivo", "Incidencia")
-
-        if cabecera:
-
-            return f"{cabecera}: {motivo}"
-
-        return motivo
-
-    # ======================================
-
     def hay_asignaciones_guardadas(self):
 
-        return calendario_repository.semana_tiene_datos(
+        return cuadrantes_service.semana_tiene_datos(
             self.fecha_inicio_semana()
         )
 
@@ -554,69 +284,15 @@ class VistaCuadrantes(QWidget):
 
     # ======================================
 
-    def guardar_asignaciones_generadas(self, asignaciones):
-
-        asignaciones = self.resolver_turnos_asignaciones(asignaciones)
-        calendario_repository.reemplazar_semana(
-            self.fecha_inicio_semana(),
-            asignaciones
-        )
-
-    # ======================================
-
-    def resolver_turnos_asignaciones(self, asignaciones):
-
-        resueltas = {}
-
-        for (dia, turno_ref), elementos in (asignaciones or {}).items():
-
-            turno_id = turno_ref
-
-            if (
-                isinstance(turno_ref, tuple)
-                and turno_ref[0] == "restaurante_turno"
-            ):
-
-                turno_id = turnos_repository.obtener_o_crear_para_restaurante(
-                    turno_ref[1]
-                )
-
-            resueltas[(dia, turno_id)] = elementos
-
-        return resueltas
-
-    # ======================================
-
     def cargar_datos(self):
 
-        self.ciudades = [
-            ciudad
-            for ciudad in ciudades_repository.listar_activas()
-            if ciudad[2]
-        ]
-        self.turnos = turnos_repository.listar_activos()
-        self.restaurantes = restaurantes_repository.listar_activos()
-        self.restaurante_turnos = []
-        self.demandas_restaurante = []
-
-        for restaurante in self.restaurantes:
-
-            self.restaurante_turnos.extend([
-                turno
-                for turno in restaurantes_repository.listar_turnos(
-                    restaurante[0]
-                )
-                if turno[7]
-            ])
-            self.demandas_restaurante.extend([
-                demanda
-                for demanda in restaurantes_repository.listar_demanda(
-                    restaurante[0]
-                )
-                if demanda[6]
-            ])
-
-        self.repartidores = repartidores_repository.listar_activos()
+        contexto = cuadrantes_service.obtener_contexto()
+        self.ciudades = contexto["ciudades"]
+        self.turnos = contexto["turnos"]
+        self.restaurantes = contexto["restaurantes"]
+        self.restaurante_turnos = contexto["restaurante_turnos"]
+        self.demandas_restaurante = contexto["demandas_restaurante"]
+        self.repartidores = contexto["repartidores"]
 
         self.cargar_selectores()
         self.cargar_tabla()
@@ -665,7 +341,7 @@ class VistaCuadrantes(QWidget):
             for turno in self.turnos
         ])
 
-        calendario = calendario_repository.listar_semana(
+        calendario = cuadrantes_service.cargar_semana(
             self.fecha_inicio_semana()
         )
 
@@ -948,29 +624,21 @@ class VistaCuadrantes(QWidget):
                 dict(asignacion)
                 for asignacion in asignaciones
             ]
-            calendario_repository.eliminar_turno(
+            cuadrantes_service.guardar_asignacion_turno(
+                fecha_inicio_semana,
                 dia,
                 turno_id,
-                fecha_inicio_semana=fecha_inicio_semana
+                asignaciones
             )
-
-            for asignacion in asignaciones:
-
-                calendario_repository.guardar_turno(
-                    dia,
-                    turno_id,
-                    asignacion["restaurante_id"],
-                    asignacion.get("repartidor_id"),
-                    fecha_inicio_semana
-                )
 
         else:
 
             self.asignaciones.pop((dia, turno_id), None)
-            calendario_repository.eliminar_turno(
+            cuadrantes_service.guardar_asignacion_turno(
+                fecha_inicio_semana,
                 dia,
                 turno_id,
-                fecha_inicio_semana=fecha_inicio_semana
+                []
             )
 
         self.pintar_tabla()

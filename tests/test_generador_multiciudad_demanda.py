@@ -23,6 +23,7 @@ from database.database import (
     obtener_o_crear_turno_calendario_restaurante,
     obtener_restaurante_turnos
 )
+from services.cuadrantes_service import CuadrantesService
 from services.planning_engine import PlanningEngine
 from views.cuadrantes import VistaCuadrantes
 
@@ -616,7 +617,12 @@ class TestGeneradorMulticiudadBaseDatos(unittest.TestCase):
 
         vista = VistaCuadrantes()
         vista.selector_semana.setDate(QDate(2026, 7, 13))
-        resultado, asignaciones = vista.generar_resultado_cuadrante()
+        generacion = CuadrantesService().generar_cuadrante(
+            vista.contexto_cuadrante(),
+            vista.fecha_inicio_semana()
+        )
+        resultado = generacion["resultado"]
+        asignaciones = generacion["asignaciones"]
 
         self.assertIn("horario", resultado)
         self.assertTrue(asignaciones)
