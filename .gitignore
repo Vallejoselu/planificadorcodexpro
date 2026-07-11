@@ -19,3 +19,4 @@ backups/
 .env.*
 delivery_test.db
 test_*.db
+delivery.db
