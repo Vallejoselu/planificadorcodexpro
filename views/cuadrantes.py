@@ -25,8 +25,12 @@ from database.database import (
     guardar_turno_calendario,
     normalizar_fecha_inicio_semana,
     obtener_calendario_semanal,
+    obtener_ciudades,
+    obtener_demanda_restaurante,
+    obtener_o_crear_turno_calendario_restaurante,
     obtener_repartidores,
     obtener_restaurantes,
+    obtener_restaurante_turnos,
     obtener_turnos,
     reemplazar_calendario_semana,
     semana_tiene_calendario
@@ -41,6 +45,9 @@ class VistaCuadrantes(QWidget):
         super().__init__()
 
         self.turnos = []
+        self.ciudades = []
+        self.restaurante_turnos = []
+        self.demandas_restaurante = []
         self.restaurantes = []
         self.repartidores = []
         self.asignaciones = {}
@@ -207,7 +214,7 @@ class VistaCuadrantes(QWidget):
             )
             return
 
-        if not self.turnos:
+        if not self.turnos and not self.restaurante_turnos:
 
             QMessageBox.warning(
                 self,
@@ -241,6 +248,24 @@ class VistaCuadrantes(QWidget):
 
     def generar_resultado_cuadrante(self):
 
+        if self.hay_demanda_multiciudad():
+
+            resultado = PlanningEngine().generar_multiciudad(
+                self.repartidores,
+                self.ciudades,
+                self.restaurantes,
+                self.restaurante_turnos,
+                self.demandas_restaurante,
+                fecha_inicio=self.fecha_inicio_semana()
+            )
+
+            return (
+                resultado,
+                self.convertir_resultado_multiciudad_a_asignaciones(
+                    resultado
+                )
+            )
+
         turnos_engine, mapa_turnos = self.preparar_turnos_engine()
         fecha_inicio = self.fecha_inicio_semana()
         resultado = PlanningEngine().generar(
@@ -256,6 +281,15 @@ class VistaCuadrantes(QWidget):
                 resultado,
                 mapa_turnos
             )
+        )
+
+    # ======================================
+
+    def hay_demanda_multiciudad(self):
+
+        return any(
+            demanda[6]
+            for demanda in self.demandas_restaurante
         )
 
     # ======================================
@@ -319,6 +353,41 @@ class VistaCuadrantes(QWidget):
 
                 for elemento in elementos:
 
+                    asignacion = {
+                        "restaurante_id": elemento["restaurante_id"],
+                        "repartidor_id": elemento.get("repartidor_id")
+                    }
+
+                    if asignacion not in asignaciones.setdefault(clave, []):
+
+                        asignaciones[clave].append(asignacion)
+
+        return asignaciones
+
+    # ======================================
+
+    def convertir_resultado_multiciudad_a_asignaciones(self, resultado):
+
+        asignaciones = {}
+
+        for dia, turnos_dia in resultado.get("horario", {}).items():
+
+            for elementos in turnos_dia.values():
+
+                for elemento in elementos:
+
+                    turno_restaurante_id = elemento.get(
+                        "turno_restaurante_id"
+                    )
+
+                    if not turno_restaurante_id:
+
+                        continue
+
+                    clave = (
+                        dia,
+                        ("restaurante_turno", turno_restaurante_id)
+                    )
                     asignacion = {
                         "restaurante_id": elemento["restaurante_id"],
                         "repartidor_id": elemento.get("repartidor_id")
@@ -489,6 +558,7 @@ class VistaCuadrantes(QWidget):
 
     def guardar_asignaciones_generadas(self, asignaciones):
 
+        asignaciones = self.resolver_turnos_asignaciones(asignaciones)
         reemplazar_calendario_semana(
             self.fecha_inicio_semana(),
             asignaciones
@@ -496,8 +566,36 @@ class VistaCuadrantes(QWidget):
 
     # ======================================
 
+    def resolver_turnos_asignaciones(self, asignaciones):
+
+        resueltas = {}
+
+        for (dia, turno_ref), elementos in (asignaciones or {}).items():
+
+            turno_id = turno_ref
+
+            if (
+                isinstance(turno_ref, tuple)
+                and turno_ref[0] == "restaurante_turno"
+            ):
+
+                turno_id = obtener_o_crear_turno_calendario_restaurante(
+                    turno_ref[1]
+                )
+
+            resueltas[(dia, turno_id)] = elementos
+
+        return resueltas
+
+    # ======================================
+
     def cargar_datos(self):
 
+        self.ciudades = [
+            ciudad
+            for ciudad in obtener_ciudades(solo_activas=True)
+            if ciudad[2]
+        ]
         self.turnos = [
             turno
             for turno in obtener_turnos()
@@ -508,6 +606,22 @@ class VistaCuadrantes(QWidget):
             for restaurante in obtener_restaurantes()
             if restaurante[6]
         ]
+        self.restaurante_turnos = []
+        self.demandas_restaurante = []
+
+        for restaurante in self.restaurantes:
+
+            self.restaurante_turnos.extend([
+                turno
+                for turno in obtener_restaurante_turnos(restaurante[0])
+                if turno[7]
+            ])
+            self.demandas_restaurante.extend([
+                demanda
+                for demanda in obtener_demanda_restaurante(restaurante[0])
+                if demanda[6]
+            ])
+
         self.repartidores = obtener_repartidores()
 
         self.cargar_selectores()

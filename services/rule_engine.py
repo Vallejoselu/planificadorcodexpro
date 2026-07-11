@@ -120,11 +120,18 @@ def motivo_no_puede_trabajar(repartidor, restaurante, dia, turno, fecha):
 
         return "ausencia, vacaciones o baja"
 
-    if not esta_disponible(repartidor, dia, turno["nombre"]):
+    if not esta_disponible(repartidor, dia, turno):
 
         return "disponibilidad"
 
-    if (dia, turno["nombre"]) in repartidor["_turnos_asignados"]:
+    if solapa_con_asignacion(repartidor, dia, turno):
+
+        return "solapamiento horario"
+
+    if (
+        not turno_tiene_horario(turno)
+        and (dia, turno["nombre"]) in repartidor["_turnos_asignados"]
+    ):
 
         return "solapamiento de turno"
 
@@ -143,6 +150,14 @@ def motivo_no_puede_trabajar(repartidor, restaurante, dia, turno, fecha):
     if horario_no_permitido(repartidor, dia, turno):
 
         return "no puede hacer ese horario"
+
+    if not autorizado_para_restaurante(repartidor, restaurante):
+
+        return "restaurante no autorizado"
+
+    if not autorizado_para_ciudad(repartidor, restaurante):
+
+        return "ciudad no autorizada"
 
     restaurante_fijo = repartidor.get("restaurante_fijo")
 
@@ -168,6 +183,66 @@ def motivo_no_puede_trabajar(repartidor, restaurante, dia, turno, fecha):
         return "maximo de dias consecutivos"
 
     return None
+
+
+def autorizado_para_restaurante(repartidor, restaurante):
+
+    restaurante_id = restaurante.get("id")
+
+    if restaurante_id is None:
+
+        return True
+
+    if repartidor.get("apoyo_flexible"):
+
+        return True
+
+    principal = repartidor.get("restaurante_principal_id")
+
+    if principal and str(principal) == str(restaurante_id):
+
+        return True
+
+    autorizados = repartidor.get("restaurantes_autorizados") or []
+
+    if not autorizados and not principal:
+
+        return True
+
+    return str(restaurante_id) in {
+        str(autorizado)
+        for autorizado in autorizados
+    }
+
+
+def autorizado_para_ciudad(repartidor, restaurante):
+
+    ciudad_id = restaurante.get("ciudad_id")
+
+    if ciudad_id is None:
+
+        return True
+
+    if repartidor.get("apoyo_flexible"):
+
+        return True
+
+    principal = repartidor.get("ciudad_principal_id")
+
+    if principal and str(principal) == str(ciudad_id):
+
+        return True
+
+    autorizadas = repartidor.get("ciudades_autorizadas") or []
+
+    if not autorizadas and not principal:
+
+        return True
+
+    return str(ciudad_id) in {
+        str(autorizada)
+        for autorizada in autorizadas
+    }
 
 
 def horario_no_permitido(repartidor, dia, turno):
@@ -376,6 +451,9 @@ def esta_disponible(repartidor, dia, turno):
 
         return valor
 
+    nombre_turno = nombre_turno_disponibilidad(turno)
+    categoria = categoria_turno(turno)
+
     if isinstance(valor, str):
 
         valor_normalizado = valor.strip().lower()
@@ -394,17 +472,54 @@ def esta_disponible(repartidor, dia, turno):
 
         if valor_normalizado == "comidas":
 
-            return turno == "comida"
+            return categoria == "comida"
 
         if valor_normalizado == "cenas":
 
-            return turno in ("noche", "cena")
+            return categoria in ("noche", "cena")
 
     if turno is None:
 
         return bool(valor)
 
-    return turno in valor
+    return (
+        nombre_turno in valor
+        or categoria in valor
+    )
+
+
+def nombre_turno_disponibilidad(turno):
+
+    if turno is None:
+
+        return None
+
+    if isinstance(turno, dict):
+
+        return turno.get("nombre")
+
+    return turno
+
+
+def categoria_turno(turno):
+
+    nombre = nombre_turno_disponibilidad(turno)
+
+    if not nombre:
+
+        return None
+
+    texto = str(nombre).strip().lower()
+
+    if "comida" in texto:
+
+        return "comida"
+
+    if "cena" in texto or "noche" in texto:
+
+        return "noche"
+
+    return texto
 
 
 def prioridad_repartidor(repartidor, restaurante, turno):
@@ -517,6 +632,71 @@ def coste_desplazamiento(repartidor, restaurante, dia):
         return 1
 
     return 3
+
+
+def turno_tiene_horario(turno):
+
+    return bool(turno.get("hora_inicio") and turno.get("hora_fin"))
+
+
+def solapa_con_asignacion(repartidor, dia, turno):
+
+    intervalo = intervalo_turno(dia, turno)
+
+    if not intervalo:
+
+        return False
+
+    inicio, fin = intervalo
+
+    for inicio_existente, fin_existente in repartidor.get(
+        "_intervalos_asignados",
+        []
+    ):
+
+        if max(inicio, inicio_existente) < min(fin, fin_existente):
+
+            return True
+
+    return False
+
+
+def intervalo_turno(dia, turno):
+
+    if not turno_tiene_horario(turno):
+
+        return None
+
+    if dia not in DIAS:
+
+        return None
+
+    inicio = minutos_hora(turno.get("hora_inicio"))
+    fin = minutos_hora(turno.get("hora_fin"))
+
+    if inicio is None or fin is None:
+
+        return None
+
+    base = DIAS.index(dia) * 24 * 60
+
+    if turno.get("cruza_medianoche") or fin <= inicio:
+
+        fin += 24 * 60
+
+    return base + inicio, base + fin
+
+
+def minutos_hora(valor):
+
+    try:
+
+        hora, minuto = str(valor).split(":", 1)
+        return int(hora) * 60 + int(minuto)
+
+    except (TypeError, ValueError):
+
+        return None
 
 
 def parsear_fecha(valor):
