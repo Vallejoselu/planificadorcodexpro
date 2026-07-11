@@ -47,6 +47,7 @@ PROVEEDORES_INTEGRACION = (
     "uber",
     "api_generica"
 )
+CIUDAD_SIN_CIUDAD = "Sin ciudad"
 
 
 def conectar():
@@ -110,6 +111,22 @@ def crear_base_datos():
     cursor = conexion.cursor()
 
     cursor.execute("""
+    CREATE TABLE IF NOT EXISTS ciudades(
+
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+        nombre TEXT NOT NULL UNIQUE,
+
+        activo INTEGER DEFAULT 1
+    )
+    """)
+
+    cursor.execute("""
+    INSERT OR IGNORE INTO ciudades(nombre, activo)
+    VALUES(?,1)
+    """,(CIUDAD_SIN_CIUDAD,))
+
+    cursor.execute("""
     CREATE TABLE IF NOT EXISTS repartidores(
 
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -157,6 +174,22 @@ def crear_base_datos():
     )
     """)
 
+    for columna, definicion in (
+        ("ciudad_principal_id", "INTEGER"),
+        ("restaurante_principal_id", "INTEGER"),
+        ("apoyo_flexible", "INTEGER DEFAULT 0"),
+        ("horas_complementarias", "INTEGER DEFAULT 0"),
+        ("max_horas_diarias", "REAL DEFAULT 10"),
+        ("max_dias_consecutivos", "INTEGER DEFAULT 5")
+    ):
+
+        agregar_columna_si_no_existe(
+            cursor,
+            "repartidores",
+            columna,
+            definicion
+        )
+
     agregar_columna_si_no_existe(
         cursor,
         "restaurantes",
@@ -170,6 +203,23 @@ def crear_base_datos():
         "horario_cena",
         "TEXT"
     )
+
+    agregar_columna_si_no_existe(
+        cursor,
+        "restaurantes",
+        "ciudad_id",
+        "INTEGER"
+    )
+
+    cursor.execute("""
+    UPDATE restaurantes
+    SET ciudad_id=(
+        SELECT id
+        FROM ciudades
+        WHERE nombre=?
+    )
+    WHERE ciudad_id IS NULL
+    """,(CIUDAD_SIN_CIUDAD,))
 
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS restaurante_repartidores(
@@ -185,6 +235,86 @@ def crear_base_datos():
         FOREIGN KEY(restaurante_id) REFERENCES restaurantes(id),
 
         FOREIGN KEY(repartidor_id) REFERENCES repartidores(id)
+    )
+    """)
+
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS restaurante_turnos(
+
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+        restaurante_id INTEGER NOT NULL,
+
+        nombre TEXT NOT NULL,
+
+        hora_inicio TEXT NOT NULL,
+
+        hora_fin TEXT NOT NULL,
+
+        cruza_medianoche INTEGER DEFAULT 0,
+
+        duracion REAL NOT NULL,
+
+        activo INTEGER DEFAULT 1,
+
+        FOREIGN KEY(restaurante_id) REFERENCES restaurantes(id)
+    )
+    """)
+
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS demanda_restaurante(
+
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+        restaurante_id INTEGER NOT NULL,
+
+        turno_restaurante_id INTEGER NOT NULL,
+
+        fecha TEXT,
+
+        dia_semana TEXT,
+
+        repartidores_necesarios INTEGER NOT NULL,
+
+        activo INTEGER DEFAULT 1,
+
+        FOREIGN KEY(restaurante_id) REFERENCES restaurantes(id),
+
+        FOREIGN KEY(turno_restaurante_id) REFERENCES restaurante_turnos(id)
+    )
+    """)
+
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS repartidor_ciudades(
+
+        repartidor_id INTEGER NOT NULL,
+
+        ciudad_id INTEGER NOT NULL,
+
+        activo INTEGER DEFAULT 1,
+
+        UNIQUE(repartidor_id, ciudad_id),
+
+        FOREIGN KEY(repartidor_id) REFERENCES repartidores(id),
+
+        FOREIGN KEY(ciudad_id) REFERENCES ciudades(id)
+    )
+    """)
+
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS repartidor_restaurantes_autorizados(
+
+        repartidor_id INTEGER NOT NULL,
+
+        restaurante_id INTEGER NOT NULL,
+
+        activo INTEGER DEFAULT 1,
+
+        UNIQUE(repartidor_id, restaurante_id),
+
+        FOREIGN KEY(repartidor_id) REFERENCES repartidores(id),
+
+        FOREIGN KEY(restaurante_id) REFERENCES restaurantes(id)
     )
     """)
 
@@ -626,6 +756,366 @@ def insertar_disponibilidad(repartidor_id, disponibilidad):
     conexion.close()
 
 
+def obtener_id_ciudad_sin_ciudad():
+
+    crear_base_datos()
+
+    conexion = conectar()
+    cursor = conexion.cursor()
+    cursor.execute("""
+    SELECT id
+    FROM ciudades
+    WHERE nombre=?
+    """,(CIUDAD_SIN_CIUDAD,))
+    ciudad = cursor.fetchone()
+    conexion.close()
+
+    return ciudad[0]
+
+
+def obtener_ciudades(solo_activas=False):
+
+    crear_base_datos()
+
+    conexion = conectar()
+    cursor = conexion.cursor()
+    consulta = """
+    SELECT id, nombre, activo
+    FROM ciudades
+    """
+
+    if solo_activas:
+
+        consulta += " WHERE activo=1"
+
+    consulta += " ORDER BY activo DESC, nombre"
+    cursor.execute(consulta)
+    datos = cursor.fetchall()
+    conexion.close()
+
+    return datos
+
+
+def obtener_ciudad(id_ciudad):
+
+    crear_base_datos()
+
+    conexion = conectar()
+    cursor = conexion.cursor()
+    cursor.execute("""
+    SELECT id, nombre, activo
+    FROM ciudades
+    WHERE id=?
+    """,(id_ciudad,))
+    ciudad = cursor.fetchone()
+    conexion.close()
+
+    return ciudad
+
+
+def insertar_ciudad(nombre, activo=1):
+
+    nombre = nombre.strip()
+
+    if not nombre:
+
+        raise ValueError("Introduce una ciudad.")
+
+    crear_base_datos()
+
+    conexion = conectar()
+    cursor = conexion.cursor()
+    cursor.execute("""
+    INSERT INTO ciudades(nombre, activo)
+    VALUES(?,?)
+    """,(nombre, activo))
+    conexion.commit()
+    id_ciudad = cursor.lastrowid
+    conexion.close()
+
+    return id_ciudad
+
+
+def actualizar_ciudad(id_ciudad, nombre, activo=1):
+
+    nombre = nombre.strip()
+
+    if not nombre:
+
+        raise ValueError("Introduce una ciudad.")
+
+    crear_base_datos()
+
+    conexion = conectar()
+    cursor = conexion.cursor()
+    cursor.execute("""
+    UPDATE ciudades
+    SET nombre=?,
+        activo=?
+    WHERE id=?
+    """,(nombre, activo, id_ciudad))
+    conexion.commit()
+    conexion.close()
+
+
+def obtener_restaurante_turnos(restaurante_id):
+
+    crear_base_datos()
+
+    conexion = conectar()
+    cursor = conexion.cursor()
+    cursor.execute("""
+    SELECT
+        id,
+        restaurante_id,
+        nombre,
+        hora_inicio,
+        hora_fin,
+        cruza_medianoche,
+        duracion,
+        activo
+    FROM restaurante_turnos
+    WHERE restaurante_id=?
+    ORDER BY activo DESC, nombre
+    """,(restaurante_id,))
+    datos = cursor.fetchall()
+    conexion.close()
+
+    return datos
+
+
+def guardar_restaurante_turnos(restaurante_id, turnos):
+
+    turnos = turnos or []
+    crear_base_datos()
+
+    conexion = conectar()
+    cursor = conexion.cursor()
+    cursor.execute("""
+    UPDATE restaurante_turnos
+    SET activo=0
+    WHERE restaurante_id=?
+    """,(restaurante_id,))
+
+    for turno in turnos:
+
+        turno_id = turno.get("id")
+        datos = (
+            restaurante_id,
+            turno["nombre"],
+            turno["hora_inicio"],
+            turno["hora_fin"],
+            int(turno.get("cruza_medianoche", 0)),
+            float(turno["duracion"]),
+            int(turno.get("activo", 1))
+        )
+
+        if turno_id:
+
+            cursor.execute("""
+            UPDATE restaurante_turnos
+            SET restaurante_id=?,
+                nombre=?,
+                hora_inicio=?,
+                hora_fin=?,
+                cruza_medianoche=?,
+                duracion=?,
+                activo=?
+            WHERE id=?
+            """, datos + (turno_id,))
+
+        else:
+
+            cursor.execute("""
+            INSERT INTO restaurante_turnos(
+                restaurante_id,
+                nombre,
+                hora_inicio,
+                hora_fin,
+                cruza_medianoche,
+                duracion,
+                activo
+            )
+            VALUES(?,?,?,?,?,?,?)
+            """, datos)
+
+    conexion.commit()
+    conexion.close()
+
+
+def obtener_demanda_restaurante(restaurante_id):
+
+    crear_base_datos()
+
+    conexion = conectar()
+    cursor = conexion.cursor()
+    cursor.execute("""
+    SELECT
+        id,
+        restaurante_id,
+        turno_restaurante_id,
+        fecha,
+        dia_semana,
+        repartidores_necesarios,
+        activo
+    FROM demanda_restaurante
+    WHERE restaurante_id=?
+    ORDER BY activo DESC, COALESCE(fecha, ''), COALESCE(dia_semana, '')
+    """,(restaurante_id,))
+    datos = cursor.fetchall()
+    conexion.close()
+
+    return datos
+
+
+def guardar_demanda_restaurante(restaurante_id, demandas):
+
+    demandas = demandas or []
+    crear_base_datos()
+
+    conexion = conectar()
+    cursor = conexion.cursor()
+    cursor.execute("""
+    UPDATE demanda_restaurante
+    SET activo=0
+    WHERE restaurante_id=?
+    """,(restaurante_id,))
+
+    for demanda in demandas:
+
+        demanda_id = demanda.get("id")
+        datos = (
+            restaurante_id,
+            demanda["turno_restaurante_id"],
+            demanda.get("fecha") or None,
+            demanda.get("dia_semana") or None,
+            int(demanda["repartidores_necesarios"]),
+            int(demanda.get("activo", 1))
+        )
+
+        if demanda_id:
+
+            cursor.execute("""
+            UPDATE demanda_restaurante
+            SET restaurante_id=?,
+                turno_restaurante_id=?,
+                fecha=?,
+                dia_semana=?,
+                repartidores_necesarios=?,
+                activo=?
+            WHERE id=?
+            """, datos + (demanda_id,))
+
+        else:
+
+            cursor.execute("""
+            INSERT INTO demanda_restaurante(
+                restaurante_id,
+                turno_restaurante_id,
+                fecha,
+                dia_semana,
+                repartidores_necesarios,
+                activo
+            )
+            VALUES(?,?,?,?,?,?)
+            """, datos)
+
+    conexion.commit()
+    conexion.close()
+
+
+def guardar_repartidor_ciudades(repartidor_id, ciudades):
+
+    ciudades = ciudades or []
+    conexion = conectar()
+    cursor = conexion.cursor()
+    cursor.execute("""
+    UPDATE repartidor_ciudades
+    SET activo=0
+    WHERE repartidor_id=?
+    """,(repartidor_id,))
+
+    for ciudad_id in ciudades:
+
+        cursor.execute("""
+        INSERT INTO repartidor_ciudades(
+            repartidor_id,
+            ciudad_id,
+            activo
+        )
+        VALUES(?,?,1)
+        ON CONFLICT(repartidor_id, ciudad_id) DO UPDATE SET
+            activo=1
+        """,(repartidor_id, ciudad_id))
+
+    conexion.commit()
+    conexion.close()
+
+
+def obtener_repartidor_ciudades(repartidor_id):
+
+    crear_base_datos()
+
+    conexion = conectar()
+    cursor = conexion.cursor()
+    cursor.execute("""
+    SELECT ciudad_id
+    FROM repartidor_ciudades
+    WHERE repartidor_id=?
+    AND activo=1
+    """,(repartidor_id,))
+    datos = [fila[0] for fila in cursor.fetchall()]
+    conexion.close()
+
+    return datos
+
+
+def guardar_repartidor_restaurantes_autorizados(repartidor_id, restaurantes):
+
+    restaurantes = restaurantes or []
+    conexion = conectar()
+    cursor = conexion.cursor()
+    cursor.execute("""
+    UPDATE repartidor_restaurantes_autorizados
+    SET activo=0
+    WHERE repartidor_id=?
+    """,(repartidor_id,))
+
+    for restaurante_id in restaurantes:
+
+        cursor.execute("""
+        INSERT INTO repartidor_restaurantes_autorizados(
+            repartidor_id,
+            restaurante_id,
+            activo
+        )
+        VALUES(?,?,1)
+        ON CONFLICT(repartidor_id, restaurante_id) DO UPDATE SET
+            activo=1
+        """,(repartidor_id, restaurante_id))
+
+    conexion.commit()
+    conexion.close()
+
+
+def obtener_repartidor_restaurantes_autorizados(repartidor_id):
+
+    crear_base_datos()
+
+    conexion = conectar()
+    cursor = conexion.cursor()
+    cursor.execute("""
+    SELECT restaurante_id
+    FROM repartidor_restaurantes_autorizados
+    WHERE repartidor_id=?
+    AND activo=1
+    """,(repartidor_id,))
+    datos = [fila[0] for fila in cursor.fetchall()]
+    conexion.close()
+
+    return datos
+
+
 def obtener_repartidores():
 
     conexion = conectar()
@@ -764,6 +1254,12 @@ def obtener_repartidor(id_repartidor):
         r.prioridad_noche,
         r.prioridad_grela,
         r.observaciones,
+        r.ciudad_principal_id,
+        r.restaurante_principal_id,
+        r.apoyo_flexible,
+        r.horas_complementarias,
+        r.max_horas_diarias,
+        r.max_dias_consecutivos,
         d.dia_inicio,
         d.dia_fin
     FROM repartidores r
@@ -812,9 +1308,19 @@ def obtener_repartidor(id_repartidor):
         "prioridad_noche": fila[7],
         "prioridad_grela": fila[8],
         "observaciones": fila[9] or "",
-        "descanso_inicio": fila[10],
-        "descanso_fin": fila[11],
-        "disponibilidad": disponibilidad
+        "ciudad_principal_id": fila[10],
+        "restaurante_principal_id": fila[11],
+        "apoyo_flexible": fila[12],
+        "horas_complementarias": fila[13],
+        "max_horas_diarias": fila[14],
+        "max_dias_consecutivos": fila[15],
+        "descanso_inicio": fila[16],
+        "descanso_fin": fila[17],
+        "disponibilidad": disponibilidad,
+        "ciudades_autorizadas": obtener_repartidor_ciudades(id_repartidor),
+        "restaurantes_autorizados": obtener_repartidor_restaurantes_autorizados(
+            id_repartidor
+        )
     }
 
 
@@ -830,7 +1336,15 @@ def insertar_repartidor(
     observaciones="",
     descanso_inicio=None,
     descanso_fin=None,
-    disponibilidad=None
+    disponibilidad=None,
+    ciudad_principal_id=None,
+    restaurante_principal_id=None,
+    apoyo_flexible=0,
+    horas_complementarias=0,
+    max_horas_diarias=10,
+    max_dias_consecutivos=5,
+    ciudades_autorizadas=None,
+    restaurantes_autorizados=None
 ):
 
     horas = validar_horas_contratadas(horas)
@@ -849,9 +1363,15 @@ def insertar_repartidor(
             prioridad_comida,
             prioridad_noche,
             prioridad_grela,
-            observaciones
+            observaciones,
+            ciudad_principal_id,
+            restaurante_principal_id,
+            apoyo_flexible,
+            horas_complementarias,
+            max_horas_diarias,
+            max_dias_consecutivos
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
         nombre,
         horas,
@@ -861,7 +1381,13 @@ def insertar_repartidor(
         prioridad_comida,
         prioridad_noche,
         prioridad_grela,
-        observaciones
+        observaciones,
+        ciudad_principal_id,
+        restaurante_principal_id,
+        int(apoyo_flexible),
+        int(horas_complementarias or 0),
+        float(max_horas_diarias or 0),
+        int(max_dias_consecutivos or 0)
     ))
 
     conexion.commit()
@@ -887,6 +1413,15 @@ def insertar_repartidor(
             disponibilidad
         )
 
+    guardar_repartidor_ciudades(
+        id_repartidor,
+        ciudades_autorizadas
+    )
+    guardar_repartidor_restaurantes_autorizados(
+        id_repartidor,
+        restaurantes_autorizados
+    )
+
     return id_repartidor
 
 
@@ -903,7 +1438,15 @@ def actualizar_repartidor(
     observaciones="",
     descanso_inicio=None,
     descanso_fin=None,
-    disponibilidad=None
+    disponibilidad=None,
+    ciudad_principal_id=None,
+    restaurante_principal_id=None,
+    apoyo_flexible=0,
+    horas_complementarias=0,
+    max_horas_diarias=10,
+    max_dias_consecutivos=5,
+    ciudades_autorizadas=None,
+    restaurantes_autorizados=None
 ):
 
     horas = validar_horas_contratadas(horas)
@@ -923,7 +1466,13 @@ def actualizar_repartidor(
         prioridad_comida=?,
         prioridad_noche=?,
         prioridad_grela=?,
-        observaciones=?
+        observaciones=?,
+        ciudad_principal_id=?,
+        restaurante_principal_id=?,
+        apoyo_flexible=?,
+        horas_complementarias=?,
+        max_horas_diarias=?,
+        max_dias_consecutivos=?
     WHERE id=?
     """,(
         nombre,
@@ -935,6 +1484,12 @@ def actualizar_repartidor(
         prioridad_noche,
         prioridad_grela,
         observaciones,
+        ciudad_principal_id,
+        restaurante_principal_id,
+        int(apoyo_flexible),
+        int(horas_complementarias or 0),
+        float(max_horas_diarias or 0),
+        int(max_dias_consecutivos or 0),
         id_repartidor
     ))
 
@@ -959,6 +1514,15 @@ def actualizar_repartidor(
             id_repartidor,
             disponibilidad
         )
+
+    guardar_repartidor_ciudades(
+        id_repartidor,
+        ciudades_autorizadas
+    )
+    guardar_repartidor_restaurantes_autorizados(
+        id_repartidor,
+        restaurantes_autorizados
+    )
 
 
 def eliminar_repartidor(id_repartidor):
@@ -1010,9 +1574,15 @@ def obtener_restaurantes():
         prioridad,
         activo,
         horario_comida,
-        horario_cena
+        horario_cena,
+        ciudad_id,
+        (
+            SELECT nombre
+            FROM ciudades
+            WHERE ciudades.id=restaurantes.ciudad_id
+        ) AS ciudad
     FROM restaurantes
-    ORDER BY activo DESC, nombre
+    ORDER BY activo DESC, ciudad, nombre
     """)
 
     datos = cursor.fetchall()
@@ -1040,7 +1610,13 @@ def obtener_restaurante(id_restaurante):
         prioridad,
         activo,
         horario_comida,
-        horario_cena
+        horario_cena,
+        ciudad_id,
+        (
+            SELECT nombre
+            FROM ciudades
+            WHERE ciudades.id=restaurantes.ciudad_id
+        ) AS ciudad
     FROM restaurantes
     WHERE id=?
     """,(id_restaurante,))
@@ -1119,10 +1695,12 @@ def insertar_restaurante(
     activo=1,
     horario_comida="",
     horario_cena="",
-    repartidores_fijos=None
+    repartidores_fijos=None,
+    ciudad_id=None
 ):
 
     crear_base_datos()
+    ciudad_id = ciudad_id or obtener_id_ciudad_sin_ciudad()
 
     conexion = conectar()
 
@@ -1139,11 +1717,12 @@ def insertar_restaurante(
         activo,
         horario_comida,
         horario_cena,
+        ciudad_id,
         observaciones
 
     )
 
-    VALUES(?,?,?,?,?,?,?,?,?)
+    VALUES(?,?,?,?,?,?,?,?,?,?)
 
     """,(
 
@@ -1155,6 +1734,7 @@ def insertar_restaurante(
         activo,
         horario_comida,
         horario_cena,
+        ciudad_id,
         observaciones
 
     ))
@@ -1169,6 +1749,8 @@ def insertar_restaurante(
         repartidores_fijos
     )
 
+    return id_restaurante
+
 
 def actualizar_restaurante(
     id_restaurante,
@@ -1179,10 +1761,12 @@ def actualizar_restaurante(
     activo,
     horario_comida,
     horario_cena,
-    repartidores_fijos=None
+    repartidores_fijos=None,
+    ciudad_id=None
 ):
 
     crear_base_datos()
+    ciudad_id = ciudad_id or obtener_id_ciudad_sin_ciudad()
 
     conexion = conectar()
 
@@ -1197,7 +1781,8 @@ def actualizar_restaurante(
         telefono=?,
         activo=?,
         horario_comida=?,
-        horario_cena=?
+        horario_cena=?,
+        ciudad_id=?
     WHERE id=?
     """,(
         nombre,
@@ -1207,6 +1792,7 @@ def actualizar_restaurante(
         activo,
         horario_comida,
         horario_cena,
+        ciudad_id,
         id_restaurante
     ))
 

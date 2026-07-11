@@ -33,6 +33,18 @@ class TestReglasDescansos(unittest.TestCase):
 
         cls.app = QApplication.instance() or QApplication([])
 
+    def setUp(self):
+
+        self.ruta_original = database.RUTA_BD
+        self.temporal = tempfile.TemporaryDirectory()
+        database.RUTA_BD = Path(self.temporal.name) / "delivery.db"
+        crear_base_datos()
+
+    def tearDown(self):
+
+        database.RUTA_BD = self.ruta_original
+        self.temporal.cleanup()
+
     def test_descansos_validos(self):
 
         validos = (
