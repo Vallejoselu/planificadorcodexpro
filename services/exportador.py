@@ -7,6 +7,7 @@ from PySide6.QtGui import QPageSize, QPdfWriter, QTextDocument
 from database.database import (
     DIAS_SEMANA,
     descanso_es_valido,
+    normalizar_fecha_inicio_semana,
     obtener_calendario_semanal,
     obtener_repartidores,
     obtener_restaurantes,
@@ -14,12 +15,12 @@ from database.database import (
 )
 
 
-def exportar_excel(ruta):
+def exportar_excel(ruta, fecha_inicio_semana=None):
 
     from openpyxl import Workbook
     from openpyxl.styles import Font, PatternFill
 
-    datos = preparar_datos_exportacion()
+    datos = preparar_datos_exportacion(fecha_inicio_semana)
     libro = Workbook()
     hoja = libro.active
     hoja.title = "Horarios"
@@ -63,9 +64,9 @@ def exportar_excel(ruta):
     libro.save(ruta)
 
 
-def exportar_csv(ruta):
+def exportar_csv(ruta, fecha_inicio_semana=None):
 
-    datos = preparar_datos_exportacion()
+    datos = preparar_datos_exportacion(fecha_inicio_semana)
 
     with open(ruta, "w", newline="", encoding="utf-8-sig") as archivo:
 
@@ -97,10 +98,10 @@ def exportar_csv(ruta):
         )
 
 
-def exportar_pdf(ruta):
+def exportar_pdf(ruta, fecha_inicio_semana=None):
 
     documento = QTextDocument()
-    documento.setHtml(_crear_html(preparar_datos_exportacion()))
+    documento.setHtml(_crear_html(preparar_datos_exportacion(fecha_inicio_semana)))
 
     escritor = QPdfWriter(ruta)
     escritor.setPageSize(QPageSize(QPageSize.A4))
@@ -109,7 +110,11 @@ def exportar_pdf(ruta):
     documento.print_(escritor)
 
 
-def preparar_datos_exportacion():
+def preparar_datos_exportacion(fecha_inicio_semana=None):
+
+    fecha_inicio_semana = normalizar_fecha_inicio_semana(
+        fecha_inicio_semana
+    )
 
     turnos = {
         turno[0]: turno
@@ -120,7 +125,11 @@ def preparar_datos_exportacion():
         for restaurante in obtener_restaurantes()
     }
 
-    horarios = _preparar_horarios(turnos, restaurantes)
+    horarios = _preparar_horarios(
+        turnos,
+        restaurantes,
+        fecha_inicio_semana
+    )
     horas = _preparar_horas(horarios)
     descansos = _preparar_descansos()
     totales = _preparar_totales(horarios, descansos)
@@ -129,15 +138,16 @@ def preparar_datos_exportacion():
         "horarios": horarios,
         "horas": horas,
         "descansos": descansos,
-        "totales": totales
+        "totales": totales,
+        "fecha_inicio_semana": fecha_inicio_semana
     }
 
 
-def _preparar_horarios(turnos, restaurantes):
+def _preparar_horarios(turnos, restaurantes, fecha_inicio_semana):
 
     filas = []
 
-    for asignacion in obtener_calendario_semanal():
+    for asignacion in obtener_calendario_semanal(fecha_inicio_semana):
 
         dia = asignacion[1]
         turno_id = asignacion[2]

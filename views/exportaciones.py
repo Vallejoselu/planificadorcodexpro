@@ -1,4 +1,5 @@
 from PySide6.QtWidgets import (
+    QDateEdit,
     QFileDialog,
     QHBoxLayout,
     QLabel,
@@ -7,7 +8,9 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget
 )
+from PySide6.QtCore import QDate
 
+from database.database import normalizar_fecha_inicio_semana
 from services.exportador import (
     exportar_csv,
     exportar_excel,
@@ -33,11 +36,20 @@ class VistaExportaciones(QWidget):
 
         barra = QHBoxLayout()
 
+        self.selector_semana = QDateEdit()
+        self.selector_semana.setCalendarPopup(True)
+        self.selector_semana.setDisplayFormat("yyyy-MM-dd")
+        hoy = QDate.currentDate()
+        self.selector_semana.setDate(
+            hoy.addDays(1 - hoy.dayOfWeek())
+        )
         self.btn_excel = QPushButton("Excel")
         self.btn_excel.setProperty("variant", "primary")
         self.btn_pdf = QPushButton("PDF")
         self.btn_csv = QPushButton("CSV")
 
+        barra.addWidget(QLabel("Semana"))
+        barra.addWidget(self.selector_semana)
         barra.addWidget(self.btn_excel)
         barra.addWidget(self.btn_pdf)
         barra.addWidget(self.btn_csv)
@@ -94,10 +106,14 @@ class VistaExportaciones(QWidget):
 
     def exportar(self, nombre, extension, filtro, funcion):
 
+        fecha_inicio_semana = normalizar_fecha_inicio_semana(
+            self.selector_semana.date().toPython()
+        )
+
         ruta, _ = QFileDialog.getSaveFileName(
             self,
             f"Exportar {nombre}",
-            f"calendario_semanal{extension}",
+            f"calendario_{fecha_inicio_semana}{extension}",
             filtro
         )
 
@@ -109,7 +125,7 @@ class VistaExportaciones(QWidget):
 
         try:
 
-            funcion(ruta)
+            funcion(ruta, fecha_inicio_semana)
 
         except Exception as error:
 
