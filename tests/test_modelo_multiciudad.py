@@ -265,6 +265,125 @@ class TestModeloMulticiudad(unittest.TestCase):
             [restaurante]
         )
 
+    def test_demanda_admite_fecha_valida_sin_dia_semana(self):
+
+        restaurante, turno = self._crear_restaurante_con_turno()
+
+        guardar_demanda_restaurante(
+            restaurante,
+            [{
+                "turno_restaurante_id": turno,
+                "fecha": "2026-07-20",
+                "repartidores_necesarios": 3
+            }]
+        )
+
+        self.assertEqual(
+            obtener_demanda_restaurante(restaurante)[0][3],
+            "2026-07-20"
+        )
+
+    def test_demanda_admite_dia_semana_valido_sin_fecha(self):
+
+        restaurante, turno = self._crear_restaurante_con_turno()
+
+        guardar_demanda_restaurante(
+            restaurante,
+            [{
+                "turno_restaurante_id": turno,
+                "dia_semana": "lunes",
+                "repartidores_necesarios": 3
+            }]
+        )
+
+        self.assertEqual(
+            obtener_demanda_restaurante(restaurante)[0][4],
+            "lunes"
+        )
+
+    def test_demanda_rechaza_fecha_y_dia_vacios(self):
+
+        restaurante, turno = self._crear_restaurante_con_turno()
+
+        with self.assertRaises(ValueError):
+
+            guardar_demanda_restaurante(
+                restaurante,
+                [{
+                    "turno_restaurante_id": turno,
+                    "repartidores_necesarios": 3
+                }]
+            )
+
+    def test_demanda_rechaza_fecha_y_dia_informados(self):
+
+        restaurante, turno = self._crear_restaurante_con_turno()
+
+        with self.assertRaises(ValueError):
+
+            guardar_demanda_restaurante(
+                restaurante,
+                [{
+                    "turno_restaurante_id": turno,
+                    "fecha": "2026-07-20",
+                    "dia_semana": "lunes",
+                    "repartidores_necesarios": 3
+                }]
+            )
+
+    def test_demanda_rechaza_dia_semana_invalido(self):
+
+        restaurante, turno = self._crear_restaurante_con_turno()
+
+        with self.assertRaises(ValueError):
+
+            guardar_demanda_restaurante(
+                restaurante,
+                [{
+                    "turno_restaurante_id": turno,
+                    "dia_semana": "festivo",
+                    "repartidores_necesarios": 3
+                }]
+            )
+
+    def test_demanda_rechaza_duplicada_por_fecha(self):
+
+        restaurante, turno = self._crear_restaurante_con_turno()
+
+        with self.assertRaises(ValueError):
+
+            guardar_demanda_restaurante(
+                restaurante,
+                [{
+                    "turno_restaurante_id": turno,
+                    "fecha": "2026-07-20",
+                    "repartidores_necesarios": 3
+                }, {
+                    "turno_restaurante_id": turno,
+                    "fecha": "2026-07-20",
+                    "repartidores_necesarios": 4
+                }]
+            )
+
+    def test_demanda_rechaza_duplicada_por_dia_semana(self):
+
+        restaurante, turno = self._crear_restaurante_con_turno()
+
+        with self.assertRaises(ValueError):
+
+            guardar_demanda_restaurante(
+                restaurante,
+                [{
+                    "turno_restaurante_id": turno,
+                    "dia_semana": "lunes",
+                    "repartidores_necesarios": 3
+                }, {
+                    "turno_restaurante_id": turno,
+                    "dia_semana": "lunes",
+                    "repartidores_necesarios": 4
+                }]
+            )
+
     def _crear_base_antigua(self):
 
         conexion = sqlite3.connect(database.RUTA_BD)
@@ -318,6 +437,32 @@ class TestModeloMulticiudad(unittest.TestCase):
         """)
         conexion.commit()
         conexion.close()
+
+    def _crear_restaurante_con_turno(self):
+
+        crear_base_datos()
+        ciudad = insertar_ciudad("Santiago")
+        restaurante = insertar_restaurante(
+            "Burger King Santiago",
+            "",
+            "Centro",
+            "",
+            50,
+            ciudad_id=ciudad
+        )
+        guardar_restaurante_turnos(
+            restaurante,
+            [{
+                "nombre": "Cena",
+                "hora_inicio": "20:00",
+                "hora_fin": "23:00",
+                "duracion": 3,
+                "activo": 1
+            }]
+        )
+        turno = obtener_restaurante_turnos(restaurante)[0][0]
+
+        return restaurante, turno
 
     def _tablas(self):
 

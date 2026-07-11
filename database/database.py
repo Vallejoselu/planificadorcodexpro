@@ -285,6 +285,28 @@ def crear_base_datos():
     """)
 
     cursor.execute("""
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_demanda_restaurante_fecha_unica
+    ON demanda_restaurante(
+        restaurante_id,
+        turno_restaurante_id,
+        fecha
+    )
+    WHERE activo=1
+    AND fecha IS NOT NULL
+    """)
+
+    cursor.execute("""
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_demanda_restaurante_dia_unico
+    ON demanda_restaurante(
+        restaurante_id,
+        turno_restaurante_id,
+        dia_semana
+    )
+    WHERE activo=1
+    AND dia_semana IS NOT NULL
+    """)
+
+    cursor.execute("""
     CREATE TABLE IF NOT EXISTS repartidor_ciudades(
 
         repartidor_id INTEGER NOT NULL,
@@ -971,6 +993,7 @@ def obtener_demanda_restaurante(restaurante_id):
 def guardar_demanda_restaurante(restaurante_id, demandas):
 
     demandas = demandas or []
+    demandas = validar_demandas_restaurante(demandas)
     crear_base_datos()
 
     conexion = conectar()
@@ -1022,6 +1045,62 @@ def guardar_demanda_restaurante(restaurante_id, demandas):
 
     conexion.commit()
     conexion.close()
+
+
+def validar_demandas_restaurante(demandas):
+
+    resultado = []
+    claves = set()
+
+    for demanda in demandas:
+
+        demanda = dict(demanda)
+        fecha = (demanda.get("fecha") or "").strip()
+        dia_semana = (demanda.get("dia_semana") or "").strip()
+
+        if bool(fecha) == bool(dia_semana):
+
+            raise ValueError(
+                "Configura una fecha concreta o un dia de semana, solo uno."
+            )
+
+        if dia_semana and dia_semana not in DIAS_SEMANA:
+
+            raise ValueError("Dia de semana no valido.")
+
+        if fecha:
+
+            try:
+
+                datetime.strptime(fecha, "%Y-%m-%d")
+
+            except ValueError as error:
+
+                raise ValueError("Fecha de demanda no valida.") from error
+
+        necesarios = int(demanda["repartidores_necesarios"])
+
+        if necesarios <= 0:
+
+            raise ValueError("La demanda debe ser mayor que cero.")
+
+        clave = (
+            int(demanda["turno_restaurante_id"]),
+            "fecha" if fecha else "dia",
+            fecha or dia_semana
+        )
+
+        if clave in claves:
+
+            raise ValueError("Demanda duplicada para el mismo turno y periodo.")
+
+        claves.add(clave)
+        demanda["fecha"] = fecha or None
+        demanda["dia_semana"] = dia_semana or None
+        demanda["repartidores_necesarios"] = necesarios
+        resultado.append(demanda)
+
+    return resultado
 
 
 def guardar_repartidor_ciudades(repartidor_id, ciudades):
