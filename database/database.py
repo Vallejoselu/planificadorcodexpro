@@ -18,6 +18,12 @@ from database.schema import (
     TIPOS_TURNO,
     TURNOS_DISPONIBILIDAD
 )
+from models import (
+    AsignacionCalendario,
+    Repartidor,
+    Restaurante,
+    Turno
+)
 from utils.paths import database_path
 
 RUTA_BD = database_path()
@@ -827,6 +833,14 @@ def obtener_repartidores():
     return datos
 
 
+def obtener_repartidores_modelo():
+
+    return [
+        Repartidor.from_row(repartidor)
+        for repartidor in obtener_repartidores()
+    ]
+
+
 def obtener_repartidor(id_repartidor):
 
     crear_base_datos()
@@ -1185,6 +1199,14 @@ def obtener_restaurantes():
     return datos
 
 
+def obtener_restaurantes_modelo():
+
+    return [
+        Restaurante.from_row(restaurante)
+        for restaurante in obtener_restaurantes()
+    ]
+
+
 def obtener_restaurante(id_restaurante):
 
     crear_base_datos()
@@ -1485,6 +1507,14 @@ def obtener_turnos():
     return datos
 
 
+def obtener_turnos_modelo():
+
+    return [
+        Turno.from_row(turno)
+        for turno in obtener_turnos()
+    ]
+
+
 def obtener_turno(id_turno):
 
     crear_base_datos()
@@ -1740,6 +1770,14 @@ def obtener_calendario_semanal(fecha_inicio_semana=None):
     conexion.close()
 
     return datos
+
+
+def obtener_calendario_semanal_modelo(fecha_inicio_semana=None):
+
+    return [
+        AsignacionCalendario.from_row(asignacion)
+        for asignacion in obtener_calendario_semanal(fecha_inicio_semana)
+    ]
 
 
 def guardar_turno_calendario(
