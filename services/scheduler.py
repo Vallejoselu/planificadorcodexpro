@@ -11,6 +11,7 @@ from services.rule_engine import (
     coste_desplazamiento,
     descanso_es_consecutivo,
     dias_no_disponibles,
+    motivo_no_puede_trabajar,
     parsear_fecha,
     puede_trabajar,
     puntuacion_preferencia
@@ -87,37 +88,49 @@ def construir_planificacion(datos):
 
             for restaurante in restaurantes_ordenados:
 
-                repartidor = buscar_repartidor(
-                    repartidores,
-                    restaurante,
-                    dia,
-                    turno,
-                    fecha
-                )
+                minimo = minimo_repartidores(restaurante, turno)
+                cubiertos = 0
 
-                if repartidor:
+                while cubiertos < minimo:
 
-                    asignacion = crear_asignacion(
-                        repartidor,
+                    repartidor = buscar_repartidor(
+                        repartidores,
                         restaurante,
-                        turno
-                    )
-                    horario[dia][turno["nombre"]].append(asignacion)
-                    registrar_asignacion(
-                        repartidor,
-                        restaurante,
+                        dia,
                         turno,
-                        dia
+                        fecha
                     )
 
-                else:
+                    if repartidor:
 
-                    incidencias.append({
-                        "dia": dia,
-                        "turno": turno["nombre"],
-                        "restaurante": restaurante["nombre"],
-                        "motivo": "No hay repartidor disponible"
-                    })
+                        asignacion = crear_asignacion(
+                            repartidor,
+                            restaurante,
+                            turno
+                        )
+                        horario[dia][turno["nombre"]].append(asignacion)
+                        registrar_asignacion(
+                            repartidor,
+                            restaurante,
+                            turno,
+                            dia
+                        )
+                        cubiertos += 1
+
+                    else:
+
+                        incidencias.append(
+                            crear_incidencia_cobertura(
+                                repartidores,
+                                restaurante,
+                                dia,
+                                turno,
+                                fecha,
+                                minimo,
+                                cubiertos
+                            )
+                        )
+                        break
 
     incidencias.extend(
         incidencias_horas_pendientes(repartidores)
@@ -147,6 +160,7 @@ def preparar_estado_repartidor(repartidor):
     repartidor["desplazamientos"] = 0
     repartidor["_dias_asignados"] = set()
     repartidor["_turnos_asignados"] = set()
+    repartidor["_horas_por_dia"] = {}
     repartidor["_restaurante_por_dia"] = {}
     repartidor["_zona_por_dia"] = {}
 
@@ -218,6 +232,10 @@ def crear_asignacion(repartidor, restaurante, turno):
 def registrar_asignacion(repartidor, restaurante, turno, dia):
 
     repartidor["horas_asignadas"] += turno["horas"]
+    repartidor["_horas_por_dia"][dia] = (
+        repartidor["_horas_por_dia"].get(dia, 0)
+        + turno["horas"]
+    )
     repartidor["horas_complementarias"] = max(
         0,
         repartidor["horas_asignadas"]
@@ -326,6 +344,12 @@ def normalizar_repartidor(repartidor):
         MAX_HORAS_SEMANALES,
         horas + horas_complementarias
     )
+    datos["max_horas_diarias"] = float(
+        datos.get("max_horas_diarias", 10) or 0
+    )
+    datos["max_dias_consecutivos"] = int(
+        datos.get("max_dias_consecutivos", 5) or 0
+    )
 
     datos.setdefault("disponibilidad", {})
     datos.setdefault("restaurante_fijo", None)
@@ -340,6 +364,91 @@ def normalizar_repartidor(repartidor):
     ]
 
     return datos
+
+
+def minimo_repartidores(restaurante, turno):
+
+    for clave in (
+        "min_repartidores",
+        "minimo_repartidores",
+        "minimo"
+    ):
+
+        if turno.get(clave):
+
+            return max(1, int(turno[clave]))
+
+    cobertura = restaurante.get("minimos_por_turno", {})
+
+    if turno["nombre"] in cobertura:
+
+        return max(1, int(cobertura[turno["nombre"]]))
+
+    for clave in (
+        "min_repartidores",
+        "minimo_repartidores",
+        "minimo"
+    ):
+
+        if restaurante.get(clave):
+
+            return max(1, int(restaurante[clave]))
+
+    return 1
+
+
+def crear_incidencia_cobertura(
+    repartidores,
+    restaurante,
+    dia,
+    turno,
+    fecha,
+    minimo,
+    cubiertos
+):
+
+    return {
+        "dia": dia,
+        "turno": turno["nombre"],
+        "restaurante": restaurante["nombre"],
+        "motivo": (
+            "No se cumple el minimo de repartidores por turno "
+            f"({cubiertos}/{minimo}). "
+            f"Regla incumplida: {regla_incumplida_principal(repartidores, restaurante, dia, turno, fecha)}."
+        ),
+        "advertencia": True,
+        "regla": "minimo de repartidores por turno"
+    }
+
+
+def regla_incumplida_principal(repartidores, restaurante, dia, turno, fecha):
+
+    motivos = {}
+
+    for repartidor in repartidores:
+
+        motivo = motivo_no_puede_trabajar(
+            repartidor,
+            restaurante,
+            dia,
+            turno,
+            fecha
+        )
+
+        if not motivo:
+
+            continue
+
+        motivos[motivo] = motivos.get(motivo, 0) + 1
+
+    if not motivos:
+
+        return "sin candidatos disponibles"
+
+    return sorted(
+        motivos.items(),
+        key=lambda item: (-item[1], item[0])
+    )[0][0]
 
 
 def normalizar_restaurantes(restaurantes):

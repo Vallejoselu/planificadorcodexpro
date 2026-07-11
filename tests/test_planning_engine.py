@@ -119,6 +119,183 @@ class TestPlanningEngine(unittest.TestCase):
             any("descanso" in error for error in errores)
         )
 
+    def test_generador_cubre_minimo_de_repartidores_por_turno(self):
+
+        resultado = generar_horarios(
+            [
+                self.repartidor_base(1, "Ana"),
+                self.repartidor_base(2, "Luis")
+            ],
+            self.restaurantes(),
+            turnos=[{
+                "nombre": "comida",
+                "horas": 4,
+                "min_repartidores": 2
+            }]
+        )
+
+        self.assertEqual(
+            len(resultado["horario"]["miercoles"]["comida"]),
+            2
+        )
+
+    def test_generador_advierte_si_no_cumple_minimo(self):
+
+        resultado = generar_horarios(
+            [self.repartidor_base(1, "Ana")],
+            self.restaurantes(),
+            turnos=[{
+                "nombre": "comida",
+                "horas": 4,
+                "min_repartidores": 2
+            }]
+        )
+
+        self.assertTrue(
+            any(
+                incidencia.get("regla") == "minimo de repartidores por turno"
+                for incidencia in resultado["incidencias"]
+            )
+        )
+
+    def test_generador_respeta_maximo_de_horas_diarias(self):
+
+        repartidor = self.repartidor_base(1, "Ana")
+        repartidor["max_horas_diarias"] = 4
+
+        resultado = generar_horarios(
+            [repartidor],
+            self.restaurantes(),
+            turnos=[
+                {
+                    "nombre": "comida",
+                    "horas": 4
+                },
+                {
+                    "nombre": "noche",
+                    "horas": 4
+                }
+            ]
+        )
+
+        self.assertTrue(
+            any(
+                "maximo de horas diarias" in incidencia["motivo"]
+                for incidencia in resultado["incidencias"]
+            )
+        )
+        self.assertLessEqual(
+            resultado["resumen"][0]["horas"],
+            resultado["resumen"][0]["maximo"]
+        )
+
+    def test_generador_respeta_maximo_de_dias_consecutivos(self):
+
+        repartidor = self.repartidor_base(1, "Ana")
+        repartidor["max_dias_consecutivos"] = 1
+
+        resultado = generar_horarios(
+            [repartidor],
+            self.restaurantes(),
+            turnos=[{
+                "nombre": "comida",
+                "horas": 4
+            }]
+        )
+
+        self.assertTrue(
+            any(
+                "maximo de dias consecutivos" in incidencia["motivo"]
+                for incidencia in resultado["incidencias"]
+            )
+        )
+
+    def test_generador_respeta_horarios_no_permitidos(self):
+
+        repartidor = self.repartidor_base(1, "Ana")
+        repartidor["no_puede_turnos"] = ["noche"]
+
+        resultado = generar_horarios(
+            [repartidor],
+            self.restaurantes(),
+            turnos=[{
+                "nombre": "noche",
+                "horas": 4
+            }]
+        )
+
+        self.assertEqual(
+            resultado["horario"]["miercoles"]["noche"],
+            []
+        )
+        self.assertTrue(
+            any(
+                "no puede hacer ese horario" in incidencia["motivo"]
+                for incidencia in resultado["incidencias"]
+            )
+        )
+
+    def test_generador_usa_horas_complementarias_permitidas(self):
+
+        repartidor = self.repartidor_base(1, "Ana")
+        repartidor["horas"] = 10
+        repartidor["horas_complementarias"] = 2
+
+        resultado = generar_horarios(
+            [repartidor],
+            self.restaurantes(),
+            turnos=[{
+                "nombre": "comida",
+                "horas": 6
+            }]
+        )
+
+        self.assertEqual(resultado["resumen"][0]["maximo"], 12)
+        self.assertEqual(resultado["resumen"][0]["horas"], 12)
+
+    def test_generador_prioriza_preferencias_de_local_y_turno(self):
+
+        ana = self.repartidor_base(1, "Ana")
+        luis = self.repartidor_base(2, "Luis")
+        luis["preferencias"] = [{
+            "restaurante_id": 1,
+            "turno": "comida",
+            "prioridad": 100
+        }]
+
+        resultado = generar_horarios(
+            [ana, luis],
+            self.restaurantes(),
+            turnos=[{
+                "nombre": "comida",
+                "horas": 4
+            }]
+        )
+
+        self.assertEqual(
+            resultado["horario"]["miercoles"]["comida"][0]["repartidor"],
+            "Luis"
+        )
+
+    def repartidor_base(self, identificador, nombre):
+
+        return {
+            "id": identificador,
+            "nombre": nombre,
+            "horas": 20,
+            "zona": "Ronda",
+            "doble_turno": 1,
+            "puede_hasta_la_una": 1,
+            "descanso": ["lunes", "martes"],
+            "disponibilidad": {
+                "miercoles": ["comida", "noche"],
+                "jueves": ["comida", "noche"],
+                "viernes": ["comida", "noche"],
+                "sabado": ["comida", "noche"],
+                "domingo": ["comida", "noche"]
+            }
+        }
+
 
 if __name__ == "__main__":
 

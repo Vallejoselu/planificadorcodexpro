@@ -101,33 +101,48 @@ def tiene_dias_consecutivos(dias):
 
 def puede_trabajar(repartidor, restaurante, dia, turno, fecha):
 
+    return motivo_no_puede_trabajar(
+        repartidor,
+        restaurante,
+        dia,
+        turno,
+        fecha
+    ) is None
+
+
+def motivo_no_puede_trabajar(repartidor, restaurante, dia, turno, fecha):
+
     if dia in repartidor["descanso"]:
 
-        return False
+        return "descanso consecutivo"
 
     if esta_ausente(repartidor, dia, fecha):
 
-        return False
+        return "ausencia, vacaciones o baja"
 
     if not esta_disponible(repartidor, dia, turno["nombre"]):
 
-        return False
+        return "disponibilidad"
 
     if (dia, turno["nombre"]) in repartidor["_turnos_asignados"]:
 
-        return False
+        return "solapamiento de turno"
 
     if not repartidor.get("doble_turno", 1):
 
         if dia in repartidor["_dias_asignados"]:
 
-            return False
+            return "no permite doble turno"
 
     if turno["nombre"] == "noche":
 
         if not repartidor.get("puede_hasta_la_una", 1):
 
-            return False
+            return "no puede hacer ese horario"
+
+    if horario_no_permitido(repartidor, dia, turno):
+
+        return "no puede hacer ese horario"
 
     restaurante_fijo = repartidor.get("restaurante_fijo")
 
@@ -138,13 +153,142 @@ def puede_trabajar(repartidor, restaurante, dia, turno, fecha):
             restaurante.get("nombre", "")
         ):
 
-            return False
+            return "preferencia obligatoria de local"
 
     if repartidor["horas_asignadas"] + turno["horas"] > repartidor["maximo_horas"]:
 
+        return "horas contratadas y complementarias"
+
+    if excede_horas_diarias(repartidor, dia, turno):
+
+        return "maximo de horas diarias"
+
+    if excede_dias_consecutivos(repartidor, dia):
+
+        return "maximo de dias consecutivos"
+
+    return None
+
+
+def horario_no_permitido(repartidor, dia, turno):
+
+    restricciones = []
+
+    for clave in (
+        "no_puede_turnos",
+        "turnos_no_permitidos",
+        "horarios_no_permitidos",
+        "restricciones_horarias"
+    ):
+
+        valor = repartidor.get(clave)
+
+        if not valor:
+
+            continue
+
+        if isinstance(valor, (list, tuple, set)):
+
+            restricciones.extend(valor)
+
+        else:
+
+            restricciones.append(valor)
+
+    for restriccion in restricciones:
+
+        if restriccion_aplica(restriccion, dia, turno):
+
+            return True
+
+    return False
+
+
+def restriccion_aplica(restriccion, dia, turno):
+
+    if isinstance(restriccion, dict):
+
+        dia_restringido = restriccion.get("dia")
+        turno_restringido = (
+            restriccion.get("turno")
+            or restriccion.get("nombre")
+        )
+        hora_inicio = restriccion.get("hora_inicio")
+        hora_fin = restriccion.get("hora_fin")
+
+        if dia_restringido and dia_restringido != dia:
+
+            return False
+
+        if turno_restringido and turno_restringido != turno["nombre"]:
+
+            return False
+
+        if hora_inicio and hora_inicio != turno.get("hora_inicio"):
+
+            return False
+
+        if hora_fin and hora_fin != turno.get("hora_fin"):
+
+            return False
+
+        return True
+
+    texto = str(restriccion).strip().lower()
+
+    if texto in (
+        turno["nombre"],
+        f"{dia}:{turno['nombre']}",
+        f"{dia}-{turno['nombre']}",
+        f"{turno.get('hora_inicio', '')}-{turno.get('hora_fin', '')}"
+    ):
+
+        return True
+
+    return False
+
+
+def excede_horas_diarias(repartidor, dia, turno):
+
+    maximo = repartidor.get("max_horas_diarias")
+
+    if not maximo:
+
         return False
 
-    return True
+    horas_dia = repartidor["_horas_por_dia"].get(dia, 0)
+
+    return horas_dia + turno["horas"] > maximo
+
+
+def excede_dias_consecutivos(repartidor, dia):
+
+    maximo = repartidor.get("max_dias_consecutivos")
+
+    if not maximo:
+
+        return False
+
+    dias = set(repartidor["_dias_asignados"])
+    dias.add(dia)
+
+    racha = 0
+
+    for dia_semana in DIAS:
+
+        if dia_semana in dias:
+
+            racha += 1
+
+            if racha > maximo:
+
+                return True
+
+        else:
+
+            racha = 0
+
+    return False
 
 
 def esta_ausente(repartidor, dia, fecha):
