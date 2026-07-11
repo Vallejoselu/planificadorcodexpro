@@ -1,6 +1,6 @@
 from repositories.repartidores_repository import RepartidoresRepository
 from services.descansos import descanso_es_valido
-from services.rule_engine import dias_no_disponibles, tiene_dias_consecutivos
+from services.rules.descansos import dias_no_disponibles, tiene_dias_consecutivos
 
 
 class RepartidoresService:
