@@ -68,11 +68,12 @@ class VistaRestaurantes(QWidget):
         self.tabla = QTableWidget()
         configure_table(self.tabla)
 
-        self.tabla.setColumnCount(9)
+        self.tabla.setColumnCount(10)
 
         self.tabla.setHorizontalHeaderLabels([
             "ID",
             "Nombre",
+            "Ciudad",
             "Zona",
             "Direccion",
             "Telefono",
@@ -135,42 +136,48 @@ class VistaRestaurantes(QWidget):
             self.tabla.setItem(
                 fila,
                 2,
-                QTableWidgetItem(r[3] if r[3] else "")
+                QTableWidgetItem(r[10] if len(r) > 10 and r[10] else "")
             )
 
             self.tabla.setItem(
                 fila,
                 3,
-                QTableWidgetItem(r[2] if r[2] else "")
+                QTableWidgetItem(r[3] if r[3] else "")
             )
 
             self.tabla.setItem(
                 fila,
                 4,
-                QTableWidgetItem(r[4] if r[4] else "")
+                QTableWidgetItem(r[2] if r[2] else "")
             )
 
             self.tabla.setItem(
                 fila,
                 5,
-                QTableWidgetItem("Si" if r[6] else "No")
+                QTableWidgetItem(r[4] if r[4] else "")
             )
 
             self.tabla.setItem(
                 fila,
                 6,
-                QTableWidgetItem(r[7] if r[7] else "")
+                QTableWidgetItem("Si" if r[6] else "No")
             )
 
             self.tabla.setItem(
                 fila,
                 7,
-                QTableWidgetItem(r[8] if r[8] else "")
+                QTableWidgetItem(r[7] if r[7] else "")
             )
 
             self.tabla.setItem(
                 fila,
                 8,
+                QTableWidgetItem(r[8] if r[8] else "")
+            )
+
+            self.tabla.setItem(
+                fila,
+                9,
                 QTableWidgetItem(
                     ", ".join([
                         nombres_repartidores.get(id_repartidor, "")

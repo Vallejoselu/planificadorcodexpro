@@ -15,6 +15,7 @@ from PySide6.QtWidgets import (
 
 from app_info import APP_NAME, VERSION
 from views.asistente import VistaAsistente
+from views.ciudades import VistaCiudades
 from views.configuracion import VistaConfiguracion
 from views.cuadrantes import VistaCuadrantes
 from views.estadisticas import VistaEstadisticas
@@ -80,6 +81,7 @@ class VentanaPrincipal(QMainWindow):
 
         self.registrar_pagina("inicio", VistaInicio(self))
         self.registrar_pagina("repartidores", VistaRepartidores())
+        self.registrar_pagina("ciudades", VistaCiudades())
         self.registrar_pagina("restaurantes", VistaRestaurantes())
         self.registrar_pagina("turnos", VistaTurnos())
         self.registrar_pagina("cuadrantes", VistaCuadrantes())
@@ -111,6 +113,11 @@ class VentanaPrincipal(QMainWindow):
             "repartidores",
             "Repartidores",
             QStyle.SP_FileDialogDetailedView
+        )
+        self.agregar_boton(
+            "ciudades",
+            "Ciudades",
+            QStyle.SP_DriveNetIcon
         )
         self.agregar_boton(
             "restaurantes",

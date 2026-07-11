@@ -35,6 +35,7 @@ class TestSmokeAplicacion(unittest.TestCase):
                 for pagina in (
                     "inicio",
                     "repartidores",
+                    "ciudades",
                     "restaurantes",
                     "turnos",
                     "cuadrantes",

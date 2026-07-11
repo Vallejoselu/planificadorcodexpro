@@ -9,8 +9,13 @@ from PySide6.QtWidgets import (
     QTextEdit,
     QPushButton,
     QMessageBox,
-    QLabel
+    QLabel,
+    QListWidget,
+    QListWidgetItem,
+    QAbstractItemView
 )
+
+from PySide6.QtCore import Qt
 
 from database.database import (
     DIAS_INICIO_DESCANSO,
@@ -19,6 +24,8 @@ from database.database import (
     OPCIONES_DISPONIBILIDAD,
     actualizar_repartidor,
     insertar_repartidor,
+    obtener_ciudades,
+    obtener_restaurantes,
     siguiente_descanso_valido
 )
 from services.rule_engine import dias_no_disponibles, tiene_dias_consecutivos
@@ -52,6 +59,18 @@ class NuevoRepartidor(QDialog):
             for horas in HORAS_CONTRATO
         ])
         self.horas.setCurrentText("30")
+
+        self.ciudad_principal = QComboBox()
+        self.restaurante_principal = QComboBox()
+        self.ciudades_autorizadas = QListWidget()
+        self.ciudades_autorizadas.setSelectionMode(
+            QAbstractItemView.MultiSelection
+        )
+        self.restaurantes_autorizados = QListWidget()
+        self.restaurantes_autorizados.setSelectionMode(
+            QAbstractItemView.MultiSelection
+        )
+        self.cargar_ubicaciones()
 
         self.zona = QComboBox()
         self.zona.addItems([
@@ -87,6 +106,19 @@ class NuevoRepartidor(QDialog):
         self.hasta1 = QCheckBox()
         self.hasta1.setChecked(True)
 
+        self.apoyo_flexible = QCheckBox()
+
+        self.horas_complementarias = QSpinBox()
+        self.horas_complementarias.setRange(0, 40)
+
+        self.max_horas_diarias = QSpinBox()
+        self.max_horas_diarias.setRange(1, 24)
+        self.max_horas_diarias.setValue(10)
+
+        self.max_dias_consecutivos = QSpinBox()
+        self.max_dias_consecutivos.setRange(1, 7)
+        self.max_dias_consecutivos.setValue(5)
+
         self.prio_comida = QSpinBox()
         self.prio_comida.setRange(0, 100)
         self.prio_comida.setValue(50)
@@ -103,6 +135,14 @@ class NuevoRepartidor(QDialog):
 
         formulario.addRow("Nombre", self.nombre)
         formulario.addRow("Horas", self.horas)
+        formulario.addRow("Horas complementarias", self.horas_complementarias)
+        formulario.addRow("Max horas diarias", self.max_horas_diarias)
+        formulario.addRow("Max dias consecutivos", self.max_dias_consecutivos)
+        formulario.addRow("Ciudad principal", self.ciudad_principal)
+        formulario.addRow("Restaurante principal", self.restaurante_principal)
+        formulario.addRow("Ciudades autorizadas", self.ciudades_autorizadas)
+        formulario.addRow("Restaurantes autorizados", self.restaurantes_autorizados)
+        formulario.addRow("Apoyo flexible", self.apoyo_flexible)
         formulario.addRow("Zona", self.zona)
         formulario.addRow("Dias no laborables fijos", self.dias_no_laborables)
         formulario.addRow("Descanso adicional", self.descanso_inicio)
@@ -148,6 +188,34 @@ class NuevoRepartidor(QDialog):
         else:
 
             self.actualizar_estado_descanso()
+
+    def cargar_ubicaciones(self):
+
+        self.ciudad_principal.clear()
+        self.ciudad_principal.addItem("Sin ciudad principal", None)
+        self.ciudades_autorizadas.clear()
+
+        for ciudad in obtener_ciudades(solo_activas=True):
+
+            self.ciudad_principal.addItem(ciudad[1], ciudad[0])
+            item = QListWidgetItem(ciudad[1])
+            item.setData(Qt.UserRole, ciudad[0])
+            self.ciudades_autorizadas.addItem(item)
+
+        self.restaurante_principal.clear()
+        self.restaurante_principal.addItem("Sin restaurante principal", None)
+        self.restaurantes_autorizados.clear()
+
+        for restaurante in obtener_restaurantes():
+
+            if not restaurante[6]:
+
+                continue
+
+            self.restaurante_principal.addItem(restaurante[1], restaurante[0])
+            item = QListWidgetItem(restaurante[1])
+            item.setData(Qt.UserRole, restaurante[0])
+            self.restaurantes_autorizados.addItem(item)
 
     def actualizar_descanso_fin(self):
 
@@ -203,6 +271,34 @@ class NuevoRepartidor(QDialog):
         self.prio_noche.setValue(self.repartidor["prioridad_noche"])
         self.prio_grela.setValue(self.repartidor["prioridad_grela"])
         self.obs.setPlainText(self.repartidor["observaciones"])
+        self.apoyo_flexible.setChecked(
+            bool(self.repartidor.get("apoyo_flexible"))
+        )
+        self.horas_complementarias.setValue(
+            int(self.repartidor.get("horas_complementarias") or 0)
+        )
+        self.max_horas_diarias.setValue(
+            int(self.repartidor.get("max_horas_diarias") or 10)
+        )
+        self.max_dias_consecutivos.setValue(
+            int(self.repartidor.get("max_dias_consecutivos") or 5)
+        )
+        self.seleccionar_combo(
+            self.ciudad_principal,
+            self.repartidor.get("ciudad_principal_id")
+        )
+        self.seleccionar_combo(
+            self.restaurante_principal,
+            self.repartidor.get("restaurante_principal_id")
+        )
+        self.seleccionar_lista(
+            self.ciudades_autorizadas,
+            self.repartidor.get("ciudades_autorizadas", [])
+        )
+        self.seleccionar_lista(
+            self.restaurantes_autorizados,
+            self.repartidor.get("restaurantes_autorizados", [])
+        )
 
         for dia, turnos in self.repartidor["disponibilidad"].items():
 
@@ -316,7 +412,21 @@ class NuevoRepartidor(QDialog):
 
                 descanso_fin=descanso_fin,
 
-                disponibilidad=disponibilidad
+                disponibilidad=disponibilidad,
+                ciudad_principal_id=self.ciudad_principal.currentData(),
+                restaurante_principal_id=(
+                    self.restaurante_principal.currentData()
+                ),
+                apoyo_flexible=int(self.apoyo_flexible.isChecked()),
+                horas_complementarias=self.horas_complementarias.value(),
+                max_horas_diarias=self.max_horas_diarias.value(),
+                max_dias_consecutivos=self.max_dias_consecutivos.value(),
+                ciudades_autorizadas=self.obtener_ids_seleccionados(
+                    self.ciudades_autorizadas
+                ),
+                restaurantes_autorizados=self.obtener_ids_seleccionados(
+                    self.restaurantes_autorizados
+                )
 
             )
 
@@ -330,6 +440,30 @@ class NuevoRepartidor(QDialog):
             return
 
         self.accept()
+
+    def seleccionar_combo(self, combo, valor):
+
+        indice = combo.findData(valor)
+
+        if indice >= 0:
+
+            combo.setCurrentIndex(indice)
+
+    def seleccionar_lista(self, lista, valores):
+
+        valores = set(valores or [])
+
+        for indice in range(lista.count()):
+
+            item = lista.item(indice)
+            item.setSelected(item.data(Qt.UserRole) in valores)
+
+    def obtener_ids_seleccionados(self, lista):
+
+        return [
+            item.data(Qt.UserRole)
+            for item in lista.selectedItems()
+        ]
 
     def obtener_disponibilidad(self):
 
