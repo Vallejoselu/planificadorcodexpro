@@ -181,6 +181,36 @@ class TestCuadrantesPlanningEngine(unittest.TestCase):
             self._firma("2026-07-20")
         )
 
+    def test_vista_por_local_muestra_asignaciones_de_la_semana(self):
+
+        restaurante_id = obtener_restaurantes()[0][0]
+        turno = obtener_turnos()[0]
+        turno_id = turno[0]
+        guardar_turno_calendario(
+            "viernes",
+            turno_id,
+            restaurante_id,
+            None,
+            "2026-07-20"
+        )
+        vista = VistaCuadrantes()
+        vista.selector_semana.setDate(QDate(2026, 7, 20))
+        vista.selector_vista.setCurrentText("Por local")
+
+        self.assertTrue(vista.tabla.isHidden())
+        self.assertFalse(vista.tabla_locales.isHidden())
+        self.assertEqual(
+            vista.tabla_locales.item(0, 0).text(),
+            "Ronda Centro"
+        )
+        self.assertIn(
+            turno[2],
+            vista.tabla_locales.item(
+                0,
+                database.DIAS_SEMANA.index("viernes") + 1
+            ).text()
+        )
+
     def test_deshacer_y_rehacer_no_afectan_otras_semanas(self):
 
         vista = VistaCuadrantes()

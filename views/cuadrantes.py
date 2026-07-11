@@ -62,6 +62,7 @@ class VistaCuadrantes(QWidget):
         self.selector_restaurante = QComboBox()
         self.selector_turno = QComboBox()
         self.selector_repartidor = QComboBox()
+        self.selector_vista = QComboBox()
         self.selector_semana = QDateEdit()
         self.selector_semana.setCalendarPopup(True)
         self.selector_semana.setDisplayFormat("yyyy-MM-dd")
@@ -83,6 +84,9 @@ class VistaCuadrantes(QWidget):
         self.btn_rehacer = QPushButton("Rehacer")
         self.btn_actualizar = QPushButton("Actualizar")
 
+        self.selector_vista.addItem("Semana", "semana")
+        self.selector_vista.addItem("Por local", "local")
+
         self.btn_copiar.setShortcut("Ctrl+C")
         self.btn_pegar.setShortcut("Ctrl+V")
         self.btn_eliminar.setShortcut("Del")
@@ -91,6 +95,8 @@ class VistaCuadrantes(QWidget):
 
         barra.addWidget(QLabel("Semana"))
         barra.addWidget(self.selector_semana)
+        barra.addWidget(QLabel("Vista"))
+        barra.addWidget(self.selector_vista)
         barra.addWidget(self.estado_semana)
         barra.addWidget(self.btn_generar)
         barra.addWidget(self.selector_restaurante)
@@ -126,8 +132,26 @@ class VistaCuadrantes(QWidget):
 
         self.layout.addWidget(self.tabla)
 
+        self.tabla_locales = QTableWidget(self)
+        configure_table(self.tabla_locales)
+        self.tabla_locales.setColumnCount(len(DIAS_SEMANA) + 1)
+        self.tabla_locales.setHorizontalHeaderLabels([
+            "Local",
+            *DIAS_SEMANA
+        ])
+        self.tabla_locales.horizontalHeader().setSectionResizeMode(
+            QHeaderView.Stretch
+        )
+        self.tabla_locales.verticalHeader().setVisible(False)
+        self.tabla_locales.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.tabla_locales.setSelectionBehavior(QTableWidget.SelectRows)
+        self.tabla_locales.hide()
+
+        self.layout.addWidget(self.tabla_locales)
+
         self.btn_actualizar.clicked.connect(self.cargar_datos)
         self.selector_semana.dateChanged.connect(self.cambiar_semana)
+        self.selector_vista.currentIndexChanged.connect(self.cambiar_vista)
         self.btn_generar.clicked.connect(self.generar_cuadrante)
         self.btn_asignar.clicked.connect(self.asignar_seleccion)
         self.btn_copiar.clicked.connect(self.copiar)
@@ -144,6 +168,14 @@ class VistaCuadrantes(QWidget):
 
         self.undo_stack.clear()
         self.cargar_tabla()
+
+    # ======================================
+
+    def cambiar_vista(self):
+
+        vista_local = self.selector_vista.currentData() == "local"
+        self.tabla.setVisible(not vista_local)
+        self.tabla_locales.setVisible(vista_local)
 
     # ======================================
 
@@ -549,6 +581,8 @@ class VistaCuadrantes(QWidget):
             })
 
         self.pintar_tabla()
+        self.pintar_tabla_locales()
+        self.cambiar_vista()
 
     # ======================================
 
@@ -618,6 +652,56 @@ class VistaCuadrantes(QWidget):
                         )
 
                 self.tabla.setItem(fila, columna, item)
+
+    # ======================================
+
+    def pintar_tabla_locales(self):
+
+        self.tabla_locales.clearContents()
+        self.tabla_locales.setRowCount(len(self.restaurantes))
+
+        for fila, restaurante in enumerate(self.restaurantes):
+
+            self.tabla_locales.setItem(
+                fila,
+                0,
+                QTableWidgetItem(restaurante[1])
+            )
+
+            for columna, dia in enumerate(DIAS_SEMANA, start=1):
+
+                item = QTableWidgetItem(
+                    self.texto_local_dia(restaurante[0], dia)
+                )
+                item.setTextAlignment(Qt.AlignTop | Qt.AlignLeft)
+                self.tabla_locales.setItem(fila, columna, item)
+
+    # ======================================
+
+    def texto_local_dia(self, restaurante_id, dia):
+
+        lineas = []
+
+        for turno in self.turnos:
+
+            for asignacion in self.asignaciones.get((dia, turno[0]), []):
+
+                if asignacion["restaurante_id"] != restaurante_id:
+
+                    continue
+
+                repartidor = self.buscar_repartidor(
+                    asignacion.get("repartidor_id")
+                )
+                texto = turno[2]
+
+                if repartidor:
+
+                    texto += f" - {repartidor[1]}"
+
+                lineas.append(texto)
+
+        return "\n".join(lineas)
 
     # ======================================
 

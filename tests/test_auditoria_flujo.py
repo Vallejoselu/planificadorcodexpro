@@ -25,7 +25,12 @@ from database.database import (
     obtener_turnos
 )
 from services.asistente_horarios import responder
-from services.exportador import exportar_csv, exportar_excel, exportar_pdf
+from services.exportador import (
+    exportar_csv,
+    exportar_excel,
+    exportar_pdf,
+    preparar_datos_exportacion
+)
 from services.planificador import generar_horarios
 from ui.theme_manager import ThemeManager
 from views.ventana_principal import VentanaPrincipal
@@ -325,6 +330,33 @@ class TestAuditoriaFlujoCompleto(unittest.TestCase):
 
         self.assertIn("3.5", respuesta)
         self.assertNotIn("calendario actual no guarda repartidor", respuesta)
+
+    def test_exportacion_filtra_por_semana(self):
+
+        insertar_restaurante("R1", "", "Ronda", "", 50)
+        insertar_restaurante("R2", "", "Ronda", "", 50)
+        insertar_turno("Cena", "Cena", "20:00", "23:30", "#16A34A", 3.5)
+
+        restaurantes = obtener_restaurantes()
+        turno_id = obtener_turnos()[0][0]
+        guardar_turno_calendario(
+            "lunes",
+            turno_id,
+            restaurantes[0][0],
+            fecha_inicio_semana="2026-07-13"
+        )
+        guardar_turno_calendario(
+            "lunes",
+            turno_id,
+            restaurantes[1][0],
+            fecha_inicio_semana="2026-07-20"
+        )
+
+        semana_a = preparar_datos_exportacion("2026-07-13")
+        semana_b = preparar_datos_exportacion("2026-07-20")
+
+        self.assertEqual(semana_a["horarios"][0][3], "R1")
+        self.assertEqual(semana_b["horarios"][0][3], "R2")
 
     def test_repartidor_se_puede_editar_y_desactivar(self):
 
