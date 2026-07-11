@@ -1,4 +1,4 @@
-from datetime import date, datetime, timedelta
+from datetime import datetime
 
 from database.connection import conectar as conectar_con_pragmas
 from database.migrations import (
@@ -24,6 +24,8 @@ from models import (
     Restaurante,
     Turno
 )
+from services.descansos import descanso_es_valido, siguiente_descanso_valido
+from services.fechas import normalizar_fecha_inicio_semana
 from utils.paths import database_path
 
 RUTA_BD = database_path()
@@ -47,32 +49,6 @@ def agregar_columna_si_no_existe(cursor, tabla, columna, definicion):
 def columnas_tabla(cursor, tabla):
 
     return columnas_tabla_migracion(cursor, tabla)
-
-
-def normalizar_fecha_inicio_semana(fecha_inicio_semana=None):
-
-    if fecha_inicio_semana is None:
-
-        return FECHA_INICIO_SEMANA_LEGADO
-
-    if isinstance(fecha_inicio_semana, datetime):
-
-        fecha = fecha_inicio_semana.date()
-
-    elif isinstance(fecha_inicio_semana, date):
-
-        fecha = fecha_inicio_semana
-
-    else:
-
-        fecha = datetime.strptime(
-            str(fecha_inicio_semana),
-            "%Y-%m-%d"
-        ).date()
-
-    inicio = fecha - timedelta(days=fecha.weekday())
-
-    return inicio.isoformat()
 
 
 def crear_base_datos():
@@ -101,22 +77,6 @@ def validar_descanso(dia_inicio, dia_fin):
         )
 
     return dia_inicio, dia_fin
-
-
-def descanso_es_valido(dia_inicio, dia_fin):
-
-    return (dia_inicio, dia_fin) in DESCANSOS_VALIDOS
-
-
-def siguiente_descanso_valido(dia_inicio):
-
-    for inicio, fin in DESCANSOS_VALIDOS:
-
-        if inicio == dia_inicio:
-
-            return fin
-
-    return DESCANSOS_VALIDOS[0][1]
 
 
 def obtener_descansos_invalidos():

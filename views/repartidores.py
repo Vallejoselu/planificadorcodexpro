@@ -10,15 +10,13 @@ from PySide6.QtWidgets import (
     QMessageBox,
 )
 
-from database.database import (
-    descanso_es_valido,
-    eliminar_repartidor,
-    obtener_repartidor,
-    obtener_repartidores
-)
+from repositories.repartidores_repository import RepartidoresRepository
+from services.descansos import descanso_es_valido
 from services.rule_engine import dias_no_disponibles, tiene_dias_consecutivos
 from ui.widgets import configure_table
 from views.nuevo_repartidor import NuevoRepartidor
+
+repartidores_repository = RepartidoresRepository()
 
 
 class VistaRepartidores(QWidget):
@@ -105,7 +103,7 @@ class VistaRepartidores(QWidget):
 
     def cargar_tabla(self):
 
-        datos = obtener_repartidores()
+        datos = repartidores_repository.listar_activos()
 
         self.tabla.setRowCount(len(datos))
 
@@ -184,7 +182,7 @@ class VistaRepartidores(QWidget):
             )
             return
 
-        repartidor = obtener_repartidor(id_repartidor)
+        repartidor = repartidores_repository.obtener_por_id(id_repartidor)
 
         if not repartidor:
 
@@ -226,7 +224,7 @@ class VistaRepartidores(QWidget):
 
             return
 
-        eliminar_repartidor(id_repartidor)
+        repartidores_repository.desactivar(id_repartidor)
         self.cargar_tabla()
 
     # ======================================

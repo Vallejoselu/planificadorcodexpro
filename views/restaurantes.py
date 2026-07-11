@@ -10,15 +10,13 @@ from PySide6.QtWidgets import (
     QMessageBox,
 )
 
-from database.database import (
-    eliminar_restaurante,
-    obtener_repartidores,
-    obtener_repartidores_fijos,
-    obtener_restaurante,
-    obtener_restaurantes
-)
+from repositories.repartidores_repository import RepartidoresRepository
+from repositories.restaurantes_repository import RestaurantesRepository
 from ui.widgets import configure_table
 from views.nuevo_restaurante import NuevoRestaurante
+
+repartidores_repository = RepartidoresRepository()
+restaurantes_repository = RestaurantesRepository()
 
 
 class VistaRestaurantes(QWidget):
@@ -112,14 +110,16 @@ class VistaRestaurantes(QWidget):
 
     def cargar_tabla(self):
 
-        datos = obtener_restaurantes()
+        datos = restaurantes_repository.listar_todos()
         nombres_repartidores = self.obtener_nombres_repartidores()
 
         self.tabla.setRowCount(len(datos))
 
         for fila, r in enumerate(datos):
 
-            repartidores_fijos = obtener_repartidores_fijos(r[0])
+            repartidores_fijos = (
+                restaurantes_repository.obtener_repartidores_fijos(r[0])
+            )
 
             self.tabla.setItem(
                 fila,
@@ -192,7 +192,7 @@ class VistaRestaurantes(QWidget):
 
         nombres = {}
 
-        for repartidor in obtener_repartidores():
+        for repartidor in repartidores_repository.listar_activos():
 
             nombres[repartidor[0]] = repartidor[1]
 
@@ -235,8 +235,10 @@ class VistaRestaurantes(QWidget):
 
             return
 
-        restaurante = obtener_restaurante(id_restaurante)
-        repartidores_fijos = obtener_repartidores_fijos(id_restaurante)
+        restaurante = restaurantes_repository.obtener_por_id(id_restaurante)
+        repartidores_fijos = (
+            restaurantes_repository.obtener_repartidores_fijos(id_restaurante)
+        )
 
         ventana = NuevoRestaurante(
             restaurante,
@@ -265,6 +267,6 @@ class VistaRestaurantes(QWidget):
 
         if respuesta == QMessageBox.Yes:
 
-            eliminar_restaurante(id_restaurante)
+            restaurantes_repository.desactivar(id_restaurante)
 
             self.cargar_tabla()

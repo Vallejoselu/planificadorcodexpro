@@ -19,24 +19,22 @@ from PySide6.QtWidgets import (
 from PySide6.QtGui import QColor, QBrush, QUndoCommand, QUndoStack
 from PySide6.QtCore import Qt, QDate
 
-from database.database import (
-    DIAS_SEMANA,
-    eliminar_turno_calendario,
-    guardar_turno_calendario,
-    normalizar_fecha_inicio_semana,
-    obtener_calendario_semanal,
-    obtener_ciudades,
-    obtener_demanda_restaurante,
-    obtener_o_crear_turno_calendario_restaurante,
-    obtener_repartidores,
-    obtener_restaurantes,
-    obtener_restaurante_turnos,
-    obtener_turnos,
-    reemplazar_calendario_semana,
-    semana_tiene_calendario
-)
+from database.schema import DIAS_SEMANA
+from repositories.calendario_repository import CalendarioRepository
+from repositories.ciudades_repository import CiudadesRepository
+from repositories.repartidores_repository import RepartidoresRepository
+from repositories.restaurantes_repository import RestaurantesRepository
+from repositories.turnos_repository import TurnosRepository
 from services.planning_engine import PlanningEngine
+from services.fechas import normalizar_fecha_inicio_semana
 from ui.widgets import configure_table
+
+
+calendario_repository = CalendarioRepository()
+ciudades_repository = CiudadesRepository()
+repartidores_repository = RepartidoresRepository()
+restaurantes_repository = RestaurantesRepository()
+turnos_repository = TurnosRepository()
 
 
 class VistaCuadrantes(QWidget):
@@ -526,7 +524,7 @@ class VistaCuadrantes(QWidget):
 
     def hay_asignaciones_guardadas(self):
 
-        return semana_tiene_calendario(
+        return calendario_repository.semana_tiene_datos(
             self.fecha_inicio_semana()
         )
 
@@ -559,7 +557,7 @@ class VistaCuadrantes(QWidget):
     def guardar_asignaciones_generadas(self, asignaciones):
 
         asignaciones = self.resolver_turnos_asignaciones(asignaciones)
-        reemplazar_calendario_semana(
+        calendario_repository.reemplazar_semana(
             self.fecha_inicio_semana(),
             asignaciones
         )
@@ -579,7 +577,7 @@ class VistaCuadrantes(QWidget):
                 and turno_ref[0] == "restaurante_turno"
             ):
 
-                turno_id = obtener_o_crear_turno_calendario_restaurante(
+                turno_id = turnos_repository.obtener_o_crear_para_restaurante(
                     turno_ref[1]
                 )
 
@@ -593,19 +591,11 @@ class VistaCuadrantes(QWidget):
 
         self.ciudades = [
             ciudad
-            for ciudad in obtener_ciudades(solo_activas=True)
+            for ciudad in ciudades_repository.listar_activas()
             if ciudad[2]
         ]
-        self.turnos = [
-            turno
-            for turno in obtener_turnos()
-            if turno[7]
-        ]
-        self.restaurantes = [
-            restaurante
-            for restaurante in obtener_restaurantes()
-            if restaurante[6]
-        ]
+        self.turnos = turnos_repository.listar_activos()
+        self.restaurantes = restaurantes_repository.listar_activos()
         self.restaurante_turnos = []
         self.demandas_restaurante = []
 
@@ -613,16 +603,20 @@ class VistaCuadrantes(QWidget):
 
             self.restaurante_turnos.extend([
                 turno
-                for turno in obtener_restaurante_turnos(restaurante[0])
+                for turno in restaurantes_repository.listar_turnos(
+                    restaurante[0]
+                )
                 if turno[7]
             ])
             self.demandas_restaurante.extend([
                 demanda
-                for demanda in obtener_demanda_restaurante(restaurante[0])
+                for demanda in restaurantes_repository.listar_demanda(
+                    restaurante[0]
+                )
                 if demanda[6]
             ])
 
-        self.repartidores = obtener_repartidores()
+        self.repartidores = repartidores_repository.listar_activos()
 
         self.cargar_selectores()
         self.cargar_tabla()
@@ -671,7 +665,7 @@ class VistaCuadrantes(QWidget):
             for turno in self.turnos
         ])
 
-        calendario = obtener_calendario_semanal(
+        calendario = calendario_repository.listar_semana(
             self.fecha_inicio_semana()
         )
 
@@ -954,7 +948,7 @@ class VistaCuadrantes(QWidget):
                 dict(asignacion)
                 for asignacion in asignaciones
             ]
-            eliminar_turno_calendario(
+            calendario_repository.eliminar_turno(
                 dia,
                 turno_id,
                 fecha_inicio_semana=fecha_inicio_semana
@@ -962,7 +956,7 @@ class VistaCuadrantes(QWidget):
 
             for asignacion in asignaciones:
 
-                guardar_turno_calendario(
+                calendario_repository.guardar_turno(
                     dia,
                     turno_id,
                     asignacion["restaurante_id"],
@@ -973,7 +967,7 @@ class VistaCuadrantes(QWidget):
         else:
 
             self.asignaciones.pop((dia, turno_id), None)
-            eliminar_turno_calendario(
+            calendario_repository.eliminar_turno(
                 dia,
                 turno_id,
                 fecha_inicio_semana=fecha_inicio_semana

@@ -5,14 +5,18 @@ from PySide6.QtWidgets import (
     QWidget
 )
 
-from database.database import (
-    DIAS_SEMANA,
-    obtener_calendario_semanal,
-    obtener_repartidores,
-    obtener_restaurantes,
-    obtener_turnos
-)
+from database.schema import DIAS_SEMANA
+from repositories.calendario_repository import CalendarioRepository
+from repositories.repartidores_repository import RepartidoresRepository
+from repositories.restaurantes_repository import RestaurantesRepository
+from repositories.turnos_repository import TurnosRepository
 from ui.widgets import CardWidget, PageHeader, make_button
+
+
+calendario_repository = CalendarioRepository()
+repartidores_repository = RepartidoresRepository()
+restaurantes_repository = RestaurantesRepository()
+turnos_repository = TurnosRepository()
 
 
 class VistaInicio(QWidget):
@@ -87,18 +91,10 @@ class VistaInicio(QWidget):
 
     def cargar_datos(self):
 
-        repartidores = obtener_repartidores()
-        restaurantes = [
-            restaurante
-            for restaurante in obtener_restaurantes()
-            if restaurante[6]
-        ]
-        turnos = [
-            turno
-            for turno in obtener_turnos()
-            if turno[7]
-        ]
-        calendario = obtener_calendario_semanal()
+        repartidores = repartidores_repository.listar_activos()
+        restaurantes = restaurantes_repository.listar_activos()
+        turnos = turnos_repository.listar_activos()
+        calendario = calendario_repository.listar_semana()
 
         turnos_cubiertos = {
             (

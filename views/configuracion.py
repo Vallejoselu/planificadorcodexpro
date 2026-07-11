@@ -13,13 +13,13 @@ from PySide6.QtWidgets import (
     QWidget
 )
 
-from database.database import (
-    obtener_eventos_integracion,
-    obtener_integraciones_api
-)
+from repositories.integraciones_repository import IntegracionesRepository
 from services.actualizaciones import ServicioActualizaciones
 from ui.theme_manager import ThemeManager
 from ui.widgets import PageHeader, configure_table, make_button
+
+
+integraciones_repository = IntegracionesRepository()
 
 
 class VistaConfiguracion(QWidget):
@@ -137,7 +137,7 @@ class VistaConfiguracion(QWidget):
 
     def cargar_integraciones(self):
 
-        datos = obtener_integraciones_api()
+        datos = integraciones_repository.listar_configuraciones()
 
         self.tabla_integraciones.setColumnCount(7)
         self.tabla_integraciones.setHorizontalHeaderLabels([
@@ -171,7 +171,7 @@ class VistaConfiguracion(QWidget):
 
     def cargar_eventos(self):
 
-        datos = obtener_eventos_integracion()
+        datos = integraciones_repository.listar_eventos()
 
         self.tabla_eventos.setColumnCount(5)
         self.tabla_eventos.setHorizontalHeaderLabels([
