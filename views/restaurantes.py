@@ -10,13 +10,11 @@ from PySide6.QtWidgets import (
     QMessageBox,
 )
 
-from repositories.repartidores_repository import RepartidoresRepository
-from repositories.restaurantes_repository import RestaurantesRepository
+from services.restaurantes_service import RestaurantesService
 from ui.widgets import configure_table
 from views.nuevo_restaurante import NuevoRestaurante
 
-repartidores_repository = RepartidoresRepository()
-restaurantes_repository = RestaurantesRepository()
+restaurantes_service = RestaurantesService()
 
 
 class VistaRestaurantes(QWidget):
@@ -110,16 +108,13 @@ class VistaRestaurantes(QWidget):
 
     def cargar_tabla(self):
 
-        datos = restaurantes_repository.listar_todos()
-        nombres_repartidores = self.obtener_nombres_repartidores()
+        datos = restaurantes_service.listar_tabla()
 
         self.tabla.setRowCount(len(datos))
 
-        for fila, r in enumerate(datos):
+        for fila, item_tabla in enumerate(datos):
 
-            repartidores_fijos = (
-                restaurantes_repository.obtener_repartidores_fijos(r[0])
-            )
+            r = item_tabla["restaurante"]
 
             self.tabla.setItem(
                 fila,
@@ -178,25 +173,8 @@ class VistaRestaurantes(QWidget):
             self.tabla.setItem(
                 fila,
                 9,
-                QTableWidgetItem(
-                    ", ".join([
-                        nombres_repartidores.get(id_repartidor, "")
-                        for id_repartidor in repartidores_fijos
-                    ])
-                )
+                QTableWidgetItem(item_tabla["repartidores_fijos_texto"])
             )
-
-    # ======================================
-
-    def obtener_nombres_repartidores(self):
-
-        nombres = {}
-
-        for repartidor in repartidores_repository.listar_activos():
-
-            nombres[repartidor[0]] = repartidor[1]
-
-        return nombres
 
     # ======================================
 
@@ -235,9 +213,9 @@ class VistaRestaurantes(QWidget):
 
             return
 
-        restaurante = restaurantes_repository.obtener_por_id(id_restaurante)
+        restaurante = restaurantes_service.obtener_por_id(id_restaurante)
         repartidores_fijos = (
-            restaurantes_repository.obtener_repartidores_fijos(id_restaurante)
+            restaurantes_service.obtener_repartidores_fijos(id_restaurante)
         )
 
         ventana = NuevoRestaurante(
@@ -267,6 +245,6 @@ class VistaRestaurantes(QWidget):
 
         if respuesta == QMessageBox.Yes:
 
-            restaurantes_repository.desactivar(id_restaurante)
+            restaurantes_service.desactivar(id_restaurante)
 
             self.cargar_tabla()

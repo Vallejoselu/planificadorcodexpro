@@ -25,6 +25,7 @@ from database.database import (
     reemplazar_calendario_semana,
     semana_tiene_calendario
 )
+from services.cuadrantes_service import CuadrantesService
 from views.cuadrantes import VistaCuadrantes
 
 
@@ -241,15 +242,19 @@ class TestCuadrantesPlanningEngine(unittest.TestCase):
     def test_resultado_contiene_resumen_para_dialogo(self):
 
         vista = VistaCuadrantes()
-        resultado, asignaciones = vista.generar_resultado_cuadrante()
-        texto = vista.texto_resumen_generacion(resultado)
+        servicio = CuadrantesService()
+        generacion = servicio.generar_cuadrante(
+            vista.contexto_cuadrante(),
+            vista.fecha_inicio_semana()
+        )
+        texto = servicio.texto_resumen_generacion(generacion["resultado"])
 
         self.assertIn("Repartidores asignados", texto)
         self.assertIn("Turnos cubiertos", texto)
         self.assertIn("Turnos sin cubrir", texto)
         self.assertIn("Incidencias", texto)
         self.assertIn("Horas totales", texto)
-        self.assertTrue(asignaciones)
+        self.assertTrue(generacion["asignaciones"])
 
     def test_migracion_conserva_registros_antiguos_y_es_idempotente(self):
 
