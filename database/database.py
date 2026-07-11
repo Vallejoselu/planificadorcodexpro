@@ -475,6 +475,19 @@ def crear_base_datos():
     )
     """)
 
+    agregar_columna_si_no_existe(
+        cursor,
+        "turnos",
+        "turno_restaurante_id",
+        "INTEGER"
+    )
+
+    cursor.execute("""
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_turnos_turno_restaurante_unico
+    ON turnos(turno_restaurante_id)
+    WHERE turno_restaurante_id IS NOT NULL
+    """)
+
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS calendario_semanal(
 
@@ -1080,9 +1093,9 @@ def validar_demandas_restaurante(demandas):
 
         necesarios = int(demanda["repartidores_necesarios"])
 
-        if necesarios <= 0:
+        if necesarios < 0:
 
-            raise ValueError("La demanda debe ser mayor que cero.")
+            raise ValueError("La demanda no puede ser negativa.")
 
         clave = (
             int(demanda["turno_restaurante_id"]),
@@ -1212,6 +1225,12 @@ def obtener_repartidores():
         r.prioridad_comida,
         r.prioridad_noche,
         r.prioridad_grela,
+        r.ciudad_principal_id,
+        r.restaurante_principal_id,
+        r.apoyo_flexible,
+        r.horas_complementarias,
+        r.max_horas_diarias,
+        r.max_dias_consecutivos,
         d.dia_inicio,
         d.dia_fin
     FROM repartidores r
@@ -1225,6 +1244,28 @@ def obtener_repartidores():
     datos = []
 
     for repartidor in cursor.fetchall():
+
+        base_repartidor = (
+            repartidor[0],
+            repartidor[1],
+            repartidor[2],
+            repartidor[3],
+            repartidor[4],
+            repartidor[5],
+            repartidor[6],
+            repartidor[7],
+            repartidor[8],
+            repartidor[15],
+            repartidor[16]
+        )
+        extras_multiciudad = (
+            repartidor[9],
+            repartidor[10],
+            repartidor[11],
+            repartidor[12],
+            repartidor[13],
+            repartidor[14]
+        )
 
         cursor.execute("""
         SELECT
@@ -1300,11 +1341,14 @@ def obtener_repartidores():
         ]
 
         datos.append(
-            repartidor + (
+            base_repartidor + (
                 disponibilidad,
                 vacaciones,
                 bajas,
-                preferencias
+                preferencias,
+                *extras_multiciudad,
+                obtener_repartidor_ciudades(repartidor[0]),
+                obtener_repartidor_restaurantes_autorizados(repartidor[0])
             )
         )
 
@@ -2045,7 +2089,76 @@ def insertar_turno(
     ))
 
     conexion.commit()
+    id_turno = cursor.lastrowid
     conexion.close()
+
+    return id_turno
+
+
+def obtener_o_crear_turno_calendario_restaurante(turno_restaurante_id):
+
+    crear_base_datos()
+
+    conexion = conectar()
+    cursor = conexion.cursor()
+    cursor.execute("""
+    SELECT id
+    FROM turnos
+    WHERE turno_restaurante_id=?
+    """,(turno_restaurante_id,))
+    turno = cursor.fetchone()
+
+    if turno:
+
+        conexion.close()
+        return turno[0]
+
+    cursor.execute("""
+    SELECT
+        rt.nombre,
+        rt.hora_inicio,
+        rt.hora_fin,
+        rt.duracion,
+        r.nombre
+    FROM restaurante_turnos rt
+    INNER JOIN restaurantes r
+        ON r.id=rt.restaurante_id
+    WHERE rt.id=?
+    """,(turno_restaurante_id,))
+    datos = cursor.fetchone()
+
+    if not datos:
+
+        conexion.close()
+        raise ValueError("Turno de restaurante no encontrado.")
+
+    nombre_turno, hora_inicio, hora_fin, duracion, nombre_restaurante = datos
+    cursor.execute("""
+    INSERT INTO turnos(
+        tipo,
+        nombre,
+        hora_inicio,
+        hora_fin,
+        color,
+        duracion,
+        activo,
+        turno_restaurante_id
+    )
+    VALUES(?,?,?,?,?,?,1,?)
+    """,(
+        "Personalizado",
+        f"{nombre_restaurante} - {nombre_turno}",
+        hora_inicio,
+        hora_fin,
+        "#2563EB",
+        float(duracion),
+        turno_restaurante_id
+    ))
+    conexion.commit()
+    id_turno = cursor.lastrowid
+    conexion.close()
+
+    return id_turno
 
 
 def actualizar_turno(

@@ -1,4 +1,8 @@
-from services.scheduler import construir_planificacion, preparar_datos
+from services.scheduler import (
+    construir_planificacion,
+    construir_planificacion_multiciudad,
+    preparar_datos
+)
 
 
 class PlanningEngine:
@@ -23,6 +27,31 @@ class PlanningEngine:
         )
 
         return construir_planificacion(datos)
+
+    def generar_multiciudad(
+        self,
+        repartidores,
+        ciudades,
+        restaurantes,
+        restaurante_turnos,
+        demandas,
+        fecha_inicio=None,
+        vacaciones=None,
+        bajas=None
+    ):
+
+        datos = preparar_datos(
+            repartidores,
+            restaurantes,
+            fecha_inicio=fecha_inicio,
+            vacaciones=vacaciones,
+            bajas=bajas,
+            ciudades=ciudades,
+            restaurante_turnos=restaurante_turnos,
+            demandas=demandas
+        )
+
+        return construir_planificacion_multiciudad(datos)
 
 
 def generar_horarios(
