@@ -1,9 +1,8 @@
 import re
 import unicodedata
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 
 from database.database import (
-    DESCANSOS_VALIDOS,
     DIAS_SEMANA,
     obtener_calendario_semanal,
     obtener_repartidores,
@@ -11,18 +10,26 @@ from database.database import (
     obtener_restaurantes,
     obtener_turnos
 )
-from services.rule_engine import (
+from services.rules.candidatos import (
+    buscar_candidatos,
+    solapa_turno
+)
+from services.rules.descansos import (
+    descanso_valido,
     dias_no_disponibles,
     tiene_dias_consecutivos
 )
-
-
-TURNOS_DISPONIBILIDAD = {
-    "comida": ("comida",),
-    "cena": ("noche",),
-    "noche": ("noche",),
-    "turno partido": ("comida", "noche")
-}
+from services.rules.disponibilidad import (
+    esta_disponible,
+    esta_disponible_dia
+)
+from services.rules.horas import (
+    calcular_horas_pendientes as horas_pendientes,
+    horas_por_repartidor,
+    repartidores_activos,
+    restaurantes_activos,
+    turnos_activos
+)
 
 
 def responder(pregunta, contexto=None, fecha_referencia=None):
@@ -721,158 +728,6 @@ def responder_pueden_sin_superar(contexto):
     )
 
 
-def buscar_candidatos(contexto, dia, turno, restaurante=None, fecha=None):
-
-    horas = horas_por_repartidor(contexto)
-    candidatos = []
-    rechazos = {}
-
-    for repartidor in repartidores_activos(contexto):
-
-        motivos = motivos_rechazo(
-            contexto,
-            repartidor,
-            dia,
-            turno,
-            restaurante,
-            fecha,
-            horas
-        )
-
-        if motivos:
-
-            for motivo in motivos:
-
-                rechazos[motivo] = rechazos.get(motivo, 0) + 1
-
-            continue
-
-        realizadas = horas.get(repartidor["id"], 0)
-        pendientes = max(0, repartidor["horas"] - realizadas)
-        candidatos.append({
-            "repartidor": repartidor,
-            "realizadas": realizadas,
-            "pendientes": pendientes,
-            "preferencia": puntuacion_preferencia(repartidor, turno, restaurante),
-            "consecutivos": turnos_consecutivos(contexto, repartidor, dia)
-        })
-
-    candidatos.sort(key=lambda candidato: (
-        candidato["realizadas"],
-        -candidato["pendientes"],
-        -candidato["preferencia"],
-        candidato["consecutivos"],
-        candidato["repartidor"]["nombre"]
-    ))
-
-    return candidatos, rechazos
-
-
-def motivos_rechazo(
-    contexto,
-    repartidor,
-    dia,
-    turno,
-    restaurante,
-    fecha,
-    horas
-):
-
-    motivos = []
-
-    if not repartidor.get("activo", 1):
-
-        motivos.append("no estan activos")
-
-    if descanso_valido(repartidor.get("descanso", [])) and dia in repartidor.get("descanso", []):
-
-        motivos.append("estan descansando")
-
-    if esta_ausente(repartidor, "vacaciones", fecha, dia):
-
-        motivos.append("estan de vacaciones")
-
-    if esta_ausente(repartidor, "bajas", fecha, dia):
-
-        motivos.append("estan de baja")
-
-    if not esta_disponible(repartidor, dia, turno):
-
-        motivos.append("no tienen disponibilidad")
-
-    if solapa_turno(contexto, repartidor, dia, turno):
-
-        motivos.append("tienen otro turno solapado")
-
-    if horas.get(repartidor["id"], 0) + turno["duracion"] > repartidor["horas"]:
-
-        motivos.append("superarian sus horas contratadas")
-
-    if not cumple_restaurante_o_zona(repartidor, restaurante):
-
-        motivos.append("no cumplen restaurante o zona")
-
-    if es_turno_noche(turno) and not repartidor.get("puede_hasta_la_una", 1):
-
-        motivos.append("no pueden trabajar hasta la una")
-
-    return motivos
-
-
-def repartidores_activos(contexto):
-
-    return [
-        repartidor
-        for repartidor in contexto["repartidores"]
-        if repartidor.get("activo", 1)
-    ]
-
-
-def restaurantes_activos(contexto):
-
-    return [
-        restaurante
-        for restaurante in contexto["restaurantes"]
-        if restaurante.get("activo", 1)
-    ]
-
-
-def turnos_activos(contexto):
-
-    return [
-        turno
-        for turno in contexto["turnos"]
-        if turno.get("activo", 1)
-    ]
-
-
-def horas_por_repartidor(contexto):
-
-    horas = {
-        repartidor["id"]: 0
-        for repartidor in repartidores_activos(contexto)
-    }
-
-    for asignacion in contexto.get("asignaciones_repartidor", []):
-
-        repartidor_id = asignacion.get("repartidor_id")
-
-        if repartidor_id in horas:
-
-            horas[repartidor_id] += float(asignacion.get("duracion", 0) or 0)
-
-    return horas
-
-
-def descanso_valido(descanso):
-
-    if not descanso or len(descanso) != 2:
-
-        return False
-
-    return tuple(descanso) in DESCANSOS_VALIDOS
-
-
 def descansos_invalidos(contexto):
 
     return [
@@ -894,11 +749,6 @@ def mensaje_descansos_invalidos(repartidores):
         "Configuracion no valida segun las reglas actuales: "
         f"{detalle}. Debe corregirse manualmente."
     )
-
-
-def horas_pendientes(repartidor, horas):
-
-    return max(0, repartidor["horas"] - horas.get(repartidor["id"], 0))
 
 
 def aviso_sin_asignaciones(contexto):
@@ -1015,266 +865,6 @@ def extraer_horas(texto):
         return None
 
     return int(coincidencia.group(1))
-
-
-def esta_disponible_dia(repartidor, dia):
-
-    disponibilidad = repartidor.get("disponibilidad") or {}
-
-    if not disponibilidad:
-
-        return True
-
-    valor = disponibilidad.get(dia)
-
-    if isinstance(valor, str):
-
-        return valor.strip().lower() != "no disponible"
-
-    return bool(valor)
-
-
-def esta_disponible(repartidor, dia, turno):
-
-    disponibilidad = repartidor.get("disponibilidad") or {}
-
-    if not disponibilidad:
-
-        return True
-
-    valor = disponibilidad.get(dia)
-
-    if not valor:
-
-        return False
-
-    if isinstance(valor, str):
-
-        valor_normalizado = valor.strip().lower()
-
-        if valor_normalizado == "no disponible":
-
-            return False
-
-        requeridos = claves_disponibilidad_turno(turno)
-
-        if not requeridos or valor_normalizado == "ambos":
-
-            return True
-
-        if valor_normalizado == "comidas":
-
-            return "comida" in requeridos
-
-        if valor_normalizado == "cenas":
-
-            return "noche" in requeridos
-
-        return False
-
-    requeridos = claves_disponibilidad_turno(turno)
-
-    if not requeridos:
-
-        return True
-
-    return all(clave in valor for clave in requeridos)
-
-
-def claves_disponibilidad_turno(turno):
-
-    texto = normalizar_texto(
-        f"{turno.get('tipo', '')} {turno.get('nombre', '')}"
-    )
-
-    for clave, valores in TURNOS_DISPONIBILIDAD.items():
-
-        if clave in texto:
-
-            return valores
-
-    return (normalizar_texto(turno.get("nombre", "")),)
-
-
-def esta_ausente(repartidor, tipo, fecha, dia=None):
-
-    if not fecha and not dia:
-
-        return False
-
-    for rango in repartidor.get(tipo, []):
-
-        if dia and rango.get("dia") == dia:
-
-            return True
-
-        inicio = parsear_fecha(rango.get("fecha_inicio") or rango.get("inicio"))
-        fin = parsear_fecha(rango.get("fecha_fin") or rango.get("fin")) or inicio
-
-        if fecha and inicio and fin and inicio <= fecha <= fin:
-
-            return True
-
-    return False
-
-
-def parsear_fecha(valor):
-
-    if isinstance(valor, date):
-
-        return valor
-
-    if isinstance(valor, datetime):
-
-        return valor.date()
-
-    if not valor:
-
-        return None
-
-    try:
-
-        return datetime.strptime(str(valor), "%Y-%m-%d").date()
-
-    except ValueError:
-
-        return None
-
-
-def solapa_turno(contexto, repartidor, dia, turno):
-
-    inicio = turno.get("hora_inicio")
-    fin = turno.get("hora_fin")
-
-    if not inicio or not fin:
-
-        return False
-
-    for asignacion in contexto.get("asignaciones_repartidor", []):
-
-        if asignacion.get("repartidor_id") != repartidor["id"]:
-
-            continue
-
-        if asignacion.get("dia") != dia:
-
-            continue
-
-        asignado = turno_por_id(contexto, asignacion.get("turno_id"))
-        asignado_inicio = asignacion.get("hora_inicio") or asignado.get("hora_inicio")
-        asignado_fin = asignacion.get("hora_fin") or asignado.get("hora_fin")
-
-        if intervalos_solapados(inicio, fin, asignado_inicio, asignado_fin):
-
-            return True
-
-    return False
-
-
-def turno_por_id(contexto, turno_id):
-
-    for turno in contexto["turnos"]:
-
-        if turno["id"] == turno_id:
-
-            return turno
-
-    return {}
-
-
-def intervalos_solapados(inicio_a, fin_a, inicio_b, fin_b):
-
-    inicio_a = minutos(inicio_a)
-    fin_a = minutos(fin_a)
-    inicio_b = minutos(inicio_b)
-    fin_b = minutos(fin_b)
-
-    if None in (inicio_a, fin_a, inicio_b, fin_b):
-
-        return False
-
-    if fin_a <= inicio_a:
-
-        fin_a += 24 * 60
-
-    if fin_b <= inicio_b:
-
-        fin_b += 24 * 60
-
-    return inicio_a < fin_b and inicio_b < fin_a
-
-
-def minutos(valor):
-
-    try:
-
-        horas, minutos_valor = str(valor).split(":")[:2]
-
-        return int(horas) * 60 + int(minutos_valor)
-
-    except (TypeError, ValueError):
-
-        return None
-
-
-def cumple_restaurante_o_zona(repartidor, restaurante):
-
-    if not restaurante:
-
-        return True
-
-    fijos = repartidor.get("restaurantes_fijos") or []
-
-    if fijos:
-
-        return restaurante["id"] in fijos
-
-    zona_repartidor = repartidor.get("zona")
-    zona_restaurante = restaurante.get("zona")
-
-    return not zona_repartidor or not zona_restaurante or zona_repartidor == zona_restaurante
-
-
-def puntuacion_preferencia(repartidor, turno, restaurante):
-
-    puntuacion = 0
-
-    for preferencia in repartidor.get("preferencias", []):
-
-        if restaurante:
-
-            if preferencia.get("restaurante_id") == restaurante["id"]:
-
-                puntuacion += int(preferencia.get("prioridad", 50))
-
-            if preferencia.get("zona") and preferencia.get("zona") == restaurante.get("zona"):
-
-                puntuacion += int(preferencia.get("prioridad", 50))
-
-        if preferencia.get("turno") and preferencia.get("turno") == turno.get("nombre"):
-
-            puntuacion += int(preferencia.get("prioridad", 50))
-
-    return puntuacion
-
-
-def turnos_consecutivos(contexto, repartidor, dia):
-
-    return len([
-        asignacion
-        for asignacion in contexto.get("asignaciones_repartidor", [])
-        if asignacion.get("repartidor_id") == repartidor["id"]
-        and asignacion.get("dia") == dia
-    ])
-
-
-def es_turno_noche(turno):
-
-    texto = normalizar_texto(
-        f"{turno.get('tipo', '')} {turno.get('nombre', '')}"
-    )
-
-    return "cena" in texto or "noche" in texto
 
 
 def resumir_rechazos(rechazos):

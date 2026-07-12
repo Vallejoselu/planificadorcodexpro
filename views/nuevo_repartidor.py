@@ -27,7 +27,7 @@ from repositories.ciudades_repository import CiudadesRepository
 from repositories.repartidores_repository import RepartidoresRepository
 from repositories.restaurantes_repository import RestaurantesRepository
 from services.descansos import siguiente_descanso_valido
-from services.rule_engine import dias_no_disponibles, tiene_dias_consecutivos
+from services.rules.descansos import dias_no_disponibles, tiene_dias_consecutivos
 
 
 DESCANSO_NO_NECESARIO_TEXTO = "No necesario por disponibilidad semanal"

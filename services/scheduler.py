@@ -6,17 +6,21 @@ from services.constraints import (
     MAX_HORAS_SEMANALES,
     TURNOS
 )
-from services.rule_engine import (
-    asegurar_descanso_consecutivo,
-    categoria_turno,
+from services.rules.candidatos import (
     coste_desplazamiento,
-    descanso_es_consecutivo,
-    dias_no_disponibles,
-    intervalo_turno,
     motivo_no_puede_trabajar,
-    parsear_fecha,
     puede_trabajar,
     puntuacion_preferencia
+)
+from services.rules.descansos import (
+    asegurar_descanso_consecutivo,
+    descanso_es_consecutivo,
+    dias_no_disponibles
+)
+from services.rules.disponibilidad import (
+    categoria_turno,
+    intervalo_turno,
+    parsear_fecha
 )
 
 
