@@ -1,3 +1,13 @@
+"""
+Fachada de compatibilidad de base de datos.
+
+La creacion de conexiones, schema y migraciones vive en el paquete
+database/connection.py, database/schema.py y database/migrations.py.
+Las vistas nuevas deben pasar por servicios y repositorios; este modulo se
+mantiene para llamadas legacy, tests de migracion y scripts existentes hasta
+que todos los repositorios puedan implementar SQL propio sin romper la app.
+"""
+
 from datetime import datetime
 
 from database.connection import conectar as conectar_con_pragmas

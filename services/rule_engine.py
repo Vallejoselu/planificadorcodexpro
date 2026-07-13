@@ -1,3 +1,11 @@
+"""
+Fachada de compatibilidad para reglas de negocio.
+
+El codigo nuevo debe importar desde services.rules.*. Este modulo conserva los
+nombres publicos antiguos para el asistente, pruebas historicas y llamadas que
+aun no han migrado de fases previas.
+"""
+
 from services.rules.ausencias import (
     dia_en_rango,
     esta_ausente,

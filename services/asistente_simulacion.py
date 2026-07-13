@@ -1,7 +1,7 @@
 from copy import deepcopy
 from datetime import date
 
-from database.database import DIAS_SEMANA
+from database.schema import DIAS_SEMANA
 from services.asistente_horarios import (
     buscar_candidatos,
     extraer_dia,

@@ -4,15 +4,19 @@ from pathlib import Path
 
 from PySide6.QtGui import QPageSize, QPdfWriter, QTextDocument
 
-from database.database import (
-    DIAS_SEMANA,
-    descanso_es_valido,
-    normalizar_fecha_inicio_semana,
-    obtener_calendario_semanal,
-    obtener_repartidores,
-    obtener_restaurantes,
-    obtener_turnos
-)
+from database.schema import DIAS_SEMANA
+from repositories.calendario_repository import CalendarioRepository
+from repositories.repartidores_repository import RepartidoresRepository
+from repositories.restaurantes_repository import RestaurantesRepository
+from repositories.turnos_repository import TurnosRepository
+from services.descansos import descanso_es_valido
+from services.fechas import normalizar_fecha_inicio_semana
+
+
+calendario_repository = CalendarioRepository()
+repartidores_repository = RepartidoresRepository()
+restaurantes_repository = RestaurantesRepository()
+turnos_repository = TurnosRepository()
 
 
 def exportar_excel(ruta, fecha_inicio_semana=None):
@@ -118,11 +122,11 @@ def preparar_datos_exportacion(fecha_inicio_semana=None):
 
     turnos = {
         turno[0]: turno
-        for turno in obtener_turnos()
+        for turno in turnos_repository.listar_todos()
     }
     restaurantes = {
         restaurante[0]: restaurante
-        for restaurante in obtener_restaurantes()
+        for restaurante in restaurantes_repository.listar_todos()
     }
 
     horarios = _preparar_horarios(
@@ -147,7 +151,7 @@ def _preparar_horarios(turnos, restaurantes, fecha_inicio_semana):
 
     filas = []
 
-    for asignacion in obtener_calendario_semanal(fecha_inicio_semana):
+    for asignacion in calendario_repository.listar_semana(fecha_inicio_semana):
 
         dia = asignacion[1]
         turno_id = asignacion[2]
@@ -215,7 +219,7 @@ def _preparar_horas(horarios):
 
         filas.append(["Repartidor asignado", repartidor, _formatear_numero(horas)])
 
-    for repartidor in obtener_repartidores():
+    for repartidor in repartidores_repository.listar_activos():
 
         filas.append([
             "Contrato repartidor",
@@ -230,7 +234,7 @@ def _preparar_descansos():
 
     filas = []
 
-    for repartidor in obtener_repartidores():
+    for repartidor in repartidores_repository.listar_activos():
 
         filas.append([
             repartidor[1],
@@ -257,7 +261,7 @@ def _formatear_descanso_exportacion(repartidor, posicion):
 
 def _preparar_totales(horarios, descansos):
 
-    repartidores = obtener_repartidores()
+    repartidores = repartidores_repository.listar_activos()
     total_horas = sum(float(fila[8] or 0) for fila in horarios)
     total_contratadas = sum(int(repartidor[2] or 0) for repartidor in repartidores)
     restaurantes = {
