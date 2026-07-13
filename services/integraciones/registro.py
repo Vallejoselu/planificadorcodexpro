@@ -1,11 +1,7 @@
 import json
 
-from database.database import (
-    guardar_integracion_api,
-    obtener_integracion_api,
-    registrar_evento_integracion
-)
 from models.integracion import ConfiguracionIntegracion
+from repositories.integraciones_repository import IntegracionesRepository
 from services.integraciones.generica import IntegracionGenerica
 from services.integraciones.glovo import GlovoIntegracion
 from services.integraciones.shipday import ShipdayIntegracion
@@ -18,6 +14,7 @@ PROVEEDORES = {
     UberIntegracion.proveedor: UberIntegracion,
     IntegracionGenerica.proveedor: IntegracionGenerica
 }
+integraciones_repository = IntegracionesRepository()
 
 
 def obtener_proveedores_disponibles():
@@ -41,7 +38,7 @@ def crear_integracion(proveedor):
 
 def cargar_configuracion(proveedor, clase=None):
 
-    datos = obtener_integracion_api(proveedor)
+    datos = integraciones_repository.obtener_configuracion(proveedor)
 
     if not datos:
 
@@ -76,7 +73,7 @@ def cargar_configuracion(proveedor, clase=None):
 
 def guardar_configuracion(configuracion):
 
-    guardar_integracion_api(
+    integraciones_repository.guardar_configuracion(
         configuracion.proveedor,
         configuracion.nombre,
         int(configuracion.activo),
@@ -92,7 +89,7 @@ def ejecutar_accion(proveedor, accion, *args, **kwargs):
     metodo = getattr(integracion, accion)
     resultado = metodo(*args, **kwargs)
 
-    registrar_evento_integracion(
+    integraciones_repository.registrar_evento(
         resultado.proveedor,
         resultado.accion,
         "OK" if resultado.correcto else "PENDIENTE",

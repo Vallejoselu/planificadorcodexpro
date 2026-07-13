@@ -2,14 +2,11 @@ import re
 import unicodedata
 from datetime import date, timedelta
 
-from database.database import (
-    DIAS_SEMANA,
-    obtener_calendario_semanal,
-    obtener_repartidores,
-    obtener_repartidores_fijos,
-    obtener_restaurantes,
-    obtener_turnos
-)
+from database.schema import DIAS_SEMANA
+from repositories.calendario_repository import CalendarioRepository
+from repositories.repartidores_repository import RepartidoresRepository
+from repositories.restaurantes_repository import RestaurantesRepository
+from repositories.turnos_repository import TurnosRepository
 from services.rules.candidatos import (
     buscar_candidatos,
     solapa_turno
@@ -30,6 +27,12 @@ from services.rules.horas import (
     restaurantes_activos,
     turnos_activos
 )
+
+
+calendario_repository = CalendarioRepository()
+repartidores_repository = RepartidoresRepository()
+restaurantes_repository = RestaurantesRepository()
+turnos_repository = TurnosRepository()
 
 
 def responder(pregunta, contexto=None, fecha_referencia=None):
@@ -196,13 +199,17 @@ def cargar_contexto():
 
     restaurantes = [
         normalizar_restaurante(restaurante)
-        for restaurante in obtener_restaurantes()
+        for restaurante in restaurantes_repository.listar_todos()
     ]
     fijos_por_repartidor = {}
 
     for restaurante in restaurantes:
 
-        for repartidor_id in obtener_repartidores_fijos(restaurante["id"]):
+        for repartidor_id in (
+            restaurantes_repository.obtener_repartidores_fijos(
+                restaurante["id"]
+            )
+        ):
 
             fijos_por_repartidor.setdefault(repartidor_id, []).append(
                 restaurante["id"]
@@ -210,7 +217,7 @@ def cargar_contexto():
 
     repartidores = []
 
-    for repartidor in obtener_repartidores():
+    for repartidor in repartidores_repository.listar_activos():
 
         datos = normalizar_repartidor(repartidor)
         datos["restaurantes_fijos"] = fijos_por_repartidor.get(
@@ -221,11 +228,11 @@ def cargar_contexto():
 
     turnos = [
         normalizar_turno(turno)
-        for turno in obtener_turnos()
+        for turno in turnos_repository.listar_todos()
     ]
     calendario = [
         normalizar_calendario(asignacion)
-        for asignacion in obtener_calendario_semanal()
+        for asignacion in calendario_repository.listar_semana()
     ]
 
     return {
