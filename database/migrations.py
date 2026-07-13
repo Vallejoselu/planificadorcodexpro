@@ -202,6 +202,27 @@ def crear_esquema_inicial(cursor):
     """)
 
     cursor.execute("""
+    CREATE TABLE IF NOT EXISTS demanda_zona(
+
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+        zona TEXT NOT NULL,
+
+        turno_id INTEGER NOT NULL,
+
+        fecha TEXT,
+
+        dia_semana TEXT,
+
+        repartidores_necesarios INTEGER NOT NULL,
+
+        activo INTEGER DEFAULT 1,
+
+        FOREIGN KEY(turno_id) REFERENCES turnos(id)
+    )
+    """)
+
+    cursor.execute("""
     CREATE TABLE IF NOT EXISTS repartidor_ciudades(
 
         repartidor_id INTEGER NOT NULL,
@@ -510,6 +531,28 @@ def aplicar_migraciones(cursor):
     AND dia_semana IS NOT NULL
     """)
 
+    cursor.execute("""
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_demanda_zona_fecha_unica
+    ON demanda_zona(
+        zona,
+        turno_id,
+        fecha
+    )
+    WHERE activo=1
+    AND fecha IS NOT NULL
+    """)
+
+    cursor.execute("""
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_demanda_zona_dia_unico
+    ON demanda_zona(
+        zona,
+        turno_id,
+        dia_semana
+    )
+    WHERE activo=1
+    AND dia_semana IS NOT NULL
+    """)
+
     agregar_columna_si_no_existe(
         cursor,
         "turnos",
@@ -590,6 +633,36 @@ def reparar_datos_para_indices(cursor):
     AND dia_semana IS NOT NULL
     """)
 
+    if "demanda_zona" in tablas_base(cursor):
+
+        cursor.execute("""
+        UPDATE demanda_zona
+        SET activo=0
+        WHERE id NOT IN (
+            SELECT MIN(id)
+            FROM demanda_zona
+            WHERE activo=1
+            AND fecha IS NOT NULL
+            GROUP BY zona, turno_id, fecha
+        )
+        AND activo=1
+        AND fecha IS NOT NULL
+        """)
+
+        cursor.execute("""
+        UPDATE demanda_zona
+        SET activo=0
+        WHERE id NOT IN (
+            SELECT MIN(id)
+            FROM demanda_zona
+            WHERE activo=1
+            AND dia_semana IS NOT NULL
+            GROUP BY zona, turno_id, dia_semana
+        )
+        AND activo=1
+        AND dia_semana IS NOT NULL
+        """)
+
     if "fecha_inicio_semana" in columnas_tabla(cursor, "calendario_semanal"):
 
         cursor.execute("""
@@ -605,6 +678,20 @@ def reparar_datos_para_indices(cursor):
                 COALESCE(repartidor_id, -1)
         )
         """)
+
+
+def tablas_base(cursor):
+
+    cursor.execute("""
+    SELECT name
+    FROM sqlite_master
+    WHERE type='table'
+    """)
+
+    return {
+        fila[0]
+        for fila in cursor.fetchall()
+    }
 
 
 def crear_indices_consulta(cursor):
@@ -624,6 +711,11 @@ def crear_indices_consulta(cursor):
             "idx_demanda_restaurante_lookup",
             "CREATE INDEX IF NOT EXISTS idx_demanda_restaurante_lookup "
             "ON demanda_restaurante(restaurante_id, turno_restaurante_id, activo)"
+        ),
+        (
+            "idx_demanda_zona_lookup",
+            "CREATE INDEX IF NOT EXISTS idx_demanda_zona_lookup "
+            "ON demanda_zona(zona, turno_id, activo)"
         ),
         (
             "idx_calendario_semana_lookup",
