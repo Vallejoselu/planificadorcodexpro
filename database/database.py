@@ -1999,6 +1999,169 @@ def reemplazar_calendario_semana(fecha_inicio_semana, asignaciones):
         conexion.close()
 
 
+def validar_nombre_plantilla(nombre):
+
+    nombre = str(nombre or "").strip()
+
+    if not nombre:
+
+        raise ValueError("El nombre de la plantilla es obligatorio.")
+
+    return nombre
+
+
+def crear_plantilla_semana(
+    nombre,
+    descripcion,
+    incluir_repartidores,
+    asignaciones
+):
+
+    crear_base_datos()
+
+    nombre = validar_nombre_plantilla(nombre)
+    descripcion = str(descripcion or "").strip()
+    incluir_repartidores = 1 if incluir_repartidores else 0
+    conexion = conectar()
+
+    try:
+
+        cursor = conexion.cursor()
+        cursor.execute("""
+        INSERT INTO plantillas_semana(
+            nombre,
+            descripcion,
+            incluir_repartidores,
+            activo
+        )
+        VALUES(?,?,?,1)
+        """,(
+            nombre,
+            descripcion,
+            incluir_repartidores
+        ))
+        plantilla_id = cursor.lastrowid
+
+        for (dia, turno_id), elementos in (asignaciones or {}).items():
+
+            for asignacion in elementos:
+
+                repartidor_id = (
+                    asignacion.get("repartidor_id")
+                    if incluir_repartidores
+                    else None
+                )
+                cursor.execute("""
+                INSERT OR IGNORE INTO plantilla_semana_asignaciones(
+                    plantilla_id,
+                    dia,
+                    turno_id,
+                    restaurante_id,
+                    repartidor_id
+                )
+                VALUES(?,?,?,?,?)
+                """,(
+                    plantilla_id,
+                    dia,
+                    turno_id,
+                    asignacion["restaurante_id"],
+                    repartidor_id
+                ))
+
+        conexion.commit()
+
+    except Exception:
+
+        conexion.rollback()
+        raise
+
+    finally:
+
+        conexion.close()
+
+    return plantilla_id
+
+
+def listar_plantillas_semana():
+
+    crear_base_datos()
+
+    conexion = conectar()
+    cursor = conexion.cursor()
+    cursor.execute("""
+    SELECT
+        p.id,
+        p.nombre,
+        p.descripcion,
+        p.incluir_repartidores,
+        p.activo,
+        p.creado_en,
+        COUNT(a.id) AS asignaciones
+    FROM plantillas_semana p
+    LEFT JOIN plantilla_semana_asignaciones a
+        ON a.plantilla_id=p.id
+    WHERE p.activo=1
+    GROUP BY
+        p.id,
+        p.nombre,
+        p.descripcion,
+        p.incluir_repartidores,
+        p.activo,
+        p.creado_en
+    ORDER BY p.nombre
+    """)
+    plantillas = cursor.fetchall()
+    conexion.close()
+
+    return plantillas
+
+
+def obtener_plantilla_semana(plantilla_id):
+
+    crear_base_datos()
+
+    conexion = conectar()
+    cursor = conexion.cursor()
+    cursor.execute("""
+    SELECT
+        id,
+        nombre,
+        descripcion,
+        incluir_repartidores,
+        activo,
+        creado_en
+    FROM plantillas_semana
+    WHERE id=?
+    AND activo=1
+    """,(plantilla_id,))
+    plantilla = cursor.fetchone()
+    conexion.close()
+
+    return plantilla
+
+
+def obtener_asignaciones_plantilla_semana(plantilla_id):
+
+    crear_base_datos()
+
+    conexion = conectar()
+    cursor = conexion.cursor()
+    cursor.execute("""
+    SELECT
+        dia,
+        turno_id,
+        restaurante_id,
+        repartidor_id
+    FROM plantilla_semana_asignaciones
+    WHERE plantilla_id=?
+    ORDER BY dia, turno_id, restaurante_id, id
+    """,(plantilla_id,))
+    filas = cursor.fetchall()
+    conexion.close()
+
+    return filas
+
+
 def validar_proveedor_integracion(proveedor):
 
     proveedor = str(proveedor or "").lower()

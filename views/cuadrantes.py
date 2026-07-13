@@ -13,7 +13,9 @@ from PySide6.QtWidgets import (
     QDateEdit,
     QDialog,
     QTextEdit,
-    QDialogButtonBox
+    QDialogButtonBox,
+    QLineEdit,
+    QCheckBox
 )
 
 from PySide6.QtGui import QColor, QBrush, QUndoCommand, QUndoStack
@@ -42,6 +44,7 @@ class VistaCuadrantes(QWidget):
         self.asignaciones = {}
         self.celdas_semana = {}
         self.filas_locales = []
+        self.plantillas = []
         self.portapapeles = None
         self.undo_stack = QUndoStack(self)
 
@@ -77,6 +80,8 @@ class VistaCuadrantes(QWidget):
         self.btn_copiar = QPushButton("Copiar")
         self.btn_pegar = QPushButton("Pegar")
         self.btn_copiar_semana = QPushButton("Copiar semana")
+        self.btn_guardar_plantilla = QPushButton("Guardar plantilla")
+        self.btn_aplicar_plantilla = QPushButton("Aplicar plantilla")
         self.btn_eliminar = QPushButton("Eliminar")
         self.btn_eliminar.setProperty("variant", "danger")
         self.btn_deshacer = QPushButton("Deshacer")
@@ -105,6 +110,8 @@ class VistaCuadrantes(QWidget):
         barra.addWidget(self.btn_copiar)
         barra.addWidget(self.btn_pegar)
         barra.addWidget(self.btn_copiar_semana)
+        barra.addWidget(self.btn_guardar_plantilla)
+        barra.addWidget(self.btn_aplicar_plantilla)
         barra.addWidget(self.btn_eliminar)
         barra.addWidget(self.btn_deshacer)
         barra.addWidget(self.btn_rehacer)
@@ -157,6 +164,8 @@ class VistaCuadrantes(QWidget):
         self.btn_copiar.clicked.connect(self.copiar)
         self.btn_pegar.clicked.connect(self.pegar)
         self.btn_copiar_semana.clicked.connect(self.copiar_semana)
+        self.btn_guardar_plantilla.clicked.connect(self.guardar_plantilla)
+        self.btn_aplicar_plantilla.clicked.connect(self.aplicar_plantilla)
         self.btn_eliminar.clicked.connect(self.eliminar)
         self.btn_deshacer.clicked.connect(self.undo_stack.undo)
         self.btn_rehacer.clicked.connect(self.undo_stack.redo)
@@ -354,6 +363,7 @@ class VistaCuadrantes(QWidget):
         self.restaurante_turnos = contexto["restaurante_turnos"]
         self.demandas_restaurante = contexto["demandas_restaurante"]
         self.repartidores = contexto["repartidores"]
+        self.plantillas = cuadrantes_service.listar_plantillas()
 
         self.cargar_selectores()
         self.cargar_tabla()
@@ -755,6 +765,114 @@ class VistaCuadrantes(QWidget):
 
     # ======================================
 
+    def guardar_plantilla(self):
+
+        dialogo = DialogoGuardarPlantilla(
+            self,
+            self.fecha_inicio_semana()
+        )
+
+        if dialogo.exec() != QDialog.Accepted:
+
+            return
+
+        try:
+
+            resultado = cuadrantes_service.crear_plantilla_desde_semana(
+                self.fecha_inicio_semana(),
+                dialogo.nombre(),
+                dialogo.descripcion(),
+                dialogo.incluir_repartidores()
+            )
+
+        except ValueError as error:
+
+            QMessageBox.warning(
+                self,
+                "Guardar plantilla",
+                str(error)
+            )
+            return
+
+        self.plantillas = cuadrantes_service.listar_plantillas()
+
+        QMessageBox.information(
+            self,
+            "Guardar plantilla",
+            (
+                "Plantilla guardada correctamente.\n\n"
+                f"Nombre: {resultado['nombre']}\n"
+                f"Asignaciones guardadas: {resultado['total_asignaciones']}"
+            )
+        )
+
+    # ======================================
+
+    def aplicar_plantilla(self):
+
+        self.plantillas = cuadrantes_service.listar_plantillas()
+        dialogo = DialogoAplicarPlantilla(
+            self,
+            self.plantillas,
+            self.fecha_inicio_semana()
+        )
+
+        if dialogo.exec() != QDialog.Accepted:
+
+            return
+
+        plantilla_id = dialogo.plantilla_id()
+        fecha_destino = dialogo.fecha_destino()
+
+        if plantilla_id is None:
+
+            QMessageBox.warning(
+                self,
+                "Aplicar plantilla",
+                "Selecciona una plantilla."
+            )
+            return
+
+        try:
+
+            if cuadrantes_service.semana_tiene_datos(fecha_destino):
+
+                if not self.confirmar_sobrescritura_destino(fecha_destino):
+
+                    return
+
+            resultado = cuadrantes_service.aplicar_plantilla(
+                plantilla_id,
+                fecha_destino
+            )
+
+        except ValueError as error:
+
+            QMessageBox.warning(
+                self,
+                "Aplicar plantilla",
+                str(error)
+            )
+            return
+
+        self.selector_semana.setDate(
+            QDate.fromString(fecha_destino, "yyyy-MM-dd")
+        )
+        self.cargar_datos()
+
+        QMessageBox.information(
+            self,
+            "Aplicar plantilla",
+            (
+                "Plantilla aplicada correctamente.\n\n"
+                f"Plantilla: {resultado['nombre']}\n"
+                f"Destino: {resultado['fecha_destino']}\n"
+                f"Asignaciones aplicadas: {resultado['total_asignaciones']}"
+            )
+        )
+
+    # ======================================
+
     def pegar(self):
 
         if not self.portapapeles:
@@ -941,6 +1059,122 @@ class DialogoCopiarSemana(QDialog):
         return normalizar_fecha_inicio_semana(
             self.selector_origen.date().toPython()
         )
+
+    def fecha_destino(self):
+
+        return normalizar_fecha_inicio_semana(
+            self.selector_destino.date().toPython()
+        )
+
+
+class DialogoGuardarPlantilla(QDialog):
+
+    def __init__(self, parent, fecha_origen):
+        super().__init__(parent)
+
+        self.setWindowTitle("Guardar plantilla")
+        self.resize(420, 260)
+
+        layout = QVBoxLayout(self)
+
+        fecha = QLabel(
+            "Semana origen: "
+            + normalizar_fecha_inicio_semana(fecha_origen)
+        )
+        self.campo_nombre = QLineEdit()
+        self.campo_nombre.setPlaceholderText("Nombre de la plantilla")
+        self.campo_descripcion = QTextEdit()
+        self.campo_descripcion.setPlaceholderText("Descripcion")
+        self.campo_descripcion.setFixedHeight(80)
+        self.check_repartidores = QCheckBox(
+            "Incluir repartidores asignados"
+        )
+        self.check_repartidores.setChecked(True)
+
+        botones = QDialogButtonBox(
+            QDialogButtonBox.Ok | QDialogButtonBox.Cancel
+        )
+        botones.button(QDialogButtonBox.Ok).setText("Guardar plantilla")
+        botones.button(QDialogButtonBox.Cancel).setText("Cancelar")
+        botones.accepted.connect(self.accept)
+        botones.rejected.connect(self.reject)
+
+        layout.addWidget(fecha)
+        layout.addWidget(QLabel("Nombre"))
+        layout.addWidget(self.campo_nombre)
+        layout.addWidget(QLabel("Descripcion"))
+        layout.addWidget(self.campo_descripcion)
+        layout.addWidget(self.check_repartidores)
+        layout.addWidget(botones)
+
+    def nombre(self):
+
+        return self.campo_nombre.text().strip()
+
+    def descripcion(self):
+
+        return self.campo_descripcion.toPlainText().strip()
+
+    def incluir_repartidores(self):
+
+        return self.check_repartidores.isChecked()
+
+
+class DialogoAplicarPlantilla(QDialog):
+
+    def __init__(self, parent, plantillas, fecha_destino):
+        super().__init__(parent)
+
+        self.setWindowTitle("Aplicar plantilla")
+        self.resize(420, 180)
+        self.plantillas = plantillas
+
+        layout = QVBoxLayout(self)
+
+        self.selector_plantilla = QComboBox()
+
+        for plantilla in plantillas:
+
+            detalle = (
+                "con repartidores"
+                if plantilla[3]
+                else "solo restaurantes/turnos"
+            )
+            self.selector_plantilla.addItem(
+                f"{plantilla[1]} ({detalle})",
+                plantilla[0]
+            )
+
+        self.selector_destino = QDateEdit()
+        self.selector_destino.setCalendarPopup(True)
+        self.selector_destino.setDisplayFormat("yyyy-MM-dd")
+        self.selector_destino.setDate(
+            QDate.fromString(
+                normalizar_fecha_inicio_semana(fecha_destino),
+                "yyyy-MM-dd"
+            )
+        )
+
+        fila_destino = QHBoxLayout()
+        fila_destino.addWidget(QLabel("Semana destino"))
+        fila_destino.addWidget(self.selector_destino)
+
+        botones = QDialogButtonBox(
+            QDialogButtonBox.Ok | QDialogButtonBox.Cancel
+        )
+        botones.button(QDialogButtonBox.Ok).setText("Aplicar plantilla")
+        botones.button(QDialogButtonBox.Cancel).setText("Cancelar")
+        botones.accepted.connect(self.accept)
+        botones.rejected.connect(self.reject)
+
+        layout.addWidget(QLabel("Plantilla"))
+        layout.addWidget(self.selector_plantilla)
+        layout.addLayout(fila_destino)
+        layout.addWidget(botones)
+
+    def plantilla_id(self):
+
+        return self.selector_plantilla.currentData()
 
     def fecha_destino(self):
 

@@ -62,6 +62,14 @@ class TestCuadrantesPlanningEngine(unittest.TestCase):
         )
         self.assertTrue(hasattr(vista, "selector_semana"))
         self.assertEqual(vista.btn_copiar_semana.text(), "Copiar semana")
+        self.assertEqual(
+            vista.btn_guardar_plantilla.text(),
+            "Guardar plantilla"
+        )
+        self.assertEqual(
+            vista.btn_aplicar_plantilla.text(),
+            "Aplicar plantilla"
+        )
 
     def test_cancelar_generacion_no_modifica_ninguna_semana(self):
 
@@ -326,6 +334,96 @@ class TestCuadrantesPlanningEngine(unittest.TestCase):
         self.assertEqual(
             self._firma("2026-07-20"),
             [("lunes", turno_id, restaurante_id, repartidor_id)]
+        )
+        self.assertEqual(
+            self._firma("2026-07-13"),
+            [("lunes", turno_id, restaurante_id, repartidor_id)]
+        )
+
+    def test_guardar_y_aplicar_plantilla_desde_vista(self):
+
+        restaurante_id = obtener_restaurantes()[0][0]
+        turno_id = obtener_turnos()[0][0]
+        repartidor_id = insertar_repartidor(
+            "Luis",
+            20,
+            "Ronda",
+            1,
+            1,
+            50,
+            50,
+            50,
+            descanso_inicio="miercoles",
+            descanso_fin="jueves"
+        )
+        guardar_turno_calendario(
+            "lunes",
+            turno_id,
+            restaurante_id,
+            repartidor_id,
+            fecha_inicio_semana="2026-07-13"
+        )
+        guardar_dialogo_original = cuadrantes_view.DialogoGuardarPlantilla
+        aplicar_dialogo_original = cuadrantes_view.DialogoAplicarPlantilla
+
+        class DialogoGuardarFalso:
+
+            def __init__(self, parent, fecha_origen):
+
+                pass
+
+            def exec(self):
+
+                return cuadrantes_view.QDialog.Accepted
+
+            def nombre(self):
+
+                return "Base sin repartidores"
+
+            def descripcion(self):
+
+                return "Plantilla de prueba"
+
+            def incluir_repartidores(self):
+
+                return False
+
+        class DialogoAplicarFalso:
+
+            def __init__(self, parent, plantillas, fecha_destino):
+
+                self.plantillas = plantillas
+
+            def exec(self):
+
+                return cuadrantes_view.QDialog.Accepted
+
+            def plantilla_id(self):
+
+                return self.plantillas[0][0]
+
+            def fecha_destino(self):
+
+                return "2026-07-20"
+
+        cuadrantes_view.DialogoGuardarPlantilla = DialogoGuardarFalso
+        cuadrantes_view.DialogoAplicarPlantilla = DialogoAplicarFalso
+
+        try:
+
+            vista = VistaCuadrantes()
+            vista.selector_semana.setDate(QDate(2026, 7, 13))
+            vista.guardar_plantilla()
+            vista.aplicar_plantilla()
+
+        finally:
+
+            cuadrantes_view.DialogoGuardarPlantilla = guardar_dialogo_original
+            cuadrantes_view.DialogoAplicarPlantilla = aplicar_dialogo_original
+
+        self.assertEqual(
+            self._firma("2026-07-20"),
+            [("lunes", turno_id, restaurante_id, None)]
         )
         self.assertEqual(
             self._firma("2026-07-13"),

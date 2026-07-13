@@ -394,6 +394,48 @@ def crear_esquema_inicial(cursor):
     """)
 
     cursor.execute("""
+    CREATE TABLE IF NOT EXISTS plantillas_semana(
+
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+        nombre TEXT NOT NULL,
+
+        descripcion TEXT,
+
+        incluir_repartidores INTEGER DEFAULT 1,
+
+        activo INTEGER DEFAULT 1,
+
+        creado_en TEXT DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS plantilla_semana_asignaciones(
+
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+        plantilla_id INTEGER NOT NULL,
+
+        dia TEXT NOT NULL,
+
+        turno_id INTEGER NOT NULL,
+
+        restaurante_id INTEGER NOT NULL,
+
+        repartidor_id INTEGER,
+
+        FOREIGN KEY(plantilla_id) REFERENCES plantillas_semana(id),
+
+        FOREIGN KEY(turno_id) REFERENCES turnos(id),
+
+        FOREIGN KEY(restaurante_id) REFERENCES restaurantes(id),
+
+        FOREIGN KEY(repartidor_id) REFERENCES repartidores(id)
+    )
+    """)
+
+    cursor.execute("""
     CREATE TABLE IF NOT EXISTS integraciones_api(
 
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -550,6 +592,23 @@ def aplicar_migraciones(cursor):
     CREATE UNIQUE INDEX IF NOT EXISTS idx_calendario_semana_unico
     ON calendario_semanal(
         fecha_inicio_semana,
+        dia,
+        turno_id,
+        restaurante_id,
+        COALESCE(repartidor_id, -1)
+    )
+    """)
+
+    cursor.execute("""
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_plantillas_semana_nombre_activo
+    ON plantillas_semana(nombre)
+    WHERE activo=1
+    """)
+
+    cursor.execute("""
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_plantilla_asignaciones_unica
+    ON plantilla_semana_asignaciones(
+        plantilla_id,
         dia,
         turno_id,
         restaurante_id,
