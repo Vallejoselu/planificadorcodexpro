@@ -175,8 +175,8 @@ class VistaRepartidores(QWidget):
 
             QMessageBox.warning(
                 self,
-                "Error",
-                "Selecciona un repartidor."
+                "Editar repartidor",
+                "Selecciona un repartidor de la tabla para editarlo."
             )
             return
 
@@ -186,8 +186,11 @@ class VistaRepartidores(QWidget):
 
             QMessageBox.warning(
                 self,
-                "Error",
-                "No se ha encontrado el repartidor."
+                "Editar repartidor",
+                (
+                    "No se ha encontrado el repartidor seleccionado. "
+                    "Actualiza la lista e intentalo de nuevo."
+                )
             )
             return
 
@@ -207,15 +210,19 @@ class VistaRepartidores(QWidget):
 
             QMessageBox.warning(
                 self,
-                "Error",
-                "Selecciona un repartidor."
+                "Desactivar repartidor",
+                "Selecciona un repartidor de la tabla para desactivarlo."
             )
             return
 
         respuesta = QMessageBox.question(
             self,
             "Desactivar repartidor",
-            "Quieres desactivar este repartidor?"
+            (
+                "Quieres desactivar este repartidor?\n\n"
+                "No aparecera en nuevas planificaciones, pero se conservaran "
+                "sus cuadrantes anteriores."
+            )
         )
 
         if respuesta != QMessageBox.Yes:

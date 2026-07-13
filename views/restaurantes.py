@@ -186,8 +186,8 @@ class VistaRestaurantes(QWidget):
 
             QMessageBox.warning(
                 self,
-                "Error",
-                "Selecciona un restaurante."
+                "Restaurantes",
+                "Selecciona un restaurante de la tabla para continuar."
             )
             return None
 
@@ -239,8 +239,12 @@ class VistaRestaurantes(QWidget):
 
         respuesta = QMessageBox.question(
             self,
-            "Eliminar restaurante",
-            "Quieres eliminar el restaurante seleccionado?"
+            "Desactivar restaurante",
+            (
+                "Quieres desactivar el restaurante seleccionado?\n\n"
+                "No aparecera en nuevas planificaciones, pero se conservaran "
+                "sus datos y cuadrantes anteriores."
+            )
         )
 
         if respuesta == QMessageBox.Yes:

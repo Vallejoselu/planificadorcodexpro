@@ -198,8 +198,12 @@ class VistaCuadrantes(QWidget):
 
             QMessageBox.warning(
                 self,
-                "Generar cuadrante",
-                str(error)
+                "No se puede generar el cuadrante",
+                (
+                    f"{error}\n\n"
+                    "Revisa que existan repartidores, restaurantes, "
+                    "turnos y demanda configurada para esta semana."
+                )
             )
             return
 
@@ -225,7 +229,10 @@ class VistaCuadrantes(QWidget):
         QMessageBox.information(
             self,
             "Generar cuadrante",
-            "Cuadrante guardado correctamente."
+            (
+                "Cuadrante guardado correctamente para la semana "
+                f"{self.texto_fecha_inicio_semana()}."
+            )
         )
 
     # ======================================
@@ -265,15 +272,22 @@ class VistaCuadrantes(QWidget):
     def confirmar_sobrescritura(self):
 
         mensaje = QMessageBox(self)
-        mensaje.setWindowTitle("Sobrescribir")
+        mensaje.setWindowTitle("Sobrescribir semana")
         mensaje.setText(
-            "Ya existen horarios para esa semana."
+            (
+                "La semana "
+                f"{self.texto_fecha_inicio_semana()} "
+                "ya tiene horarios guardados."
+            )
         )
         mensaje.setInformativeText(
-            "Quieres sobrescribirlos?"
+            (
+                "Si continuas se reemplazaran solo los turnos de esa "
+                "semana. Las semanas anteriores y posteriores se conservaran."
+            )
         )
         boton_sobrescribir = mensaje.addButton(
-            "Sobrescribir",
+            "Sobrescribir semana",
             QMessageBox.AcceptRole
         )
         mensaje.addButton(
@@ -283,6 +297,18 @@ class VistaCuadrantes(QWidget):
         mensaje.exec()
 
         return mensaje.clickedButton() == boton_sobrescribir
+
+    # ======================================
+
+    def texto_fecha_inicio_semana(self):
+
+        fecha = self.fecha_inicio_semana()
+
+        if hasattr(fecha, "isoformat"):
+
+            return fecha.isoformat()
+
+        return str(fecha)
 
     # ======================================
 
@@ -374,6 +400,10 @@ class VistaCuadrantes(QWidget):
 
                     item.setText(celda["texto"])
 
+                if celda.get("tooltip"):
+
+                    item.setToolTip(celda["tooltip"])
+
                 if celda.get("fondo"):
 
                     item.setBackground(
@@ -422,8 +452,8 @@ class VistaCuadrantes(QWidget):
 
             QMessageBox.warning(
                 self,
-                "Error",
-                "Selecciona una celda."
+                "Asignar turno",
+                "Selecciona una celda del calendario antes de asignar."
             )
             return
 
@@ -431,8 +461,11 @@ class VistaCuadrantes(QWidget):
 
             QMessageBox.warning(
                 self,
-                "Error",
-                "Crea un restaurante activo."
+                "Asignar turno",
+                (
+                    "No hay restaurantes activos. Crea un restaurante "
+                    "antes de asignar turnos."
+                )
             )
             return
 
@@ -440,8 +473,8 @@ class VistaCuadrantes(QWidget):
 
             QMessageBox.warning(
                 self,
-                "Error",
-                "Crea un turno activo."
+                "Asignar turno",
+                "No hay turnos activos. Crea un turno antes de asignar."
             )
             return
 
@@ -732,7 +765,7 @@ class DialogoResumenGeneracion(QDialog):
     def __init__(self, parent, texto):
         super().__init__(parent)
 
-        self.setWindowTitle("Resumen del cuadrante")
+        self.setWindowTitle("Revisar cuadrante generado")
         self.resize(640, 520)
 
         layout = QVBoxLayout(self)
@@ -743,7 +776,7 @@ class DialogoResumenGeneracion(QDialog):
 
         botones = QDialogButtonBox()
         guardar = botones.addButton(
-            "Guardar",
+            "Guardar cuadrante",
             QDialogButtonBox.AcceptRole
         )
         cancelar = botones.addButton(

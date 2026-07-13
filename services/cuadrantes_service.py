@@ -284,15 +284,20 @@ class CuadrantesService:
 
         calendario = self.cargar_semana(fecha_inicio)
         asignaciones = self.agrupar_calendario(calendario)
+        indicadores = self.indicadores_semana(asignaciones)
 
         return {
             "calendario": calendario,
             "asignaciones": asignaciones,
             "estado_texto": (
-                ""
+                self.texto_estado_semana(indicadores)
                 if calendario
-                else "Sin datos guardados para esta semana."
+                else (
+                    "Sin cuadrante guardado para esta semana. "
+                    "Genera uno o asigna turnos manualmente."
+                )
             ),
+            "indicadores": indicadores,
             "celdas_semana": self.construir_celdas_semana(
                 asignaciones,
                 turnos,
@@ -325,6 +330,40 @@ class CuadrantesService:
 
         return asignaciones
 
+    def indicadores_semana(self, asignaciones):
+
+        total = sum(
+            len(elementos)
+            for elementos in asignaciones.values()
+        )
+        sin_repartidor = sum(
+            1
+            for elementos in asignaciones.values()
+            for asignacion in elementos
+            if asignacion.get("repartidor_id") is None
+        )
+
+        return {
+            "asignaciones": total,
+            "con_repartidor": total - sin_repartidor,
+            "sin_repartidor": sin_repartidor
+        }
+
+    def texto_estado_semana(self, indicadores):
+
+        if indicadores["sin_repartidor"]:
+
+            return (
+                f"Asignaciones: {indicadores['asignaciones']} | "
+                f"Con repartidor: {indicadores['con_repartidor']} | "
+                f"Sin repartidor: {indicadores['sin_repartidor']}"
+            )
+
+        return (
+            f"Asignaciones: {indicadores['asignaciones']} | "
+            "Todo cubierto"
+        )
+
     def construir_celdas_semana(
         self,
         asignaciones,
@@ -343,7 +382,9 @@ class CuadrantesService:
             dia, turno_id = clave
             turno = turnos_por_id.get(turno_id)
             textos = []
+            detalle = []
             primer_restaurante = None
+            sin_repartidor = 0
 
             for asignacion in elementos:
 
@@ -365,12 +406,28 @@ class CuadrantesService:
                 etiqueta_repartidor = (
                     f" - {repartidor[1]}"
                     if repartidor
-                    else ""
+                    else " - Sin repartidor"
                 )
+                if not repartidor:
+
+                    sin_repartidor += 1
+
                 textos.append(f"{restaurante[1]}{etiqueta_repartidor}")
+                detalle.append(f"{restaurante[1]}{etiqueta_repartidor}")
 
             celdas[(dia, turno_id)] = {
                 "texto": "\n".join(textos),
+                "tooltip": self.tooltip_celda(
+                    turno,
+                    dia,
+                    detalle,
+                    sin_repartidor
+                ),
+                "estado": (
+                    "pendiente"
+                    if sin_repartidor
+                    else "completo"
+                ),
                 "fondo": (
                     self.color_restaurante(primer_restaurante[0])
                     if primer_restaurante
@@ -384,6 +441,24 @@ class CuadrantesService:
             }
 
         return celdas
+
+    def tooltip_celda(self, turno, dia, detalle, sin_repartidor):
+
+        partes = []
+        nombre_turno = turno[2] if turno else "Turno"
+        partes.append(f"{dia.capitalize()} - {nombre_turno}")
+
+        if detalle:
+
+            partes.extend(detalle)
+
+        if sin_repartidor:
+
+            partes.append(
+                f"Pendientes sin repartidor: {sin_repartidor}"
+            )
+
+        return "\n".join(partes)
 
     def construir_filas_locales(
         self,
@@ -439,6 +514,10 @@ class CuadrantesService:
                 if repartidor:
 
                     texto += f" - {repartidor[1]}"
+
+                else:
+
+                    texto += " - Sin repartidor"
 
                 lineas.append(texto)
 
@@ -603,6 +682,8 @@ class CuadrantesService:
             "resumen": resumen,
             "incidencias": incidencias,
             "sin_cubrir": sin_cubrir,
+            "asignaciones_generadas": turnos_cubiertos,
+            "advertencias": len(incidencias),
             "turnos_cubiertos": turnos_cubiertos,
             "horas_totales": horas_totales,
             "repartidores_asignados": repartidores_asignados
@@ -611,13 +692,21 @@ class CuadrantesService:
     def texto_resumen_generacion(self, resultado):
 
         datos = self.resumen_generacion(resultado)
+        resultado_texto = (
+            "Con advertencias"
+            if datos["incidencias"]
+            else "Listo para guardar"
+        )
         lineas = [
             "Resumen del cuadrante",
             "",
+            f"Resultado: {resultado_texto}",
+            f"Asignaciones generadas: {datos['asignaciones_generadas']}",
             f"Repartidores asignados: {len(datos['repartidores_asignados'])}",
             f"Turnos cubiertos: {datos['turnos_cubiertos']}",
             f"Turnos sin cubrir: {len(datos['sin_cubrir'])}",
             f"Horas totales: {datos['horas_totales']:g}",
+            f"Advertencias: {datos['advertencias']}",
             "",
             "Repartidores"
         ]
