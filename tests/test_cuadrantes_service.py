@@ -57,6 +57,72 @@ class TestCuadrantesServicePorCapa(unittest.TestCase):
             ("lunes", 5, 3, 11, "2026-07-20")
         )
 
+    def test_copiar_semana_conserva_restaurante_turno_y_repartidor(self):
+
+        calendario = FakeCalendarioRepository()
+        calendario.semanas["2026-07-13"] = [
+            (
+                1,
+                "lunes",
+                5,
+                "Comida",
+                "Comida",
+                "#2563EB",
+                2,
+                "BK Centro",
+                "Centro",
+                10,
+                "Ana",
+                "2026-07-13"
+            ),
+            (
+                2,
+                "martes",
+                6,
+                "Cena",
+                "Cena",
+                "#674EA7",
+                3,
+                "BK Norte",
+                "Norte",
+                None,
+                None,
+                "2026-07-13"
+            )
+        ]
+        servicio = CuadrantesService(calendario_repository=calendario)
+
+        resultado = servicio.copiar_semana("2026-07-13", "2026-07-20")
+
+        self.assertEqual(resultado["total_asignaciones"], 2)
+        self.assertEqual(calendario.reemplazos, [(
+            "2026-07-20",
+            {
+                ("lunes", 5): [{
+                    "restaurante_id": 2,
+                    "repartidor_id": 10
+                }],
+                ("martes", 6): [{
+                    "restaurante_id": 3,
+                    "repartidor_id": None
+                }]
+            }
+        )])
+
+    def test_copiar_semana_rechaza_origen_vacio_y_misma_semana(self):
+
+        servicio = CuadrantesService(
+            calendario_repository=FakeCalendarioRepository()
+        )
+
+        with self.assertRaises(ValueError):
+
+            servicio.copiar_semana("2026-07-13", "2026-07-13")
+
+        with self.assertRaises(ValueError):
+
+            servicio.copiar_semana("2026-07-13", "2026-07-20")
+
     def test_preparar_estado_semana_devuelve_celdas_y_vista_local(self):
 
         calendario = FakeCalendarioRepository()
