@@ -8,6 +8,7 @@ from database.database import (
     CIUDAD_SIN_CIUDAD,
     actualizar_repartidor,
     crear_base_datos,
+    guardar_demanda_ciudad,
     guardar_demanda_zona,
     guardar_demanda_restaurante,
     guardar_repartidor_ciudades,
@@ -18,6 +19,7 @@ from database.database import (
     insertar_restaurante,
     insertar_turno,
     obtener_ciudades,
+    obtener_demanda_ciudad,
     obtener_demanda_zona,
     obtener_demanda_restaurante,
     obtener_repartidor,
@@ -55,6 +57,7 @@ class TestModeloMulticiudad(unittest.TestCase):
         self.assertIn("restaurante_turnos", tablas)
         self.assertIn("demanda_restaurante", tablas)
         self.assertIn("demanda_zona", tablas)
+        self.assertIn("demanda_ciudad", tablas)
         self.assertIn("repartidor_ciudades", tablas)
         self.assertIn("repartidor_restaurantes_autorizados", tablas)
         self.assertIn("calendario_semanal", tablas)
@@ -584,6 +587,120 @@ class TestModeloMulticiudad(unittest.TestCase):
             obtener_zonas_restaurantes(),
             ["Centro", "Norte"]
         )
+
+    def test_demanda_ciudad_admite_fecha_dia_y_demanda_cero(self):
+
+        crear_base_datos()
+        ciudad = insertar_ciudad("Santiago")
+        ciudad_dos = insertar_ciudad("A Coruna")
+        turno = self._crear_turno_global()
+
+        guardar_demanda_ciudad([{
+            "ciudad_id": ciudad,
+            "turno_id": turno,
+            "fecha": "2026-07-20",
+            "repartidores_necesarios": 0
+        }, {
+            "ciudad_id": ciudad_dos,
+            "turno_id": turno,
+            "dia_semana": "lunes",
+            "repartidores_necesarios": 8
+        }])
+
+        demandas = obtener_demanda_ciudad()
+
+        self.assertEqual(len(demandas), 2)
+        self.assertEqual(demandas[0][2], "A Coruna")
+        self.assertEqual(demandas[0][5], "lunes")
+        self.assertEqual(demandas[1][2], "Santiago")
+        self.assertEqual(demandas[1][6], 0)
+
+    def test_demanda_ciudad_rechaza_periodos_invalidos(self):
+
+        crear_base_datos()
+        ciudad = insertar_ciudad("Santiago")
+        turno = self._crear_turno_global()
+
+        casos = (
+            {
+                "ciudad_id": ciudad,
+                "turno_id": turno,
+                "repartidores_necesarios": 1
+            },
+            {
+                "ciudad_id": ciudad,
+                "turno_id": turno,
+                "fecha": "2026-07-20",
+                "dia_semana": "lunes",
+                "repartidores_necesarios": 1
+            },
+            {
+                "ciudad_id": ciudad,
+                "turno_id": turno,
+                "dia_semana": "festivo",
+                "repartidores_necesarios": 1
+            }
+        )
+
+        for demanda in casos:
+
+            with self.assertRaises(ValueError):
+
+                guardar_demanda_ciudad([demanda])
+
+    def test_demanda_ciudad_rechaza_duplicadas_por_fecha_y_dia(self):
+
+        crear_base_datos()
+        ciudad = insertar_ciudad("Santiago")
+        turno = self._crear_turno_global()
+
+        with self.assertRaises(ValueError):
+
+            guardar_demanda_ciudad([{
+                "ciudad_id": ciudad,
+                "turno_id": turno,
+                "fecha": "2026-07-20",
+                "repartidores_necesarios": 1
+            }, {
+                "ciudad_id": ciudad,
+                "turno_id": turno,
+                "fecha": "2026-07-20",
+                "repartidores_necesarios": 2
+            }])
+
+        with self.assertRaises(ValueError):
+
+            guardar_demanda_ciudad([{
+                "ciudad_id": ciudad,
+                "turno_id": turno,
+                "dia_semana": "lunes",
+                "repartidores_necesarios": 1
+            }, {
+                "ciudad_id": ciudad,
+                "turno_id": turno,
+                "dia_semana": "lunes",
+                "repartidores_necesarios": 2
+            }])
+
+    def test_demanda_ciudad_migracion_repetida_no_duplica_datos(self):
+
+        crear_base_datos()
+        ciudad = insertar_ciudad("Santiago")
+        turno = self._crear_turno_global()
+        guardar_demanda_ciudad([{
+            "ciudad_id": ciudad,
+            "turno_id": turno,
+            "dia_semana": "lunes",
+            "repartidores_necesarios": 6
+        }])
+
+        crear_base_datos()
+        crear_base_datos()
+
+        demandas = obtener_demanda_ciudad()
+
+        self.assertEqual(len(demandas), 1)
+        self.assertEqual(demandas[0][6], 6)
 
     def _crear_base_antigua(self):
 

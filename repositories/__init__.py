@@ -1,6 +1,7 @@
 from repositories.ausencias_repository import AusenciasRepository
 from repositories.calendario_repository import CalendarioRepository
 from repositories.ciudades_repository import CiudadesRepository
+from repositories.demandas_ciudad_repository import DemandasCiudadRepository
 from repositories.demandas_zona_repository import DemandasZonaRepository
 from repositories.integraciones_repository import IntegracionesRepository
 from repositories.repartidores_repository import RepartidoresRepository
@@ -11,6 +12,7 @@ __all__ = [
     "AusenciasRepository",
     "CalendarioRepository",
     "CiudadesRepository",
+    "DemandasCiudadRepository",
     "DemandasZonaRepository",
     "IntegracionesRepository",
     "RepartidoresRepository",

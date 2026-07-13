@@ -744,6 +744,162 @@ def validar_demandas_zona(demandas):
     return resultado
 
 
+def obtener_demanda_ciudad():
+
+    crear_base_datos()
+
+    conexion = conectar()
+    cursor = conexion.cursor()
+    cursor.execute("""
+    SELECT
+        dc.id,
+        dc.ciudad_id,
+        c.nombre,
+        dc.turno_id,
+        dc.fecha,
+        dc.dia_semana,
+        dc.repartidores_necesarios,
+        dc.activo
+    FROM demanda_ciudad dc
+    INNER JOIN ciudades c
+        ON c.id=dc.ciudad_id
+    ORDER BY dc.activo DESC, c.nombre, COALESCE(dc.fecha, ''),
+        COALESCE(dc.dia_semana, '')
+    """)
+    datos = cursor.fetchall()
+    conexion.close()
+
+    return datos
+
+
+def guardar_demanda_ciudad(demandas):
+
+    demandas = demandas or []
+    demandas = validar_demandas_ciudad(demandas)
+    crear_base_datos()
+
+    conexion = conectar()
+    cursor = conexion.cursor()
+    cursor.execute("""
+    UPDATE demanda_ciudad
+    SET activo=0
+    """)
+
+    for demanda in demandas:
+
+        demanda_id = demanda.get("id")
+        datos = (
+            demanda["ciudad_id"],
+            demanda["turno_id"],
+            demanda.get("fecha") or None,
+            demanda.get("dia_semana") or None,
+            int(demanda["repartidores_necesarios"]),
+            int(demanda.get("activo", 1))
+        )
+
+        if demanda_id:
+
+            cursor.execute("""
+            UPDATE demanda_ciudad
+            SET ciudad_id=?,
+                turno_id=?,
+                fecha=?,
+                dia_semana=?,
+                repartidores_necesarios=?,
+                activo=?
+            WHERE id=?
+            """, datos + (demanda_id,))
+
+        else:
+
+            cursor.execute("""
+            INSERT INTO demanda_ciudad(
+                ciudad_id,
+                turno_id,
+                fecha,
+                dia_semana,
+                repartidores_necesarios,
+                activo
+            )
+            VALUES(?,?,?,?,?,?)
+            """, datos)
+
+    conexion.commit()
+    conexion.close()
+
+
+def validar_demandas_ciudad(demandas):
+
+    resultado = []
+    claves = set()
+
+    for demanda in demandas:
+
+        demanda = dict(demanda)
+        ciudad_id = int(demanda.get("ciudad_id") or 0)
+        fecha = (demanda.get("fecha") or "").strip()
+        dia_semana = (demanda.get("dia_semana") or "").strip()
+
+        if ciudad_id <= 0:
+
+            raise ValueError("Selecciona una ciudad.")
+
+        if bool(fecha) == bool(dia_semana):
+
+            raise ValueError(
+                "Configura una fecha concreta o un dia de semana, solo uno."
+            )
+
+        if dia_semana and dia_semana not in DIAS_SEMANA:
+
+            raise ValueError("Dia de semana no valido.")
+
+        if fecha:
+
+            try:
+
+                datetime.strptime(fecha, "%Y-%m-%d")
+
+            except ValueError as error:
+
+                raise ValueError("Fecha de demanda no valida.") from error
+
+        necesarios = int(demanda["repartidores_necesarios"])
+
+        if necesarios < 0:
+
+            raise ValueError("La demanda no puede ser negativa.")
+
+        turno_id = int(demanda.get("turno_id") or 0)
+
+        if turno_id <= 0:
+
+            raise ValueError("Selecciona un turno.")
+
+        clave = (
+            ciudad_id,
+            turno_id,
+            "fecha" if fecha else "dia",
+            fecha or dia_semana
+        )
+
+        if clave in claves:
+
+            raise ValueError(
+                "Demanda duplicada para la misma ciudad, turno y periodo."
+            )
+
+        claves.add(clave)
+        demanda["ciudad_id"] = ciudad_id
+        demanda["turno_id"] = turno_id
+        demanda["fecha"] = fecha or None
+        demanda["dia_semana"] = dia_semana or None
+        demanda["repartidores_necesarios"] = necesarios
+        resultado.append(demanda)
+
+    return resultado
+
+
 def guardar_repartidor_ciudades(repartidor_id, ciudades):
 
     ciudades = ciudades or []
