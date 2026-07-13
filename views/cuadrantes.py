@@ -76,6 +76,7 @@ class VistaCuadrantes(QWidget):
         self.btn_asignar.setProperty("variant", "primary")
         self.btn_copiar = QPushButton("Copiar")
         self.btn_pegar = QPushButton("Pegar")
+        self.btn_copiar_semana = QPushButton("Copiar semana")
         self.btn_eliminar = QPushButton("Eliminar")
         self.btn_eliminar.setProperty("variant", "danger")
         self.btn_deshacer = QPushButton("Deshacer")
@@ -103,6 +104,7 @@ class VistaCuadrantes(QWidget):
         barra.addWidget(self.btn_asignar)
         barra.addWidget(self.btn_copiar)
         barra.addWidget(self.btn_pegar)
+        barra.addWidget(self.btn_copiar_semana)
         barra.addWidget(self.btn_eliminar)
         barra.addWidget(self.btn_deshacer)
         barra.addWidget(self.btn_rehacer)
@@ -154,6 +156,7 @@ class VistaCuadrantes(QWidget):
         self.btn_asignar.clicked.connect(self.asignar_seleccion)
         self.btn_copiar.clicked.connect(self.copiar)
         self.btn_pegar.clicked.connect(self.pegar)
+        self.btn_copiar_semana.clicked.connect(self.copiar_semana)
         self.btn_eliminar.clicked.connect(self.eliminar)
         self.btn_deshacer.clicked.connect(self.undo_stack.undo)
         self.btn_rehacer.clicked.connect(self.undo_stack.redo)
@@ -288,6 +291,36 @@ class VistaCuadrantes(QWidget):
         )
         boton_sobrescribir = mensaje.addButton(
             "Sobrescribir semana",
+            QMessageBox.AcceptRole
+        )
+        mensaje.addButton(
+            "Cancelar",
+            QMessageBox.RejectRole
+        )
+        mensaje.exec()
+
+        return mensaje.clickedButton() == boton_sobrescribir
+
+    # ======================================
+
+    def confirmar_sobrescritura_destino(self, fecha_destino):
+
+        mensaje = QMessageBox(self)
+        mensaje.setWindowTitle("Copiar semana")
+        mensaje.setText(
+            (
+                "La semana destino "
+                f"{fecha_destino} ya tiene horarios guardados."
+            )
+        )
+        mensaje.setInformativeText(
+            (
+                "Si continuas se reemplazaran solo los turnos de esa "
+                "semana. La semana origen no se modificara."
+            )
+        )
+        boton_sobrescribir = mensaje.addButton(
+            "Copiar y sobrescribir",
             QMessageBox.AcceptRole
         )
         mensaje.addButton(
@@ -656,6 +689,72 @@ class VistaCuadrantes(QWidget):
 
     # ======================================
 
+    def copiar_semana(self):
+
+        dialogo = DialogoCopiarSemana(
+            self,
+            self.fecha_inicio_semana()
+        )
+
+        if dialogo.exec() != QDialog.Accepted:
+
+            return
+
+        fecha_origen = dialogo.fecha_origen()
+        fecha_destino = dialogo.fecha_destino()
+
+        try:
+
+            if fecha_origen == fecha_destino:
+
+                raise ValueError(
+                    "La semana origen y la semana destino deben ser distintas."
+                )
+
+            if not cuadrantes_service.semana_tiene_datos(fecha_origen):
+
+                raise ValueError(
+                    "La semana origen no tiene cuadrante guardado."
+                )
+
+            if cuadrantes_service.semana_tiene_datos(fecha_destino):
+
+                if not self.confirmar_sobrescritura_destino(fecha_destino):
+
+                    return
+
+            resultado = cuadrantes_service.copiar_semana(
+                fecha_origen,
+                fecha_destino
+            )
+
+        except ValueError as error:
+
+            QMessageBox.warning(
+                self,
+                "Copiar semana",
+                str(error)
+            )
+            return
+
+        self.selector_semana.setDate(
+            QDate.fromString(fecha_destino, "yyyy-MM-dd")
+        )
+        self.cargar_datos()
+
+        QMessageBox.information(
+            self,
+            "Copiar semana",
+            (
+                "Semana copiada correctamente.\n\n"
+                f"Origen: {resultado['fecha_origen']}\n"
+                f"Destino: {resultado['fecha_destino']}\n"
+                f"Asignaciones copiadas: {resultado['total_asignaciones']}"
+            )
+        )
+
+    # ======================================
+
     def pegar(self):
 
         if not self.portapapeles:
@@ -788,6 +887,66 @@ class DialogoResumenGeneracion(QDialog):
 
         layout.addWidget(resultado)
         layout.addWidget(botones)
+
+
+class DialogoCopiarSemana(QDialog):
+
+    def __init__(self, parent, fecha_origen):
+        super().__init__(parent)
+
+        self.setWindowTitle("Copiar semana")
+        self.resize(360, 160)
+
+        layout = QVBoxLayout(self)
+
+        self.selector_origen = QDateEdit()
+        self.selector_origen.setCalendarPopup(True)
+        self.selector_origen.setDisplayFormat("yyyy-MM-dd")
+        self.selector_origen.setDate(
+            QDate.fromString(
+                normalizar_fecha_inicio_semana(fecha_origen),
+                "yyyy-MM-dd"
+            )
+        )
+
+        self.selector_destino = QDateEdit()
+        self.selector_destino.setCalendarPopup(True)
+        self.selector_destino.setDisplayFormat("yyyy-MM-dd")
+        self.selector_destino.setDate(
+            self.selector_origen.date().addDays(7)
+        )
+
+        fila_origen = QHBoxLayout()
+        fila_origen.addWidget(QLabel("Semana origen"))
+        fila_origen.addWidget(self.selector_origen)
+
+        fila_destino = QHBoxLayout()
+        fila_destino.addWidget(QLabel("Semana destino"))
+        fila_destino.addWidget(self.selector_destino)
+
+        botones = QDialogButtonBox(
+            QDialogButtonBox.Ok | QDialogButtonBox.Cancel
+        )
+        botones.button(QDialogButtonBox.Ok).setText("Copiar semana")
+        botones.button(QDialogButtonBox.Cancel).setText("Cancelar")
+        botones.accepted.connect(self.accept)
+        botones.rejected.connect(self.reject)
+
+        layout.addLayout(fila_origen)
+        layout.addLayout(fila_destino)
+        layout.addWidget(botones)
+
+    def fecha_origen(self):
+
+        return normalizar_fecha_inicio_semana(
+            self.selector_origen.date().toPython()
+        )
+
+    def fecha_destino(self):
+
+        return normalizar_fecha_inicio_semana(
+            self.selector_destino.date().toPython()
+        )
 
 
 class TablaCalendario(QTableWidget):

@@ -61,6 +61,7 @@ class TestCuadrantesPlanningEngine(unittest.TestCase):
             "Generar cuadrante"
         )
         self.assertTrue(hasattr(vista, "selector_semana"))
+        self.assertEqual(vista.btn_copiar_semana.text(), "Copiar semana")
 
     def test_cancelar_generacion_no_modifica_ninguna_semana(self):
 
@@ -255,6 +256,81 @@ class TestCuadrantesPlanningEngine(unittest.TestCase):
         self.assertIn("Incidencias", texto)
         self.assertIn("Horas totales", texto)
         self.assertTrue(generacion["asignaciones"])
+
+    def test_copiar_semana_reemplaza_destino_con_confirmacion(self):
+
+        restaurante_id = obtener_restaurantes()[0][0]
+        turno_id = obtener_turnos()[0][0]
+        repartidor_id = insertar_repartidor(
+            "Luis",
+            20,
+            "Ronda",
+            1,
+            1,
+            50,
+            50,
+            50,
+            descanso_inicio="miercoles",
+            descanso_fin="jueves"
+        )
+        guardar_turno_calendario(
+            "lunes",
+            turno_id,
+            restaurante_id,
+            repartidor_id,
+            fecha_inicio_semana="2026-07-13"
+        )
+        guardar_turno_calendario(
+            "martes",
+            turno_id,
+            restaurante_id,
+            None,
+            fecha_inicio_semana="2026-07-20"
+        )
+        dialogo_original = cuadrantes_view.DialogoCopiarSemana
+
+        class DialogoFalso:
+
+            def __init__(self, parent, fecha_origen):
+
+                pass
+
+            def exec(self):
+
+                return cuadrantes_view.QDialog.Accepted
+
+            def fecha_origen(self):
+
+                return "2026-07-13"
+
+            def fecha_destino(self):
+
+                return "2026-07-20"
+
+        confirmaciones = []
+        cuadrantes_view.DialogoCopiarSemana = DialogoFalso
+
+        try:
+
+            vista = VistaCuadrantes()
+            vista.confirmar_sobrescritura_destino = (
+                lambda fecha: confirmaciones.append(fecha) or True
+            )
+            vista.copiar_semana()
+
+        finally:
+
+            cuadrantes_view.DialogoCopiarSemana = dialogo_original
+
+        self.assertEqual(confirmaciones, ["2026-07-20"])
+        self.assertEqual(
+            self._firma("2026-07-20"),
+            [("lunes", turno_id, restaurante_id, repartidor_id)]
+        )
+        self.assertEqual(
+            self._firma("2026-07-13"),
+            [("lunes", turno_id, restaurante_id, repartidor_id)]
+        )
 
     def test_migracion_conserva_registros_antiguos_y_es_idempotente(self):
 

@@ -245,6 +245,38 @@ class CuadrantesService:
 
         return self.guardar_cuadrante(fecha_inicio, asignaciones)
 
+    def copiar_semana(self, fecha_origen, fecha_destino):
+
+        fecha_origen = normalizar_fecha_inicio_semana(fecha_origen)
+        fecha_destino = normalizar_fecha_inicio_semana(fecha_destino)
+
+        if fecha_origen == fecha_destino:
+
+            raise ValueError(
+                "La semana origen y la semana destino deben ser distintas."
+            )
+
+        calendario_origen = self.cargar_semana(fecha_origen)
+
+        if not calendario_origen:
+
+            raise ValueError(
+                "La semana origen no tiene cuadrante guardado."
+            )
+
+        asignaciones = self.agrupar_calendario(calendario_origen)
+        self.guardar_cuadrante(fecha_destino, asignaciones)
+
+        return {
+            "fecha_origen": fecha_origen,
+            "fecha_destino": fecha_destino,
+            "asignaciones": asignaciones,
+            "total_asignaciones": sum(
+                len(elementos)
+                for elementos in asignaciones.values()
+            )
+        }
+
     def resolver_turnos_asignaciones(self, asignaciones):
 
         resueltas = {}
