@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from PySide6.QtWidgets import (
     QDialog,
     QVBoxLayout,
@@ -118,9 +120,10 @@ class NuevoRestaurante(QDialog):
         self.demanda_fecha = QLineEdit()
         self.demanda_fecha.setPlaceholderText("YYYY-MM-DD")
         self.demanda_repartidores = QSpinBox()
-        self.demanda_repartidores.setRange(1, 200)
+        self.demanda_repartidores.setRange(0, 200)
         self.demanda_repartidores.setValue(1)
         self.btn_agregar_demanda = QPushButton("Agregar demanda")
+        self.btn_eliminar_demanda = QPushButton("Eliminar demanda")
         self.tabla_demanda = QTableWidget()
         self.tabla_demanda.setColumnCount(4)
         self.tabla_demanda.setHorizontalHeaderLabels([
@@ -151,6 +154,7 @@ class NuevoRestaurante(QDialog):
         formulario.addRow("Demanda fecha", self.demanda_fecha)
         formulario.addRow("Repartidores necesarios", self.demanda_repartidores)
         formulario.addRow("", self.btn_agregar_demanda)
+        formulario.addRow("", self.btn_eliminar_demanda)
         formulario.addRow("Demandas", self.tabla_demanda)
         formulario.addRow("Observaciones", self.obs)
 
@@ -164,6 +168,7 @@ class NuevoRestaurante(QDialog):
         self.boton.clicked.connect(self.guardar)
         self.btn_agregar_turno.clicked.connect(self.agregar_turno)
         self.btn_agregar_demanda.clicked.connect(self.agregar_demanda)
+        self.btn_eliminar_demanda.clicked.connect(self.eliminar_demanda)
 
         if self.restaurante:
 
@@ -317,14 +322,94 @@ class NuevoRestaurante(QDialog):
             return
 
         indice_turno = self.demanda_turno.currentData()
+        fecha = self.demanda_fecha.text().strip()
+        dia_semana = self.demanda_dia.currentText()
+
+        if bool(fecha) == bool(dia_semana):
+
+            QMessageBox.warning(
+                self,
+                "Demanda",
+                "Configura una fecha concreta o un dia de semana, solo uno."
+            )
+            return
+
+        if fecha:
+
+            try:
+
+                datetime.strptime(fecha, "%Y-%m-%d")
+
+            except ValueError:
+
+                QMessageBox.warning(
+                    self,
+                    "Demanda",
+                    "La fecha debe tener formato YYYY-MM-DD."
+                )
+                return
+
+        if self.demanda_duplicada(indice_turno, fecha, dia_semana):
+
+            QMessageBox.warning(
+                self,
+                "Demanda",
+                "Ya existe una demanda para ese turno y periodo."
+            )
+            return
+
         self.demandas.append({
             "indice_turno": indice_turno,
             "turno_restaurante_id": self.turnos_propios[indice_turno].get("id"),
-            "fecha": self.demanda_fecha.text().strip(),
-            "dia_semana": self.demanda_dia.currentText(),
+            "fecha": fecha,
+            "dia_semana": dia_semana,
             "repartidores_necesarios": self.demanda_repartidores.value(),
             "activo": 1
         })
+        self.refrescar_demanda()
+
+    def demanda_duplicada(self, indice_turno, fecha, dia_semana):
+
+        turno_id = self.turnos_propios[indice_turno].get("id")
+        periodo = fecha or dia_semana
+        tipo_periodo = "fecha" if fecha else "dia"
+
+        for demanda in self.demandas:
+
+            mismo_turno = (
+                demanda.get("turno_restaurante_id") == turno_id
+                if turno_id
+                else demanda.get("indice_turno") == indice_turno
+            )
+
+            if not mismo_turno:
+
+                continue
+
+            if tipo_periodo == "fecha" and demanda.get("fecha") == periodo:
+
+                return True
+
+            if tipo_periodo == "dia" and demanda.get("dia_semana") == periodo:
+
+                return True
+
+        return False
+
+    def eliminar_demanda(self):
+
+        fila = self.tabla_demanda.currentRow()
+
+        if fila < 0 or fila >= len(self.demandas):
+
+            QMessageBox.warning(
+                self,
+                "Demanda",
+                "Selecciona una demanda para eliminarla."
+            )
+            return
+
+        self.demandas.pop(fila)
         self.refrescar_demanda()
 
     def refrescar_demanda(self):
