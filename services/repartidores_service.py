@@ -1,5 +1,5 @@
 from repositories.repartidores_repository import RepartidoresRepository
-from services.descansos import descanso_es_valido
+from services.descansos import descanso_es_valido, siguiente_descanso_valido
 from services.rules.descansos import dias_no_disponibles, tiene_dias_consecutivos
 
 
@@ -22,6 +22,44 @@ class RepartidoresService:
     def desactivar(self, repartidor_id):
 
         return self.repartidores_repository.desactivar(repartidor_id)
+
+    def siguiente_descanso_valido(self, dia_inicio):
+
+        return siguiente_descanso_valido(dia_inicio)
+
+    def estado_descanso_disponibilidad(self, disponibilidad):
+
+        no_laborables = dias_no_disponibles({
+            "disponibilidad": disponibilidad
+        })
+        descanso_cubierto = tiene_dias_consecutivos(no_laborables)
+
+        return {
+            "dias_no_laborables": no_laborables,
+            "texto_dias_no_laborables": (
+                ", ".join(no_laborables)
+                if no_laborables
+                else "Ninguno"
+            ),
+            "descanso_cubierto": descanso_cubierto,
+            "explicacion": (
+                "La disponibilidad semanal ya aporta dos dias consecutivos sin trabajo."
+                if descanso_cubierto
+                else "Hace falta configurar descanso adicional."
+            )
+        }
+
+    def descanso_cubierto_por_disponibilidad(self, disponibilidad):
+
+        return self.estado_descanso_disponibilidad(
+            disponibilidad
+        )["descanso_cubierto"]
+
+    def validar_descanso_no_necesario(self, disponibilidad):
+
+        if not self.descanso_cubierto_por_disponibilidad(disponibilidad):
+
+            raise ValueError("Configura un descanso adicional valido.")
 
     def formatear_descanso(self, repartidor):
 

@@ -26,14 +26,14 @@ from database.schema import (
 from repositories.ciudades_repository import CiudadesRepository
 from repositories.repartidores_repository import RepartidoresRepository
 from repositories.restaurantes_repository import RestaurantesRepository
-from services.descansos import siguiente_descanso_valido
-from services.rules.descansos import dias_no_disponibles, tiene_dias_consecutivos
+from services.repartidores_service import RepartidoresService
 
 
 DESCANSO_NO_NECESARIO_TEXTO = "No necesario por disponibilidad semanal"
 ciudades_repository = CiudadesRepository()
 repartidores_repository = RepartidoresRepository()
 restaurantes_repository = RestaurantesRepository()
+repartidores_service = RepartidoresService(repartidores_repository)
 
 
 class NuevoRepartidor(QDialog):
@@ -223,27 +223,24 @@ class NuevoRepartidor(QDialog):
             return
 
         self.descanso_fin.setText(
-            siguiente_descanso_valido(
+            repartidores_service.siguiente_descanso_valido(
                 self.descanso_inicio.currentText()
             )
         )
 
     def actualizar_estado_descanso(self):
 
-        no_laborables = dias_no_disponibles({
-            "disponibilidad": self.obtener_disponibilidad()
-        })
+        estado = repartidores_service.estado_descanso_disponibilidad(
+            self.obtener_disponibilidad()
+        )
         self.dias_no_laborables.setText(
-            ", ".join(no_laborables) if no_laborables else "Ninguno"
+            estado["texto_dias_no_laborables"]
         )
 
-        if tiene_dias_consecutivos(no_laborables):
+        if estado["descanso_cubierto"]:
 
             self.descanso_inicio.setCurrentText(
                 DESCANSO_NO_NECESARIO_TEXTO
-            )
-            self.explicacion_descanso.setText(
-                "La disponibilidad semanal ya aporta dos dias consecutivos sin trabajo."
             )
 
         else:
@@ -252,9 +249,7 @@ class NuevoRepartidor(QDialog):
 
                 self.descanso_inicio.setCurrentText("lunes")
 
-            self.explicacion_descanso.setText(
-                "Hace falta configurar descanso adicional."
-            )
+        self.explicacion_descanso.setText(estado["explicacion"])
 
         self.actualizar_descanso_fin()
 
@@ -324,10 +319,8 @@ class NuevoRepartidor(QDialog):
 
         self.actualizar_estado_descanso()
 
-        if not tiene_dias_consecutivos(
-            dias_no_disponibles({
-                "disponibilidad": self.obtener_disponibilidad()
-            })
+        if not repartidores_service.descanso_cubierto_por_disponibilidad(
+            self.obtener_disponibilidad()
         ):
 
             self.descanso_inicio.setCurrentText(
@@ -335,7 +328,9 @@ class NuevoRepartidor(QDialog):
             )
             self.descanso_fin.setText(
                 self.repartidor["descanso_fin"]
-                or siguiente_descanso_valido(self.descanso_inicio.currentText())
+                or repartidores_service.siguiente_descanso_valido(
+                    self.descanso_inicio.currentText()
+                )
             )
 
     def guardar(self):
@@ -357,18 +352,9 @@ class NuevoRepartidor(QDialog):
 
             if descanso_inicio == DESCANSO_NO_NECESARIO_TEXTO:
 
-                no_laborables = dias_no_disponibles({
-                    "disponibilidad": disponibilidad
-                })
-
-                if not tiene_dias_consecutivos(no_laborables):
-
-                    QMessageBox.warning(
-                        self,
-                        "Error",
-                        "Configura un descanso adicional valido."
-                    )
-                    return
+                repartidores_service.validar_descanso_no_necesario(
+                    disponibilidad
+                )
 
                 descanso_inicio = None
                 descanso_fin = None

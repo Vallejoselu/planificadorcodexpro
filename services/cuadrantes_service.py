@@ -3,6 +3,7 @@ from repositories.ciudades_repository import CiudadesRepository
 from repositories.repartidores_repository import RepartidoresRepository
 from repositories.restaurantes_repository import RestaurantesRepository
 from repositories.turnos_repository import TurnosRepository
+from database.schema import DIAS_SEMANA
 from services.fechas import normalizar_fecha_inicio_semana
 from services.planning_engine import PlanningEngine
 
@@ -272,6 +273,271 @@ class CuadrantesService:
         return self.calendario_repository.listar_semana(
             normalizar_fecha_inicio_semana(fecha_inicio)
         )
+
+    def preparar_estado_semana(
+        self,
+        fecha_inicio,
+        turnos,
+        restaurantes,
+        repartidores
+    ):
+
+        calendario = self.cargar_semana(fecha_inicio)
+        asignaciones = self.agrupar_calendario(calendario)
+
+        return {
+            "calendario": calendario,
+            "asignaciones": asignaciones,
+            "estado_texto": (
+                ""
+                if calendario
+                else "Sin datos guardados para esta semana."
+            ),
+            "celdas_semana": self.construir_celdas_semana(
+                asignaciones,
+                turnos,
+                restaurantes,
+                repartidores
+            ),
+            "filas_locales": self.construir_filas_locales(
+                asignaciones,
+                turnos,
+                restaurantes,
+                repartidores
+            )
+        }
+
+    def agrupar_calendario(self, calendario):
+
+        asignaciones = {}
+
+        for asignacion in calendario:
+
+            dia = asignacion[1]
+            turno_id = asignacion[2]
+            restaurante_id = asignacion[6]
+            repartidor_id = asignacion[9] if len(asignacion) > 9 else None
+
+            asignaciones.setdefault((dia, turno_id), []).append({
+                "restaurante_id": restaurante_id,
+                "repartidor_id": repartidor_id
+            })
+
+        return asignaciones
+
+    def construir_celdas_semana(
+        self,
+        asignaciones,
+        turnos,
+        restaurantes,
+        repartidores
+    ):
+
+        celdas = {}
+        restaurantes_por_id = self.indexar_por_id(restaurantes)
+        repartidores_por_id = self.indexar_por_id(repartidores)
+        turnos_por_id = self.indexar_por_id(turnos)
+
+        for clave, elementos in asignaciones.items():
+
+            dia, turno_id = clave
+            turno = turnos_por_id.get(turno_id)
+            textos = []
+            primer_restaurante = None
+
+            for asignacion in elementos:
+
+                restaurante = restaurantes_por_id.get(
+                    asignacion["restaurante_id"]
+                )
+
+                if not restaurante:
+
+                    continue
+
+                if primer_restaurante is None:
+
+                    primer_restaurante = restaurante
+
+                repartidor = repartidores_por_id.get(
+                    asignacion.get("repartidor_id")
+                )
+                etiqueta_repartidor = (
+                    f" - {repartidor[1]}"
+                    if repartidor
+                    else ""
+                )
+                textos.append(f"{restaurante[1]}{etiqueta_repartidor}")
+
+            celdas[(dia, turno_id)] = {
+                "texto": "\n".join(textos),
+                "fondo": (
+                    self.color_restaurante(primer_restaurante[0])
+                    if primer_restaurante
+                    else None
+                ),
+                "color_texto": (
+                    self.color_turno(turno)
+                    if turno
+                    else None
+                )
+            }
+
+        return celdas
+
+    def construir_filas_locales(
+        self,
+        asignaciones,
+        turnos,
+        restaurantes,
+        repartidores
+    ):
+
+        return [
+            {
+                "restaurante_id": restaurante[0],
+                "nombre": restaurante[1],
+                "dias": {
+                    dia: self.texto_local_dia(
+                        asignaciones,
+                        restaurante[0],
+                        dia,
+                        turnos,
+                        repartidores
+                    )
+                    for dia in DIAS_SEMANA
+                }
+            }
+            for restaurante in restaurantes
+        ]
+
+    def texto_local_dia(
+        self,
+        asignaciones,
+        restaurante_id,
+        dia,
+        turnos,
+        repartidores
+    ):
+
+        lineas = []
+        repartidores_por_id = self.indexar_por_id(repartidores)
+
+        for turno in turnos:
+
+            for asignacion in asignaciones.get((dia, turno[0]), []):
+
+                if asignacion["restaurante_id"] != restaurante_id:
+
+                    continue
+
+                repartidor = repartidores_por_id.get(
+                    asignacion.get("repartidor_id")
+                )
+                texto = turno[2]
+
+                if repartidor:
+
+                    texto += f" - {repartidor[1]}"
+
+                lineas.append(texto)
+
+        return "\n".join(lineas)
+
+    def preparar_cambio_asignacion(
+        self,
+        asignaciones,
+        dia,
+        turno_id,
+        restaurante_id=None,
+        repartidor_id=None,
+        limpiar=False
+    ):
+
+        anterior = self.clonar_asignaciones_turno(
+            asignaciones.get((dia, turno_id), [])
+        )
+
+        if limpiar:
+
+            nuevo = []
+
+        else:
+
+            nuevo = self.agregar_asignacion(
+                anterior,
+                restaurante_id,
+                repartidor_id
+            )
+
+        return {
+            "anterior": anterior,
+            "nuevo": nuevo
+        }
+
+    def agregar_asignacion(
+        self,
+        asignaciones,
+        restaurante_id,
+        repartidor_id=None
+    ):
+
+        nuevo = self.clonar_asignaciones_turno(asignaciones)
+
+        if not restaurante_id:
+
+            return nuevo
+
+        asignacion = {
+            "restaurante_id": restaurante_id,
+            "repartidor_id": repartidor_id
+        }
+
+        if asignacion not in nuevo:
+
+            nuevo.append(asignacion)
+
+        return nuevo
+
+    def clonar_asignaciones_turno(self, asignaciones):
+
+        return [
+            dict(asignacion)
+            for asignacion in (asignaciones or [])
+        ]
+
+    def indexar_por_id(self, elementos):
+
+        return {
+            elemento[0]: elemento
+            for elemento in elementos
+            if elemento
+        }
+
+    def color_restaurante(self, restaurante_id):
+
+        colores = [
+            "#FFE599",
+            "#B6D7A8",
+            "#A4C2F4",
+            "#D5A6BD",
+            "#F9CB9C",
+            "#B4A7D6",
+            "#76A5AF"
+        ]
+
+        return colores[restaurante_id % len(colores)]
+
+    def color_turno(self, turno):
+
+        colores = {
+            "Comida": "#0B5394",
+            "Cena": "#674EA7",
+            "Turno partido": "#38761D",
+            "Personalizado": "#990000"
+        }
+
+        return turno[5] or colores.get(turno[1], "#333333")
 
     def semana_tiene_datos(self, fecha_inicio):
 

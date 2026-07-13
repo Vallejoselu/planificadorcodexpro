@@ -320,6 +320,76 @@ class TestServiciosAplicacion(unittest.TestCase):
             {("lunes", 5): [{"restaurante_id": 1, "repartidor_id": 10}]}
         )
 
+    def test_cuadrantes_service_prepara_estado_para_vista(self):
+
+        calendario = FakeCalendarioRepository()
+        calendario.semanas["2026-07-13"] = [(
+            1,
+            "lunes",
+            5,
+            "Comida",
+            "13:00",
+            "16:00",
+            2,
+            "Ronda Centro",
+            "Ronda",
+            10,
+            "Ana",
+            "2026-07-13"
+        )]
+        servicio = CuadrantesService(calendario_repository=calendario)
+
+        estado = servicio.preparar_estado_semana(
+            "2026-07-15",
+            [(5, "Comida", "Comida", "13:00", "16:00", "#2563EB", 3, 1)],
+            [(2, "Ronda Centro", "", "Ronda", "", 80, 1)],
+            [(10, "Ana")]
+        )
+
+        self.assertEqual(estado["estado_texto"], "")
+        self.assertEqual(
+            estado["asignaciones"],
+            {("lunes", 5): [{"restaurante_id": 2, "repartidor_id": 10}]}
+        )
+        self.assertEqual(
+            estado["celdas_semana"][("lunes", 5)]["texto"],
+            "Ronda Centro - Ana"
+        )
+        self.assertEqual(
+            estado["filas_locales"][0]["dias"]["lunes"],
+            "Comida - Ana"
+        )
+
+    def test_cuadrantes_service_prepara_cambios_sin_duplicar_asignaciones(self):
+
+        servicio = CuadrantesService()
+        asignaciones = {
+            ("lunes", 5): [{"restaurante_id": 2, "repartidor_id": 10}]
+        }
+
+        cambio = servicio.preparar_cambio_asignacion(
+            asignaciones,
+            "lunes",
+            5,
+            2,
+            10
+        )
+
+        self.assertEqual(
+            cambio["anterior"],
+            [{"restaurante_id": 2, "repartidor_id": 10}]
+        )
+        self.assertEqual(cambio["nuevo"], cambio["anterior"])
+
+        limpieza = servicio.preparar_cambio_asignacion(
+            asignaciones,
+            "lunes",
+            5,
+            limpiar=True
+        )
+
+        self.assertEqual(limpieza["nuevo"], [])
+
     def test_repartidores_service_formatea_descanso_y_disponibilidad(self):
 
         servicio = RepartidoresService()
@@ -346,6 +416,40 @@ class TestServiciosAplicacion(unittest.TestCase):
             servicio.formatear_disponibilidad(repartidor[11]),
             "lunes: comidas | martes: ambos"
         )
+
+    def test_repartidores_service_evalua_descanso_por_disponibilidad(self):
+
+        servicio = RepartidoresService()
+        disponibilidad = {
+            "lunes": "No disponible",
+            "martes": "No disponible",
+            "miercoles": "Ambos",
+            "jueves": "Ambos",
+            "viernes": "Ambos",
+            "sabado": "Ambos",
+            "domingo": "Ambos"
+        }
+
+        estado = servicio.estado_descanso_disponibilidad(disponibilidad)
+
+        self.assertEqual(
+            estado["dias_no_laborables"],
+            ["lunes", "martes"]
+        )
+        self.assertTrue(estado["descanso_cubierto"])
+        servicio.validar_descanso_no_necesario(disponibilidad)
+
+        with self.assertRaisesRegex(ValueError, "descanso adicional"):
+
+            servicio.validar_descanso_no_necesario({
+                "lunes": "No disponible",
+                "martes": "Ambos",
+                "miercoles": "Ambos",
+                "jueves": "Ambos",
+                "viernes": "Ambos",
+                "sabado": "Ambos",
+                "domingo": "Ambos"
+            })
 
     def test_restaurantes_service_prepara_texto_de_repartidores_fijos(self):
 
