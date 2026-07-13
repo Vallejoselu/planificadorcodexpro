@@ -576,6 +576,174 @@ def validar_demandas_restaurante(demandas):
     return resultado
 
 
+def obtener_zonas_restaurantes():
+
+    crear_base_datos()
+
+    conexion = conectar()
+    cursor = conexion.cursor()
+    cursor.execute("""
+    SELECT DISTINCT zona
+    FROM restaurantes
+    WHERE activo=1
+    AND zona IS NOT NULL
+    AND TRIM(zona)<>''
+    ORDER BY zona
+    """)
+    datos = [
+        fila[0]
+        for fila in cursor.fetchall()
+    ]
+    conexion.close()
+
+    return datos
+
+
+def obtener_demanda_zona():
+
+    crear_base_datos()
+
+    conexion = conectar()
+    cursor = conexion.cursor()
+    cursor.execute("""
+    SELECT
+        id,
+        zona,
+        turno_id,
+        fecha,
+        dia_semana,
+        repartidores_necesarios,
+        activo
+    FROM demanda_zona
+    ORDER BY activo DESC, zona, COALESCE(fecha, ''), COALESCE(dia_semana, '')
+    """)
+    datos = cursor.fetchall()
+    conexion.close()
+
+    return datos
+
+
+def guardar_demanda_zona(demandas):
+
+    demandas = demandas or []
+    demandas = validar_demandas_zona(demandas)
+    crear_base_datos()
+
+    conexion = conectar()
+    cursor = conexion.cursor()
+    cursor.execute("""
+    UPDATE demanda_zona
+    SET activo=0
+    """)
+
+    for demanda in demandas:
+
+        demanda_id = demanda.get("id")
+        datos = (
+            demanda["zona"],
+            demanda["turno_id"],
+            demanda.get("fecha") or None,
+            demanda.get("dia_semana") or None,
+            int(demanda["repartidores_necesarios"]),
+            int(demanda.get("activo", 1))
+        )
+
+        if demanda_id:
+
+            cursor.execute("""
+            UPDATE demanda_zona
+            SET zona=?,
+                turno_id=?,
+                fecha=?,
+                dia_semana=?,
+                repartidores_necesarios=?,
+                activo=?
+            WHERE id=?
+            """, datos + (demanda_id,))
+
+        else:
+
+            cursor.execute("""
+            INSERT INTO demanda_zona(
+                zona,
+                turno_id,
+                fecha,
+                dia_semana,
+                repartidores_necesarios,
+                activo
+            )
+            VALUES(?,?,?,?,?,?)
+            """, datos)
+
+    conexion.commit()
+    conexion.close()
+
+
+def validar_demandas_zona(demandas):
+
+    resultado = []
+    claves = set()
+
+    for demanda in demandas:
+
+        demanda = dict(demanda)
+        zona = (demanda.get("zona") or "").strip()
+        fecha = (demanda.get("fecha") or "").strip()
+        dia_semana = (demanda.get("dia_semana") or "").strip()
+
+        if not zona:
+
+            raise ValueError("Introduce una zona.")
+
+        if bool(fecha) == bool(dia_semana):
+
+            raise ValueError(
+                "Configura una fecha concreta o un dia de semana, solo uno."
+            )
+
+        if dia_semana and dia_semana not in DIAS_SEMANA:
+
+            raise ValueError("Dia de semana no valido.")
+
+        if fecha:
+
+            try:
+
+                datetime.strptime(fecha, "%Y-%m-%d")
+
+            except ValueError as error:
+
+                raise ValueError("Fecha de demanda no valida.") from error
+
+        necesarios = int(demanda["repartidores_necesarios"])
+
+        if necesarios < 0:
+
+            raise ValueError("La demanda no puede ser negativa.")
+
+        turno_id = int(demanda["turno_id"])
+        clave = (
+            zona.casefold(),
+            turno_id,
+            "fecha" if fecha else "dia",
+            fecha or dia_semana
+        )
+
+        if clave in claves:
+
+            raise ValueError("Demanda duplicada para la misma zona, turno y periodo.")
+
+        claves.add(clave)
+        demanda["zona"] = zona
+        demanda["turno_id"] = turno_id
+        demanda["fecha"] = fecha or None
+        demanda["dia_semana"] = dia_semana or None
+        demanda["repartidores_necesarios"] = necesarios
+        resultado.append(demanda)
+
+    return resultado
+
+
 def guardar_repartidor_ciudades(repartidor_id, ciudades):
 
     ciudades = ciudades or []

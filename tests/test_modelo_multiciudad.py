@@ -8,6 +8,7 @@ from database.database import (
     CIUDAD_SIN_CIUDAD,
     actualizar_repartidor,
     crear_base_datos,
+    guardar_demanda_zona,
     guardar_demanda_restaurante,
     guardar_repartidor_ciudades,
     guardar_repartidor_restaurantes_autorizados,
@@ -15,13 +16,16 @@ from database.database import (
     insertar_ciudad,
     insertar_repartidor,
     insertar_restaurante,
+    insertar_turno,
     obtener_ciudades,
+    obtener_demanda_zona,
     obtener_demanda_restaurante,
     obtener_repartidor,
     obtener_repartidor_ciudades,
     obtener_repartidor_restaurantes_autorizados,
     obtener_restaurante_turnos,
-    obtener_restaurantes
+    obtener_restaurantes,
+    obtener_zonas_restaurantes
 )
 from database.schema import SCHEMA_VERSION_ACTUAL
 
@@ -50,6 +54,7 @@ class TestModeloMulticiudad(unittest.TestCase):
         self.assertIn("schema_version", tablas)
         self.assertIn("restaurante_turnos", tablas)
         self.assertIn("demanda_restaurante", tablas)
+        self.assertIn("demanda_zona", tablas)
         self.assertIn("repartidor_ciudades", tablas)
         self.assertIn("repartidor_restaurantes_autorizados", tablas)
         self.assertIn("calendario_semanal", tablas)
@@ -464,6 +469,122 @@ class TestModeloMulticiudad(unittest.TestCase):
                 }]
             )
 
+    def test_demanda_zona_admite_fecha_dia_y_demanda_cero(self):
+
+        turno = self._crear_turno_global()
+
+        guardar_demanda_zona([{
+            "zona": "Centro",
+            "turno_id": turno,
+            "fecha": "2026-07-20",
+            "repartidores_necesarios": 0
+        }, {
+            "zona": "Norte",
+            "turno_id": turno,
+            "dia_semana": "lunes",
+            "repartidores_necesarios": 3
+        }])
+
+        demandas = obtener_demanda_zona()
+
+        self.assertEqual(len(demandas), 2)
+        self.assertEqual(demandas[0][1], "Centro")
+        self.assertEqual(demandas[0][5], 0)
+        self.assertEqual(demandas[1][4], "lunes")
+
+    def test_demanda_zona_rechaza_periodos_invalidos(self):
+
+        turno = self._crear_turno_global()
+
+        casos = (
+            {
+                "zona": "Centro",
+                "turno_id": turno,
+                "repartidores_necesarios": 1
+            },
+            {
+                "zona": "Centro",
+                "turno_id": turno,
+                "fecha": "2026-07-20",
+                "dia_semana": "lunes",
+                "repartidores_necesarios": 1
+            },
+            {
+                "zona": "Centro",
+                "turno_id": turno,
+                "dia_semana": "festivo",
+                "repartidores_necesarios": 1
+            }
+        )
+
+        for demanda in casos:
+
+            with self.assertRaises(ValueError):
+
+                guardar_demanda_zona([demanda])
+
+    def test_demanda_zona_rechaza_duplicadas_por_fecha_y_dia(self):
+
+        turno = self._crear_turno_global()
+
+        with self.assertRaises(ValueError):
+
+            guardar_demanda_zona([{
+                "zona": "Centro",
+                "turno_id": turno,
+                "fecha": "2026-07-20",
+                "repartidores_necesarios": 1
+            }, {
+                "zona": "centro",
+                "turno_id": turno,
+                "fecha": "2026-07-20",
+                "repartidores_necesarios": 2
+            }])
+
+        with self.assertRaises(ValueError):
+
+            guardar_demanda_zona([{
+                "zona": "Centro",
+                "turno_id": turno,
+                "dia_semana": "lunes",
+                "repartidores_necesarios": 1
+            }, {
+                "zona": "Centro",
+                "turno_id": turno,
+                "dia_semana": "lunes",
+                "repartidores_necesarios": 2
+            }])
+
+    def test_demanda_zona_migracion_repetida_no_duplica_datos(self):
+
+        turno = self._crear_turno_global()
+        guardar_demanda_zona([{
+            "zona": "Centro",
+            "turno_id": turno,
+            "dia_semana": "lunes",
+            "repartidores_necesarios": 2
+        }])
+
+        crear_base_datos()
+        crear_base_datos()
+
+        demandas = obtener_demanda_zona()
+
+        self.assertEqual(len(demandas), 1)
+        self.assertEqual(demandas[0][5], 2)
+
+    def test_obtener_zonas_restaurantes_lista_zonas_activas(self):
+
+        crear_base_datos()
+        ciudad = insertar_ciudad("Santiago")
+        insertar_restaurante("BK Centro", "", "Centro", "", 50, ciudad_id=ciudad)
+        insertar_restaurante("BK Norte", "", "Norte", "", 50, ciudad_id=ciudad)
+
+        self.assertEqual(
+            obtener_zonas_restaurantes(),
+            ["Centro", "Norte"]
+        )
+
     def _crear_base_antigua(self):
 
         conexion = sqlite3.connect(database.RUTA_BD)
@@ -543,6 +664,19 @@ class TestModeloMulticiudad(unittest.TestCase):
         turno = obtener_restaurante_turnos(restaurante)[0][0]
 
         return restaurante, turno
+
+    def _crear_turno_global(self):
+
+        crear_base_datos()
+
+        return insertar_turno(
+            "Comida",
+            "Comida",
+            "13:00",
+            "16:00",
+            "#2563EB",
+            3
+        )
 
     def _tablas(self):
 

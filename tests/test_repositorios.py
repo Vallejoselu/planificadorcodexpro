@@ -6,6 +6,7 @@ import database.database as database
 from database.database import crear_base_datos, insertar_ciudad
 from repositories.ausencias_repository import AusenciasRepository
 from repositories.calendario_repository import CalendarioRepository
+from repositories.demandas_zona_repository import DemandasZonaRepository
 from repositories.integraciones_repository import IntegracionesRepository
 from repositories.plantillas_repository import PlantillasRepository
 from repositories.repartidores_repository import RepartidoresRepository
@@ -105,6 +106,39 @@ class TestRepositorios(unittest.TestCase):
         self.assertEqual(restaurantes.obtener_por_id(restaurante_id)[1], "BK Centro")
         self.assertEqual(turnos.obtener_por_id(turno_id)[2], "Comida")
         self.assertEqual(restaurantes.listar_demanda(restaurante_id)[0][5], 3)
+
+    def test_demandas_zona_repository_guarda_y_lista(self):
+
+        ciudad_id = insertar_ciudad("Santiago")
+        restaurantes = RestaurantesRepository()
+        turnos = TurnosRepository()
+        demandas_zona = DemandasZonaRepository()
+        restaurantes.crear(
+            "BK Centro",
+            "",
+            "Centro",
+            "",
+            50,
+            ciudad_id=ciudad_id
+        )
+        turno_id = turnos.crear(
+            "Comida",
+            "Comida",
+            "13:00",
+            "16:00",
+            "#2563EB",
+            3
+        )
+
+        demandas_zona.guardar([{
+            "zona": "Centro",
+            "turno_id": turno_id,
+            "dia_semana": "lunes",
+            "repartidores_necesarios": 4
+        }])
+
+        self.assertEqual(demandas_zona.listar_zonas(), ["Centro"])
+        self.assertEqual(demandas_zona.listar()[0][5], 4)
 
     def test_calendario_repository_reemplaza_semana(self):
 
