@@ -346,7 +346,10 @@ class TestServiciosAplicacion(unittest.TestCase):
             [(10, "Ana")]
         )
 
-        self.assertEqual(estado["estado_texto"], "")
+        self.assertEqual(
+            estado["estado_texto"],
+            "Asignaciones: 1 | Todo cubierto"
+        )
         self.assertEqual(
             estado["asignaciones"],
             {("lunes", 5): [{"restaurante_id": 2, "repartidor_id": 10}]}

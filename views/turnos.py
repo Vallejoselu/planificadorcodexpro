@@ -170,8 +170,8 @@ class VistaTurnos(QWidget):
 
             QMessageBox.warning(
                 self,
-                "Error",
-                "Selecciona un turno."
+                "Turnos",
+                "Selecciona un turno de la tabla para continuar."
             )
             return None
 
@@ -217,8 +217,12 @@ class VistaTurnos(QWidget):
 
         respuesta = QMessageBox.question(
             self,
-            "Eliminar turno",
-            "Quieres eliminar el turno seleccionado?"
+            "Desactivar turno",
+            (
+                "Quieres desactivar el turno seleccionado?\n\n"
+                "No aparecera en nuevas planificaciones, pero se conservaran "
+                "sus cuadrantes anteriores."
+            )
         )
 
         if respuesta == QMessageBox.Yes:
