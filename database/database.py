@@ -16,6 +16,10 @@ from database.migrations import (
     columnas_tabla as columnas_tabla_migracion,
     crear_base_datos as ejecutar_migraciones
 )
+from database.diagnostics import (
+    diagnosticar_base_datos as ejecutar_diagnostico_base_datos,
+    reparar_base_datos as ejecutar_reparacion_base_datos
+)
 from database.schema import (
     CIUDAD_SIN_CIUDAD,
     DESCANSOS_VALIDOS,
@@ -64,6 +68,16 @@ def columnas_tabla(cursor, tabla):
 def crear_base_datos():
 
     ejecutar_migraciones(RUTA_BD)
+
+
+def diagnosticar_base_datos():
+
+    return ejecutar_diagnostico_base_datos(RUTA_BD)
+
+
+def reparar_base_datos():
+
+    return ejecutar_reparacion_base_datos(RUTA_BD)
 
 
 def validar_horas_contratadas(horas):
