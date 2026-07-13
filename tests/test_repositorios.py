@@ -149,6 +149,52 @@ class TestRepositorios(unittest.TestCase):
         self.assertEqual(len(datos), 1)
         self.assertEqual(datos[0][1], "martes")
 
+    def test_calendario_repository_reemplaza_semana_sin_tocar_anteriores(self):
+
+        restaurantes = RestaurantesRepository()
+        turnos = TurnosRepository()
+        calendario = CalendarioRepository()
+        restaurante_id = restaurantes.crear(
+            "BK Centro",
+            "",
+            "Centro",
+            "",
+            50
+        )
+        turno_id = turnos.crear(
+            "Comida",
+            "Comida",
+            "13:00",
+            "16:00",
+            "#2563EB",
+            3
+        )
+        asignacion_lunes = {
+            ("lunes", turno_id): [{
+                "restaurante_id": restaurante_id,
+                "repartidor_id": None
+            }]
+        }
+        asignacion_martes = {
+            ("martes", turno_id): [{
+                "restaurante_id": restaurante_id,
+                "repartidor_id": None
+            }]
+        }
+
+        calendario.reemplazar_semana("2026-07-13", asignacion_lunes)
+        calendario.reemplazar_semana("2026-07-20", asignacion_martes)
+        calendario.reemplazar_semana("2026-07-20", asignacion_lunes)
+
+        self.assertEqual(
+            [fila[1] for fila in calendario.listar_semana("2026-07-13")],
+            ["lunes"]
+        )
+        self.assertEqual(
+            [fila[1] for fila in calendario.listar_semana("2026-07-20")],
+            ["lunes"]
+        )
+
     def test_integraciones_repository_guarda_y_lista_eventos(self):
 
         repositorio = IntegracionesRepository()

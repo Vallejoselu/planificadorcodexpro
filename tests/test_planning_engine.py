@@ -1,5 +1,6 @@
 import unittest
 
+from services.rules.candidatos import buscar_candidatos
 from services.planning_engine import PlanningEngine, generar_horarios
 from services.planificador import generar_horarios as generar_horarios_legacy
 from services.validators import validar_horario
@@ -234,6 +235,149 @@ class TestPlanningEngine(unittest.TestCase):
                 for incidencia in resultado["incidencias"]
             )
         )
+
+    def test_no_asigna_repartidor_en_descanso(self):
+
+        resultado = generar_horarios(
+            [self.repartidor_base(1, "Ana")],
+            self.restaurantes(),
+            turnos=[{
+                "nombre": "comida",
+                "horas": 4
+            }]
+        )
+
+        self.assertEqual(resultado["horario"]["lunes"]["comida"], [])
+        self.assertTrue(
+            any(
+                "descanso" in incidencia["motivo"]
+                for incidencia in resultado["incidencias"]
+            )
+        )
+
+    def test_no_supera_horas_contratadas(self):
+
+        repartidor = self.repartidor_base(1, "Ana")
+        repartidor["horas"] = 4
+
+        resultado = generar_horarios(
+            [repartidor],
+            self.restaurantes(),
+            turnos=[{
+                "nombre": "comida",
+                "horas": 4
+            }]
+        )
+
+        self.assertEqual(resultado["resumen"][0]["horas"], 4)
+        self.assertLessEqual(
+            resultado["resumen"][0]["horas"],
+            resultado["resumen"][0]["maximo"]
+        )
+
+    def test_no_asigna_dos_veces_mismo_repartidor_en_mismo_turno(self):
+
+        resultado = generar_horarios(
+            [self.repartidor_base(1, "Ana")],
+            [
+                {"id": 1, "nombre": "R1", "zona": "Ronda"},
+                {"id": 2, "nombre": "R2", "zona": "Ronda"}
+            ],
+            turnos=[{
+                "nombre": "comida",
+                "horas": 4
+            }]
+        )
+
+        for dia, turnos_dia in resultado["horario"].items():
+
+            for asignaciones in turnos_dia.values():
+
+                ids = [
+                    asignacion["repartidor_id"]
+                    for asignacion in asignaciones
+                    if asignacion.get("repartidor_id")
+                ]
+                self.assertEqual(
+                    len(ids),
+                    len(set(ids)),
+                    f"Duplicado en {dia}: {ids}"
+                )
+
+    def test_respeta_vacaciones_y_bajas(self):
+
+        repartidor = self.repartidor_base(1, "Ana")
+
+        resultado = generar_horarios(
+            [repartidor],
+            self.restaurantes(),
+            turnos=[{
+                "nombre": "comida",
+                "horas": 4
+            }],
+            fecha_inicio="2026-07-13",
+            vacaciones=[{
+                "repartidor_id": 1,
+                "fecha_inicio": "2026-07-15",
+                "fecha_fin": "2026-07-15"
+            }],
+            bajas=[{
+                "repartidor_id": 1,
+                "fecha_inicio": "2026-07-16",
+                "fecha_fin": "2026-07-16"
+            }]
+        )
+
+        self.assertEqual(resultado["horario"]["miercoles"]["comida"], [])
+        self.assertEqual(resultado["horario"]["jueves"]["comida"], [])
+        self.assertTrue(
+            any(
+                "ausencia" in incidencia["motivo"]
+                for incidencia in resultado["incidencias"]
+            )
+        )
+
+    def test_asistente_y_planificador_rechazan_descanso_con_misma_regla(self):
+
+        repartidor = self.repartidor_base(1, "Ana")
+        turno_planificador = {
+            "nombre": "comida",
+            "horas": 4
+        }
+        resultado = generar_horarios(
+            [repartidor],
+            self.restaurantes(),
+            turnos=[turno_planificador]
+        )
+        contexto_asistente = {
+            "repartidores": [{
+                **repartidor,
+                "activo": 1,
+                "vacaciones": [],
+                "bajas": [],
+                "preferencias": []
+            }],
+            "turnos": [{
+                "id": 1,
+                "tipo": "Comida",
+                "nombre": "Comida",
+                "duracion": 4,
+                "activo": 1
+            }],
+            "restaurantes": self.restaurantes(),
+            "asignaciones_repartidor": []
+        }
+
+        candidatos, rechazos = buscar_candidatos(
+            contexto_asistente,
+            "lunes",
+            contexto_asistente["turnos"][0],
+            self.restaurantes()[0]
+        )
+
+        self.assertEqual(resultado["horario"]["lunes"]["comida"], [])
+        self.assertEqual(candidatos, [])
+        self.assertIn("estan descansando", rechazos)
 
     def test_generador_usa_horas_complementarias_permitidas(self):
 
