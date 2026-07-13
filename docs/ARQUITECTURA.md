@@ -40,9 +40,13 @@ Las reglas comunes viven en `services/rules/`:
 - `ausencias.py`
 - `candidatos.py`
 - `horas.py`
+- `demanda.py`
 
 El asistente y el planificador deben reutilizar estas reglas para mantener
 respuestas coherentes.
+
+La prioridad de demanda esta documentada en `docs/PRIORIDAD_DEMANDA.md` y se
+resuelve tecnicamente en `services/rules/demanda.py`.
 
 ## Base De Datos
 

@@ -15,6 +15,7 @@ from services.rules.descansos import (
     descanso_es_consecutivo,
     dias_no_disponibles
 )
+from services.rules.demanda import seleccionar_demanda_prioritaria
 from services.rules.disponibilidad import (
     categoria_turno,
     intervalo_turno,
@@ -587,8 +588,7 @@ def slots_demanda(restaurantes, turnos, demandas, dia, fecha):
 
 def demanda_aplicable(demandas, restaurante_id, turno_id, dia, fecha_iso):
 
-    por_fecha = None
-    por_dia = None
+    candidatas = []
 
     for demanda in demandas:
 
@@ -604,15 +604,9 @@ def demanda_aplicable(demandas, restaurante_id, turno_id, dia, fecha_iso):
 
             continue
 
-        if fecha_iso and demanda.get("fecha") == fecha_iso:
+        candidatas.append(demanda)
 
-            por_fecha = demanda
-
-        elif demanda.get("dia_semana") == dia:
-
-            por_dia = demanda
-
-    return por_fecha if por_fecha is not None else por_dia
+    return seleccionar_demanda_prioritaria(candidatas, dia, fecha_iso)
 
 
 def crear_horario_demanda(restaurantes, turnos, demandas, fechas):
