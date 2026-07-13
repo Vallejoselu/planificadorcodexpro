@@ -53,6 +53,8 @@ class TestModeloMulticiudad(unittest.TestCase):
         self.assertIn("repartidor_ciudades", tablas)
         self.assertIn("repartidor_restaurantes_autorizados", tablas)
         self.assertIn("calendario_semanal", tablas)
+        self.assertIn("plantillas_semana", tablas)
+        self.assertIn("plantilla_semana_asignaciones", tablas)
 
         restaurantes = obtener_restaurantes()
         self.assertEqual(len(restaurantes), 1)

@@ -7,6 +7,7 @@ from database.database import crear_base_datos, insertar_ciudad
 from repositories.ausencias_repository import AusenciasRepository
 from repositories.calendario_repository import CalendarioRepository
 from repositories.integraciones_repository import IntegracionesRepository
+from repositories.plantillas_repository import PlantillasRepository
 from repositories.repartidores_repository import RepartidoresRepository
 from repositories.restaurantes_repository import RestaurantesRepository
 from repositories.turnos_repository import TurnosRepository
@@ -193,6 +194,46 @@ class TestRepositorios(unittest.TestCase):
         self.assertEqual(
             [fila[1] for fila in calendario.listar_semana("2026-07-20")],
             ["lunes"]
+        )
+
+    def test_plantillas_repository_guarda_y_lista_asignaciones(self):
+
+        restaurantes = RestaurantesRepository()
+        turnos = TurnosRepository()
+        plantillas = PlantillasRepository()
+        restaurante_id = restaurantes.crear(
+            "BK Centro",
+            "",
+            "Centro",
+            "",
+            50
+        )
+        turno_id = turnos.crear(
+            "Comida",
+            "Comida",
+            "13:00",
+            "16:00",
+            "#2563EB",
+            3
+        )
+        asignaciones = {
+            ("lunes", turno_id): [{
+                "restaurante_id": restaurante_id,
+                "repartidor_id": None
+            }]
+        }
+
+        plantilla_id = plantillas.crear(
+            "Semana base",
+            "Descripcion",
+            False,
+            asignaciones
+        )
+
+        self.assertEqual(plantillas.listar()[0][1], "Semana base")
+        self.assertEqual(
+            plantillas.obtener_asignaciones(plantilla_id),
+            asignaciones
         )
 
     def test_integraciones_repository_guarda_y_lista_eventos(self):

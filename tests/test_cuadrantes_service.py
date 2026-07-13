@@ -7,6 +7,64 @@ from tests.test_servicios_aplicacion import (
 )
 
 
+class FakePlantillasRepository:
+
+    def __init__(self):
+
+        self.plantillas = []
+        self.asignaciones = {}
+        self.creadas = []
+        self.siguiente_id = 1
+
+    def listar(self):
+
+        return self.plantillas
+
+    def obtener_por_id(self, plantilla_id):
+
+        for plantilla in self.plantillas:
+
+            if plantilla[0] == plantilla_id:
+
+                return plantilla
+
+        return None
+
+    def crear(
+        self,
+        nombre,
+        descripcion,
+        incluir_repartidores,
+        asignaciones
+    ):
+
+        plantilla_id = self.siguiente_id
+        self.siguiente_id += 1
+        plantilla = (
+            plantilla_id,
+            nombre,
+            descripcion,
+            1 if incluir_repartidores else 0,
+            1,
+            "2026-07-13",
+            sum(len(items) for items in asignaciones.values())
+        )
+        self.plantillas.append(plantilla)
+        self.asignaciones[plantilla_id] = asignaciones
+        self.creadas.append((
+            nombre,
+            descripcion,
+            incluir_repartidores,
+            asignaciones
+        ))
+
+        return plantilla_id
+
+    def obtener_asignaciones(self, plantilla_id):
+
+        return self.asignaciones.get(plantilla_id, {})
+
+
 class TestCuadrantesServicePorCapa(unittest.TestCase):
 
     def test_guardar_cuadrante_normaliza_semana_y_delega_reemplazo(self):
@@ -122,6 +180,113 @@ class TestCuadrantesServicePorCapa(unittest.TestCase):
         with self.assertRaises(ValueError):
 
             servicio.copiar_semana("2026-07-13", "2026-07-20")
+
+    def test_crear_plantilla_desde_semana_incluye_repartidores(self):
+
+        calendario = FakeCalendarioRepository()
+        plantillas = FakePlantillasRepository()
+        calendario.semanas["2026-07-13"] = [(
+            1,
+            "lunes",
+            5,
+            "Comida",
+            "Comida",
+            "#2563EB",
+            2,
+            "BK Centro",
+            "Centro",
+            10,
+            "Ana",
+            "2026-07-13"
+        )]
+        servicio = CuadrantesService(
+            calendario_repository=calendario,
+            plantillas_repository=plantillas
+        )
+
+        resultado = servicio.crear_plantilla_desde_semana(
+            "2026-07-13",
+            "Semana base",
+            "Descripcion",
+            incluir_repartidores=True
+        )
+
+        self.assertEqual(resultado["plantilla_id"], 1)
+        self.assertEqual(resultado["total_asignaciones"], 1)
+        self.assertEqual(
+            plantillas.creadas[0][3],
+            {("lunes", 5): [{
+                "restaurante_id": 2,
+                "repartidor_id": 10
+            }]}
+        )
+
+    def test_crear_plantilla_desde_semana_puede_omitir_repartidores(self):
+
+        calendario = FakeCalendarioRepository()
+        plantillas = FakePlantillasRepository()
+        calendario.semanas["2026-07-13"] = [(
+            1,
+            "lunes",
+            5,
+            "Comida",
+            "Comida",
+            "#2563EB",
+            2,
+            "BK Centro",
+            "Centro",
+            10,
+            "Ana",
+            "2026-07-13"
+        )]
+        servicio = CuadrantesService(
+            calendario_repository=calendario,
+            plantillas_repository=plantillas
+        )
+
+        servicio.crear_plantilla_desde_semana(
+            "2026-07-13",
+            "Semana sin nombres",
+            incluir_repartidores=False
+        )
+
+        self.assertFalse(plantillas.creadas[0][2])
+        self.assertEqual(
+            plantillas.creadas[0][3],
+            {("lunes", 5): [{
+                "restaurante_id": 2,
+                "repartidor_id": None
+            }]}
+        )
+
+    def test_aplicar_plantilla_guarda_cuadrante_en_semana_destino(self):
+
+        calendario = FakeCalendarioRepository()
+        plantillas = FakePlantillasRepository()
+        servicio = CuadrantesService(
+            calendario_repository=calendario,
+            plantillas_repository=plantillas
+        )
+        plantillas.crear(
+            "Base",
+            "",
+            True,
+            {("martes", 5): [{
+                "restaurante_id": 2,
+                "repartidor_id": 10
+            }]}
+        )
+
+        resultado = servicio.aplicar_plantilla(1, "2026-07-20")
+
+        self.assertEqual(resultado["nombre"], "Base")
+        self.assertEqual(calendario.reemplazos, [(
+            "2026-07-20",
+            {("martes", 5): [{
+                "restaurante_id": 2,
+                "repartidor_id": 10
+            }]}
+        )])
 
     def test_preparar_estado_semana_devuelve_celdas_y_vista_local(self):
 

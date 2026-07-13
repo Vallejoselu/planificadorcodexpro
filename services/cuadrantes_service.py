@@ -2,6 +2,7 @@ from repositories.calendario_repository import CalendarioRepository
 from repositories.ciudades_repository import CiudadesRepository
 from repositories.repartidores_repository import RepartidoresRepository
 from repositories.restaurantes_repository import RestaurantesRepository
+from repositories.plantillas_repository import PlantillasRepository
 from repositories.turnos_repository import TurnosRepository
 from database.schema import DIAS_SEMANA
 from services.fechas import normalizar_fecha_inicio_semana
@@ -16,6 +17,7 @@ class CuadrantesService:
         ciudades_repository=None,
         repartidores_repository=None,
         restaurantes_repository=None,
+        plantillas_repository=None,
         turnos_repository=None,
         planning_engine=None
     ):
@@ -29,6 +31,9 @@ class CuadrantesService:
         )
         self.restaurantes_repository = (
             restaurantes_repository or RestaurantesRepository()
+        )
+        self.plantillas_repository = (
+            plantillas_repository or PlantillasRepository()
         )
         self.turnos_repository = turnos_repository or TurnosRepository()
         self.planning_engine = planning_engine or PlanningEngine()
@@ -276,6 +281,108 @@ class CuadrantesService:
                 for elementos in asignaciones.values()
             )
         }
+
+    def listar_plantillas(self):
+
+        return self.plantillas_repository.listar()
+
+    def crear_plantilla_desde_semana(
+        self,
+        fecha_origen,
+        nombre,
+        descripcion="",
+        incluir_repartidores=True
+    ):
+
+        fecha_origen = normalizar_fecha_inicio_semana(fecha_origen)
+        nombre = str(nombre or "").strip()
+
+        if not nombre:
+
+            raise ValueError("El nombre de la plantilla es obligatorio.")
+
+        nombres_existentes = {
+            str(plantilla[1]).strip().lower()
+            for plantilla in self.listar_plantillas()
+        }
+
+        if nombre.lower() in nombres_existentes:
+
+            raise ValueError("Ya existe una plantilla con ese nombre.")
+
+        calendario_origen = self.cargar_semana(fecha_origen)
+
+        if not calendario_origen:
+
+            raise ValueError(
+                "La semana origen no tiene cuadrante guardado."
+            )
+
+        asignaciones = self.agrupar_calendario(calendario_origen)
+
+        if not incluir_repartidores:
+
+            asignaciones = self.quitar_repartidores(asignaciones)
+
+        plantilla_id = self.plantillas_repository.crear(
+            nombre,
+            descripcion,
+            incluir_repartidores,
+            asignaciones
+        )
+
+        return {
+            "plantilla_id": plantilla_id,
+            "fecha_origen": fecha_origen,
+            "nombre": nombre,
+            "incluir_repartidores": bool(incluir_repartidores),
+            "total_asignaciones": self.contar_asignaciones(asignaciones)
+        }
+
+    def aplicar_plantilla(self, plantilla_id, fecha_destino):
+
+        plantilla = self.plantillas_repository.obtener_por_id(plantilla_id)
+
+        if not plantilla:
+
+            raise ValueError("Selecciona una plantilla valida.")
+
+        asignaciones = self.plantillas_repository.obtener_asignaciones(
+            plantilla_id
+        )
+
+        if not asignaciones:
+
+            raise ValueError("La plantilla no contiene asignaciones.")
+
+        self.guardar_cuadrante(fecha_destino, asignaciones)
+
+        return {
+            "plantilla_id": plantilla_id,
+            "nombre": plantilla[1],
+            "fecha_destino": normalizar_fecha_inicio_semana(fecha_destino),
+            "total_asignaciones": self.contar_asignaciones(asignaciones)
+        }
+
+    def quitar_repartidores(self, asignaciones):
+
+        return {
+            clave: [
+                {
+                    "restaurante_id": asignacion["restaurante_id"],
+                    "repartidor_id": None
+                }
+                for asignacion in elementos
+            ]
+            for clave, elementos in (asignaciones or {}).items()
+        }
+
+    def contar_asignaciones(self, asignaciones):
+
+        return sum(
+            len(elementos)
+            for elementos in (asignaciones or {}).values()
+        )
 
     def resolver_turnos_asignaciones(self, asignaciones):
 
