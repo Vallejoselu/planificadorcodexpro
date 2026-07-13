@@ -40,6 +40,8 @@ class VistaCuadrantes(QWidget):
         self.restaurantes = []
         self.repartidores = []
         self.asignaciones = {}
+        self.celdas_semana = {}
+        self.filas_locales = []
         self.portapapeles = None
         self.undo_stack = QUndoStack(self)
 
@@ -332,7 +334,6 @@ class VistaCuadrantes(QWidget):
 
     def cargar_tabla(self):
 
-        self.asignaciones = {}
         self.tabla.clearContents()
         self.tabla.setRowCount(len(self.turnos))
 
@@ -341,31 +342,16 @@ class VistaCuadrantes(QWidget):
             for turno in self.turnos
         ])
 
-        calendario = cuadrantes_service.cargar_semana(
-            self.fecha_inicio_semana()
+        estado = cuadrantes_service.preparar_estado_semana(
+            self.fecha_inicio_semana(),
+            self.turnos,
+            self.restaurantes,
+            self.repartidores
         )
-
-        if calendario:
-
-            self.estado_semana.setText("")
-
-        else:
-
-            self.estado_semana.setText(
-                "Sin datos guardados para esta semana."
-            )
-
-        for asignacion in calendario:
-
-            dia = asignacion[1]
-            turno_id = asignacion[2]
-            restaurante_id = asignacion[6]
-            repartidor_id = asignacion[9] if len(asignacion) > 9 else None
-
-            self.asignaciones.setdefault((dia, turno_id), []).append({
-                "restaurante_id": restaurante_id,
-                "repartidor_id": repartidor_id
-            })
+        self.asignaciones = estado["asignaciones"]
+        self.celdas_semana = estado["celdas_semana"]
+        self.filas_locales = estado["filas_locales"]
+        self.estado_semana.setText(estado["estado_texto"])
 
         self.pintar_tabla()
         self.pintar_tabla_locales()
@@ -379,64 +365,26 @@ class VistaCuadrantes(QWidget):
 
             for columna, dia in enumerate(DIAS_SEMANA):
 
-                asignaciones = self.asignaciones.get((dia, turno[0]), [])
+                celda = self.celdas_semana.get((dia, turno[0]), {})
 
                 item = QTableWidgetItem("")
                 item.setTextAlignment(Qt.AlignCenter)
 
-                if asignaciones:
+                if celda.get("texto"):
 
-                    textos = []
-                    primer_restaurante = None
+                    item.setText(celda["texto"])
 
-                    for asignacion in asignaciones:
+                if celda.get("fondo"):
 
-                        restaurante = self.buscar_restaurante(
-                            asignacion["restaurante_id"]
-                        )
+                    item.setBackground(
+                        QBrush(QColor(celda["fondo"]))
+                    )
 
-                        if not restaurante:
+                if celda.get("color_texto"):
 
-                            continue
-
-                        if primer_restaurante is None:
-
-                            primer_restaurante = restaurante
-
-                        repartidor = self.buscar_repartidor(
-                            asignacion.get("repartidor_id")
-                        )
-                        etiqueta_repartidor = (
-                            f" - {repartidor[1]}"
-                            if repartidor
-                            else ""
-                        )
-                        textos.append(
-                            f"{restaurante[1]}{etiqueta_repartidor}"
-                        )
-
-                    if textos:
-
-                        item.setText("\n".join(textos))
-
-                    if primer_restaurante:
-
-                        item.setBackground(
-                            QBrush(
-                                QColor(
-                                    self.color_restaurante(
-                                        primer_restaurante[0]
-                                    )
-                                )
-                            )
-                        )
-                        item.setForeground(
-                            QBrush(
-                                QColor(
-                                    self.color_turno(turno)
-                                )
-                            )
-                        )
+                    item.setForeground(
+                        QBrush(QColor(celda["color_texto"]))
+                    )
 
                 self.tabla.setItem(fila, columna, item)
 
@@ -445,50 +393,23 @@ class VistaCuadrantes(QWidget):
     def pintar_tabla_locales(self):
 
         self.tabla_locales.clearContents()
-        self.tabla_locales.setRowCount(len(self.restaurantes))
+        self.tabla_locales.setRowCount(len(self.filas_locales))
 
-        for fila, restaurante in enumerate(self.restaurantes):
+        for fila, restaurante in enumerate(self.filas_locales):
 
             self.tabla_locales.setItem(
                 fila,
                 0,
-                QTableWidgetItem(restaurante[1])
+                QTableWidgetItem(restaurante["nombre"])
             )
 
             for columna, dia in enumerate(DIAS_SEMANA, start=1):
 
                 item = QTableWidgetItem(
-                    self.texto_local_dia(restaurante[0], dia)
+                    restaurante["dias"].get(dia, "")
                 )
                 item.setTextAlignment(Qt.AlignTop | Qt.AlignLeft)
                 self.tabla_locales.setItem(fila, columna, item)
-
-    # ======================================
-
-    def texto_local_dia(self, restaurante_id, dia):
-
-        lineas = []
-
-        for turno in self.turnos:
-
-            for asignacion in self.asignaciones.get((dia, turno[0]), []):
-
-                if asignacion["restaurante_id"] != restaurante_id:
-
-                    continue
-
-                repartidor = self.buscar_repartidor(
-                    asignacion.get("repartidor_id")
-                )
-                texto = turno[2]
-
-                if repartidor:
-
-                    texto += f" - {repartidor[1]}"
-
-                lineas.append(texto)
-
-        return "\n".join(lineas)
 
     # ======================================
 
@@ -554,30 +475,14 @@ class VistaCuadrantes(QWidget):
         limpiar=False
     ):
 
-        anterior = [
-            dict(asignacion)
-            for asignacion in self.asignaciones.get((dia, turno_id), [])
-        ]
-
-        nuevo = [
-            dict(asignacion)
-            for asignacion in anterior
-        ]
-
-        if limpiar:
-
-            nuevo = []
-
-        elif restaurante_id:
-
-            asignacion = {
-                "restaurante_id": restaurante_id,
-                "repartidor_id": repartidor_id
-            }
-
-            if asignacion not in nuevo:
-
-                nuevo.append(asignacion)
+        cambio = cuadrantes_service.preparar_cambio_asignacion(
+            self.asignaciones,
+            dia,
+            turno_id,
+            restaurante_id,
+            repartidor_id,
+            limpiar
+        )
 
         self.undo_stack.push(
             CambioCalendario(
@@ -585,8 +490,8 @@ class VistaCuadrantes(QWidget):
                 self.fecha_inicio_semana(),
                 dia,
                 turno_id,
-                anterior,
-                nuevo,
+                cambio["anterior"],
+                cambio["nuevo"],
                 fila,
                 columna
             )
@@ -620,10 +525,9 @@ class VistaCuadrantes(QWidget):
 
         if asignaciones:
 
-            self.asignaciones[(dia, turno_id)] = [
-                dict(asignacion)
-                for asignacion in asignaciones
-            ]
+            self.asignaciones[(dia, turno_id)] = (
+                cuadrantes_service.clonar_asignaciones_turno(asignaciones)
+            )
             cuadrantes_service.guardar_asignacion_turno(
                 fecha_inicio_semana,
                 dia,
@@ -641,7 +545,26 @@ class VistaCuadrantes(QWidget):
                 []
             )
 
+        self.actualizar_presentacion_asignaciones()
         self.pintar_tabla()
+        self.pintar_tabla_locales()
+
+    # ======================================
+
+    def actualizar_presentacion_asignaciones(self):
+
+        self.celdas_semana = cuadrantes_service.construir_celdas_semana(
+            self.asignaciones,
+            self.turnos,
+            self.restaurantes,
+            self.repartidores
+        )
+        self.filas_locales = cuadrantes_service.construir_filas_locales(
+            self.asignaciones,
+            self.turnos,
+            self.restaurantes,
+            self.repartidores
+        )
 
     # ======================================
 
@@ -718,16 +641,15 @@ class VistaCuadrantes(QWidget):
             dict(asignacion)
             for asignacion in self.asignaciones.get(clave, [])
         ]
-        nuevo = [
-            dict(asignacion)
-            for asignacion in anterior
-        ]
+        nuevo = cuadrantes_service.clonar_asignaciones_turno(anterior)
 
         for asignacion in self.portapapeles:
 
-            if asignacion not in nuevo:
-
-                nuevo.append(dict(asignacion))
+            nuevo = cuadrantes_service.agregar_asignacion(
+                nuevo,
+                asignacion.get("restaurante_id"),
+                asignacion.get("repartidor_id")
+            )
 
         self.undo_stack.push(
             CambioCalendario(
@@ -804,58 +726,6 @@ class VistaCuadrantes(QWidget):
         return None
 
     # ======================================
-
-    def buscar_restaurante(self, restaurante_id):
-
-        for restaurante in self.restaurantes:
-
-            if restaurante[0] == restaurante_id:
-
-                return restaurante
-
-        return None
-
-    # ======================================
-
-    def buscar_repartidor(self, repartidor_id):
-
-        for repartidor in self.repartidores:
-
-            if repartidor[0] == repartidor_id:
-
-                return repartidor
-
-        return None
-
-    # ======================================
-
-    def color_restaurante(self, restaurante_id):
-
-        colores = [
-            "#FFE599",
-            "#B6D7A8",
-            "#A4C2F4",
-            "#D5A6BD",
-            "#F9CB9C",
-            "#B4A7D6",
-            "#76A5AF"
-        ]
-
-        return colores[restaurante_id % len(colores)]
-
-    # ======================================
-
-    def color_turno(self, turno):
-
-        colores = {
-            "Comida": "#0B5394",
-            "Cena": "#674EA7",
-            "Turno partido": "#38761D",
-            "Personalizado": "#990000"
-        }
-
-        return turno[5] or colores.get(turno[1], "#333333")
-
 
 class DialogoResumenGeneracion(QDialog):
 
