@@ -486,6 +486,8 @@ def aplicar_migraciones(cursor):
     WHERE ciudad_id IS NULL
     """,(CIUDAD_SIN_CIUDAD,))
 
+    reparar_datos_para_indices(cursor)
+
     cursor.execute("""
     CREATE UNIQUE INDEX IF NOT EXISTS idx_demanda_restaurante_fecha_unica
     ON demanda_restaurante(
@@ -542,6 +544,8 @@ def aplicar_migraciones(cursor):
     OR TRIM(fecha_inicio_semana)=''
     """,(FECHA_INICIO_SEMANA_LEGADO,))
 
+    reparar_datos_para_indices(cursor)
+
     cursor.execute("""
     CREATE UNIQUE INDEX IF NOT EXISTS idx_calendario_semana_unico
     ON calendario_semanal(
@@ -552,6 +556,108 @@ def aplicar_migraciones(cursor):
         COALESCE(repartidor_id, -1)
     )
     """)
+
+    crear_indices_consulta(cursor)
+
+
+def reparar_datos_para_indices(cursor):
+
+    cursor.execute("""
+    UPDATE demanda_restaurante
+    SET activo=0
+    WHERE id NOT IN (
+        SELECT MIN(id)
+        FROM demanda_restaurante
+        WHERE activo=1
+        AND fecha IS NOT NULL
+        GROUP BY restaurante_id, turno_restaurante_id, fecha
+    )
+    AND activo=1
+    AND fecha IS NOT NULL
+    """)
+
+    cursor.execute("""
+    UPDATE demanda_restaurante
+    SET activo=0
+    WHERE id NOT IN (
+        SELECT MIN(id)
+        FROM demanda_restaurante
+        WHERE activo=1
+        AND dia_semana IS NOT NULL
+        GROUP BY restaurante_id, turno_restaurante_id, dia_semana
+    )
+    AND activo=1
+    AND dia_semana IS NOT NULL
+    """)
+
+    if "fecha_inicio_semana" in columnas_tabla(cursor, "calendario_semanal"):
+
+        cursor.execute("""
+        DELETE FROM calendario_semanal
+        WHERE id NOT IN (
+            SELECT MIN(id)
+            FROM calendario_semanal
+            GROUP BY
+                fecha_inicio_semana,
+                dia,
+                turno_id,
+                restaurante_id,
+                COALESCE(repartidor_id, -1)
+        )
+        """)
+
+
+def crear_indices_consulta(cursor):
+
+    for nombre, definicion in (
+        (
+            "idx_restaurantes_ciudad_id",
+            "CREATE INDEX IF NOT EXISTS idx_restaurantes_ciudad_id "
+            "ON restaurantes(ciudad_id)"
+        ),
+        (
+            "idx_restaurante_turnos_restaurante",
+            "CREATE INDEX IF NOT EXISTS idx_restaurante_turnos_restaurante "
+            "ON restaurante_turnos(restaurante_id, activo)"
+        ),
+        (
+            "idx_demanda_restaurante_lookup",
+            "CREATE INDEX IF NOT EXISTS idx_demanda_restaurante_lookup "
+            "ON demanda_restaurante(restaurante_id, turno_restaurante_id, activo)"
+        ),
+        (
+            "idx_calendario_semana_lookup",
+            "CREATE INDEX IF NOT EXISTS idx_calendario_semana_lookup "
+            "ON calendario_semanal(fecha_inicio_semana, dia, turno_id)"
+        ),
+        (
+            "idx_disponibilidad_repartidor",
+            "CREATE INDEX IF NOT EXISTS idx_disponibilidad_repartidor "
+            "ON disponibilidad(repartidor_id, dia, turno)"
+        ),
+        (
+            "idx_descansos_repartidor_activo",
+            "CREATE INDEX IF NOT EXISTS idx_descansos_repartidor_activo "
+            "ON descansos(repartidor_id, activo)"
+        ),
+        (
+            "idx_vacaciones_repartidor_activo",
+            "CREATE INDEX IF NOT EXISTS idx_vacaciones_repartidor_activo "
+            "ON vacaciones(repartidor_id, activo)"
+        ),
+        (
+            "idx_bajas_repartidor_activa",
+            "CREATE INDEX IF NOT EXISTS idx_bajas_repartidor_activa "
+            "ON bajas(repartidor_id, activa)"
+        ),
+        (
+            "idx_restaurante_repartidores_restaurante",
+            "CREATE INDEX IF NOT EXISTS idx_restaurante_repartidores_restaurante "
+            "ON restaurante_repartidores(restaurante_id, repartidor_id, activo)"
+        )
+    ):
+
+        cursor.execute(definicion)
 
 
 def sembrar_datos_iniciales(cursor):

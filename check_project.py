@@ -39,6 +39,7 @@ def main():
         ("Secretos evidentes", check_secrets),
         ("delivery.db sin cambios", check_delivery_db_unchanged),
         ("Pruebas con base temporal", check_tests_use_temp_db),
+        ("Diagnostico de base temporal", check_database_diagnostics),
         ("Reglas criticas", check_business_rules)
     ]
     failures = []
@@ -283,6 +284,36 @@ def check_tests_use_temp_db():
             "Pruebas sin aislamiento claro de base temporal: "
             + ", ".join(unique)
         )
+
+
+def check_database_diagnostics():
+
+    import database.database as database
+    from database.database import crear_base_datos, diagnosticar_base_datos
+
+    original = database.RUTA_BD
+
+    with tempfile.TemporaryDirectory() as temporal:
+
+        database.RUTA_BD = Path(temporal) / "delivery.db"
+
+        try:
+
+            crear_base_datos()
+            diagnostico = diagnosticar_base_datos()
+
+            if not diagnostico["ok"]:
+
+                raise RuntimeError(
+                    "Diagnostico de base temporal con incidencias: "
+                    + "; ".join(
+                        diagnostico["errores"] + diagnostico["advertencias"]
+                    )
+                )
+
+        finally:
+
+            database.RUTA_BD = original
 
 
 def check_business_rules():
