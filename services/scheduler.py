@@ -8,9 +8,7 @@ from services.constraints import (
 )
 from services.rules.candidatos import (
     coste_desplazamiento,
-    motivo_no_puede_trabajar,
-    puede_trabajar,
-    puntuacion_preferencia
+    puede_trabajar
 )
 from services.rules.descansos import (
     asegurar_descanso_consecutivo,
@@ -22,6 +20,11 @@ from services.rules.disponibilidad import (
     intervalo_turno,
     parsear_fecha
 )
+from services.planning_incidents import explicar_regla_incumplida
+from services.planning_scoring import (
+    puntuacion_solucion as calcular_puntuacion_solucion
+)
+from services.planning_validation import validar_planificacion
 
 
 def preparar_datos(
@@ -150,11 +153,14 @@ def construir_planificacion(datos):
         incidencias_horas_pendientes(repartidores)
     )
 
-    return {
+    resultado = {
         "horario": horario,
         "resumen": crear_resumen(repartidores),
         "incidencias": incidencias
     }
+    resultado["incidencias"].extend(validar_planificacion(resultado))
+
+    return resultado
 
 
 def construir_planificacion_multiciudad(datos):
@@ -234,7 +240,7 @@ def construir_planificacion_multiciudad(datos):
             incidencias_horas_pendientes(repartidores)
         )
 
-    return {
+    resultado = {
         "horario": horario,
         "ciudades": crear_vista_ciudades(
             ciudades,
@@ -244,6 +250,9 @@ def construir_planificacion_multiciudad(datos):
         "resumen": crear_resumen(repartidores),
         "incidencias": incidencias
     }
+    resultado["incidencias"].extend(validar_planificacion(resultado))
+
+    return resultado
 
 
 def preparar_estado_repartidor(repartidor):
@@ -627,13 +636,14 @@ def crear_incidencia_demanda(repartidores, slot, dia, fecha, cubiertos):
     faltan = slot["necesarios"] - cubiertos
     restaurante = slot["restaurante"]
     turno = slot["turno"]
-    motivo = regla_incumplida_principal(
+    explicacion = explicar_regla_incumplida(
         repartidores,
         restaurante,
         dia,
         turno,
         fecha
     )
+    motivo = explicacion["principal"]
 
     return {
         "ciudad_id": restaurante.get("ciudad_id"),
@@ -655,7 +665,8 @@ def crear_incidencia_demanda(repartidores, slot, dia, fecha, cubiertos):
             f"Regla incumplida: {motivo}."
         ),
         "advertencia": True,
-        "regla": "cobertura requerida por demanda"
+        "regla": "cobertura requerida por demanda",
+        "detalle_reglas": explicacion["detalle"]
     }
 
 
@@ -669,6 +680,14 @@ def crear_incidencia_cobertura(
     cubiertos
 ):
 
+    explicacion = explicar_regla_incumplida(
+        repartidores,
+        restaurante,
+        dia,
+        turno,
+        fecha
+    )
+
     return {
         "dia": dia,
         "turno": turno["nombre"],
@@ -676,41 +695,23 @@ def crear_incidencia_cobertura(
         "motivo": (
             "No se cumple el minimo de repartidores por turno "
             f"({cubiertos}/{minimo}). "
-            f"Regla incumplida: {regla_incumplida_principal(repartidores, restaurante, dia, turno, fecha)}."
+            f"Regla incumplida: {explicacion['principal']}."
         ),
         "advertencia": True,
-        "regla": "minimo de repartidores por turno"
+        "regla": "minimo de repartidores por turno",
+        "detalle_reglas": explicacion["detalle"]
     }
 
 
 def regla_incumplida_principal(repartidores, restaurante, dia, turno, fecha):
 
-    motivos = {}
-
-    for repartidor in repartidores:
-
-        motivo = motivo_no_puede_trabajar(
-            repartidor,
-            restaurante,
-            dia,
-            turno,
-            fecha
-        )
-
-        if not motivo:
-
-            continue
-
-        motivos[motivo] = motivos.get(motivo, 0) + 1
-
-    if not motivos:
-
-        return "sin candidatos disponibles"
-
-    return sorted(
-        motivos.items(),
-        key=lambda item: (-item[1], item[0])
-    )[0][0]
+    return explicar_regla_incumplida(
+        repartidores,
+        restaurante,
+        dia,
+        turno,
+        fecha
+    )["principal"]
 
 
 def normalizar_restaurantes(restaurantes):
@@ -976,112 +977,12 @@ def buscar_repartidor(repartidores, restaurante, dia, turno, fecha):
 
 def puntuacion_solucion(repartidor, restaurante, dia, turno):
 
-    horas_turno = turno["horas"]
-    horas_despues = repartidor["horas_asignadas"] + horas_turno
-    maximo = max(1, repartidor["maximo_horas"])
-    carga_relativa = horas_despues / maximo
-
-    complementarias_despues = max(
-        0,
-        horas_despues - repartidor["horas_contratadas"]
-    )
-
-    comidas = repartidor["turnos_comida"]
-    cenas = repartidor["turnos_noche"]
-
-    if turno["nombre"] == "comida":
-
-        comidas += 1
-
-    elif turno["nombre"] == "noche":
-
-        cenas += 1
-
-    diferencia_turnos = abs(comidas - cenas)
-    preferencia = puntuacion_preferencia(
+    return calcular_puntuacion_solucion(
         repartidor,
         restaurante,
+        dia,
         turno
     )
-    desplazamiento = coste_desplazamiento(
-        repartidor,
-        restaurante,
-        dia
-    )
-
-    horas_pendientes = max(
-        0,
-        repartidor["horas_contratadas"] - repartidor["horas_asignadas"]
-    )
-
-    return (
-        prioridad_restaurante_principal(repartidor, restaurante),
-        prioridad_restaurante_autorizado(repartidor, restaurante),
-        prioridad_ciudad_principal(repartidor, restaurante),
-        prioridad_ciudad_autorizada(repartidor, restaurante),
-        0 if repartidor.get("apoyo_flexible") else 1,
-        -preferencia,
-        -horas_pendientes,
-        carga_relativa,
-        complementarias_despues,
-        desplazamiento,
-        diferencia_turnos,
-        horas_despues
-    )
-
-
-def prioridad_restaurante_principal(repartidor, restaurante):
-
-    principal = repartidor.get("restaurante_principal_id")
-
-    if principal and str(principal) == str(restaurante.get("id")):
-
-        return 0
-
-    return 1
-
-
-def prioridad_restaurante_autorizado(repartidor, restaurante):
-
-    if prioridad_restaurante_principal(repartidor, restaurante) == 0:
-
-        return 0
-
-    if str(restaurante.get("id")) in {
-        str(restaurante_id)
-        for restaurante_id in repartidor.get("restaurantes_autorizados", [])
-    }:
-
-        return 0
-
-    return 1
-
-
-def prioridad_ciudad_principal(repartidor, restaurante):
-
-    principal = repartidor.get("ciudad_principal_id")
-
-    if principal and str(principal) == str(restaurante.get("ciudad_id")):
-
-        return 0
-
-    return 1
-
-
-def prioridad_ciudad_autorizada(repartidor, restaurante):
-
-    if prioridad_ciudad_principal(repartidor, restaurante) == 0:
-
-        return 0
-
-    if str(restaurante.get("ciudad_id")) in {
-        str(ciudad_id)
-        for ciudad_id in repartidor.get("ciudades_autorizadas", [])
-    }:
-
-        return 0
-
-    return 1
 
 
 def registrar_tipo_turno(repartidor, turno):
