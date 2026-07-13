@@ -1,8 +1,8 @@
 from services.scheduler import (
     construir_planificacion,
-    construir_planificacion_multiciudad,
-    preparar_datos
+    construir_planificacion_multiciudad
 )
+from services.planning_preparation import preparar_datos_planificacion
 
 
 class PlanningEngine:
@@ -17,7 +17,7 @@ class PlanningEngine:
         bajas=None
     ):
 
-        datos = preparar_datos(
+        datos = preparar_datos_planificacion(
             repartidores,
             restaurantes,
             turnos,
@@ -40,7 +40,7 @@ class PlanningEngine:
         bajas=None
     ):
 
-        datos = preparar_datos(
+        datos = preparar_datos_planificacion(
             repartidores,
             restaurantes,
             fecha_inicio=fecha_inicio,
