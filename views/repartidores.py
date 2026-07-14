@@ -7,6 +7,7 @@ from PySide6.QtWidgets import (
     QTableWidget,
     QTableWidgetItem,
     QHeaderView,
+    QFileDialog,
     QMessageBox,
 )
 
@@ -44,12 +45,14 @@ class VistaRepartidores(QWidget):
 
         self.btn_nuevo = QPushButton("Nuevo repartidor")
         self.btn_nuevo.setProperty("variant", "primary")
+        self.btn_importar = QPushButton("Importar")
         self.btn_editar = QPushButton("Editar")
         self.btn_eliminar = QPushButton("Desactivar")
         self.btn_eliminar.setProperty("variant", "danger")
         self.btn_actualizar = QPushButton("Actualizar")
 
         barra.addWidget(self.btn_nuevo)
+        barra.addWidget(self.btn_importar)
         barra.addWidget(self.btn_editar)
         barra.addWidget(self.btn_eliminar)
         barra.addWidget(self.btn_actualizar)
@@ -88,6 +91,7 @@ class VistaRepartidores(QWidget):
 
         self.btn_actualizar.clicked.connect(self.cargar_tabla)
         self.btn_nuevo.clicked.connect(self.nuevo_repartidor)
+        self.btn_importar.clicked.connect(self.importar_repartidores)
         self.btn_editar.clicked.connect(self.editar_repartidor)
         self.btn_eliminar.clicked.connect(self.desactivar_repartidor)
 
@@ -164,6 +168,57 @@ class VistaRepartidores(QWidget):
         if ventana.exec():
 
             self.cargar_tabla()
+
+    # ======================================
+
+    def importar_repartidores(self):
+
+        ruta, _ = QFileDialog.getOpenFileName(
+            self,
+            "Importar repartidores",
+            "",
+            "Datos (*.csv *.xlsx *.xlsm)"
+        )
+
+        if not ruta:
+
+            return
+
+        try:
+
+            resultado = repartidores_service.importar_desde_archivo(ruta)
+
+        except ValueError as error:
+
+            QMessageBox.warning(
+                self,
+                "Importar repartidores",
+                str(error)
+            )
+            return
+
+        self.cargar_tabla()
+        errores = len(resultado["errores"])
+        detalle_errores = ""
+
+        if errores:
+
+            detalle_errores = "\n\nErrores:\n" + "\n".join(
+                f"Fila {error['fila']}: {error['error']}"
+                for error in resultado["errores"][:5]
+            )
+
+        QMessageBox.information(
+            self,
+            "Importar repartidores",
+            (
+                f"Leidos: {resultado['leidos']}\n"
+                f"Creados: {resultado['creados']}\n"
+                f"Actualizados: {resultado['actualizados']}\n"
+                f"Errores: {errores}"
+                f"{detalle_errores}"
+            )
+        )
 
     # ======================================
 
