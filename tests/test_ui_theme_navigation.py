@@ -58,9 +58,10 @@ class TestUiThemeNavigation(unittest.TestCase):
 
         ventana = VentanaPrincipal()
 
-        self.assertEqual(ventana.stack.count(), 10)
+        self.assertEqual(ventana.stack.count(), 11)
         self.assertIn("inicio", ventana.paginas)
         self.assertIn("ciudades", ventana.paginas)
+        self.assertIn("reglas", ventana.paginas)
         self.assertIn("configuracion", ventana.paginas)
 
     def test_cambio_pagina_desde_menu(self):

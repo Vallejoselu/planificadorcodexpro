@@ -22,6 +22,7 @@ from views.estadisticas import VistaEstadisticas
 from views.exportaciones import VistaExportaciones
 from views.inicio import VistaInicio
 from views.repartidores import VistaRepartidores
+from views.reglas import VistaReglas
 from views.restaurantes import VistaRestaurantes
 from views.turnos import VistaTurnos
 
@@ -86,6 +87,7 @@ class VentanaPrincipal(QMainWindow):
         self.registrar_pagina("turnos", VistaTurnos())
         self.registrar_pagina("cuadrantes", VistaCuadrantes())
         self.registrar_pagina("asistente", VistaAsistente())
+        self.registrar_pagina("reglas", VistaReglas())
         self.registrar_pagina("estadisticas", VistaEstadisticas())
         self.registrar_pagina("exportar", VistaExportaciones())
         self.registrar_pagina("configuracion", VistaConfiguracion())
@@ -140,6 +142,11 @@ class VentanaPrincipal(QMainWindow):
             "asistente",
             "Asistente",
             QStyle.SP_MessageBoxInformation
+        )
+        self.agregar_boton(
+            "reglas",
+            "Reglas",
+            QStyle.SP_FileDialogContentsView
         )
         self.agregar_boton(
             "estadisticas",
