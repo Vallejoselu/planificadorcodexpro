@@ -1,5 +1,6 @@
 from repositories.repartidores_repository import RepartidoresRepository
 from services.descansos import descanso_es_valido, siguiente_descanso_valido
+from services.importacion_repartidores import ImportadorRepartidores
 from services.rules.descansos import dias_no_disponibles, tiene_dias_consecutivos
 
 
@@ -22,6 +23,12 @@ class RepartidoresService:
     def desactivar(self, repartidor_id):
 
         return self.repartidores_repository.desactivar(repartidor_id)
+
+    def importar_desde_archivo(self, ruta):
+
+        return ImportadorRepartidores(
+            self.repartidores_repository
+        ).importar(ruta)
 
     def siguiente_descanso_valido(self, dia_inicio):
 
