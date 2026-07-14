@@ -343,6 +343,120 @@ def insertar_disponibilidad(repartidor_id, disponibilidad):
     conexion.close()
 
 
+def insertar_vacacion(
+    repartidor_id,
+    fecha_inicio,
+    fecha_fin,
+    observaciones="",
+    activo=1
+):
+
+    crear_base_datos()
+
+    conexion = conectar()
+    cursor = conexion.cursor()
+    cursor.execute("""
+    SELECT id
+    FROM vacaciones
+    WHERE repartidor_id=?
+    AND fecha_inicio=?
+    AND fecha_fin=?
+    AND activo=?
+    """,(
+        repartidor_id,
+        fecha_inicio,
+        fecha_fin,
+        int(activo)
+    ))
+    existente = cursor.fetchone()
+
+    if existente:
+
+        conexion.close()
+        return existente[0], False
+
+    cursor.execute("""
+    INSERT INTO vacaciones(
+        repartidor_id,
+        fecha_inicio,
+        fecha_fin,
+        activo,
+        observaciones
+    )
+    VALUES(?,?,?,?,?)
+    """,(
+        repartidor_id,
+        fecha_inicio,
+        fecha_fin,
+        int(activo),
+        observaciones
+    ))
+    conexion.commit()
+    ausencia_id = cursor.lastrowid
+    conexion.close()
+
+    return ausencia_id, True
+
+
+def insertar_baja(
+    repartidor_id,
+    fecha_inicio,
+    fecha_fin=None,
+    observaciones="",
+    activa=1
+):
+
+    crear_base_datos()
+
+    conexion = conectar()
+    cursor = conexion.cursor()
+    cursor.execute("""
+    SELECT id
+    FROM bajas
+    WHERE repartidor_id=?
+    AND fecha_inicio=?
+    AND (
+        (fecha_fin IS NULL AND ? IS NULL)
+        OR fecha_fin=?
+    )
+    AND activa=?
+    """,(
+        repartidor_id,
+        fecha_inicio,
+        fecha_fin,
+        fecha_fin,
+        int(activa)
+    ))
+    existente = cursor.fetchone()
+
+    if existente:
+
+        conexion.close()
+        return existente[0], False
+
+    cursor.execute("""
+    INSERT INTO bajas(
+        repartidor_id,
+        fecha_inicio,
+        fecha_fin,
+        activa,
+        observaciones
+    )
+    VALUES(?,?,?,?,?)
+    """,(
+        repartidor_id,
+        fecha_inicio,
+        fecha_fin,
+        int(activa),
+        observaciones
+    ))
+    conexion.commit()
+    ausencia_id = cursor.lastrowid
+    conexion.close()
+
+    return ausencia_id, True
+
+
 def obtener_id_ciudad_sin_ciudad():
 
     crear_base_datos()
