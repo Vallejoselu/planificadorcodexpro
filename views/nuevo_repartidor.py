@@ -110,8 +110,14 @@ class NuevoRepartidor(QDialog):
 
         self.apoyo_flexible = QCheckBox()
 
+        self.permite_horas_complementarias = QCheckBox()
+        self.permite_horas_complementarias.stateChanged.connect(
+            self.actualizar_estado_horas_complementarias
+        )
+
         self.horas_complementarias = QSpinBox()
         self.horas_complementarias.setRange(0, 40)
+        self.horas_complementarias.setEnabled(False)
 
         self.max_horas_diarias = QSpinBox()
         self.max_horas_diarias.setRange(1, 24)
@@ -137,7 +143,14 @@ class NuevoRepartidor(QDialog):
 
         formulario.addRow("Nombre", self.nombre)
         formulario.addRow("Horas", self.horas)
-        formulario.addRow("Horas complementarias", self.horas_complementarias)
+        formulario.addRow(
+            "Permitir horas complementarias",
+            self.permite_horas_complementarias
+        )
+        formulario.addRow(
+            "Limite horas complementarias",
+            self.horas_complementarias
+        )
         formulario.addRow("Max horas diarias", self.max_horas_diarias)
         formulario.addRow("Max dias consecutivos", self.max_dias_consecutivos)
         formulario.addRow("Ciudad principal", self.ciudad_principal)
@@ -270,6 +283,10 @@ class NuevoRepartidor(QDialog):
         self.horas_complementarias.setValue(
             int(self.repartidor.get("horas_complementarias") or 0)
         )
+        self.permite_horas_complementarias.setChecked(
+            self.horas_complementarias.value() > 0
+        )
+        self.actualizar_estado_horas_complementarias()
         self.max_horas_diarias.setValue(
             int(self.repartidor.get("max_horas_diarias") or 10)
         )
@@ -402,7 +419,11 @@ class NuevoRepartidor(QDialog):
                     self.restaurante_principal.currentData()
                 ),
                 apoyo_flexible=int(self.apoyo_flexible.isChecked()),
-                horas_complementarias=self.horas_complementarias.value(),
+                horas_complementarias=(
+                    self.horas_complementarias.value()
+                    if self.permite_horas_complementarias.isChecked()
+                    else 0
+                ),
                 max_horas_diarias=self.max_horas_diarias.value(),
                 max_dias_consecutivos=self.max_dias_consecutivos.value(),
                 ciudades_autorizadas=self.obtener_ids_seleccionados(
@@ -424,6 +445,12 @@ class NuevoRepartidor(QDialog):
             return
 
         self.accept()
+
+    def actualizar_estado_horas_complementarias(self, *_):
+
+        self.horas_complementarias.setEnabled(
+            self.permite_horas_complementarias.isChecked()
+        )
 
     def seleccionar_combo(self, combo, valor):
 

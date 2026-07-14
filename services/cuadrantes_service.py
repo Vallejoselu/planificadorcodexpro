@@ -874,6 +874,11 @@ class CuadrantesService:
 
         resumen = resultado.get("resumen", [])
         incidencias = resultado.get("incidencias", [])
+        horas_complementarias = [
+            item
+            for item in resultado.get("horas_complementarias", [])
+            if item.get("usadas", 0) > 0
+        ]
         sin_cubrir = [
             incidencia
             for incidencia in incidencias
@@ -900,6 +905,7 @@ class CuadrantesService:
         return {
             "resumen": resumen,
             "incidencias": incidencias,
+            "horas_complementarias": horas_complementarias,
             "sin_cubrir": sin_cubrir,
             "asignaciones_generadas": turnos_cubiertos,
             "advertencias": len(incidencias),
@@ -941,6 +947,24 @@ class CuadrantesService:
         else:
 
             lineas.append("- Ninguno")
+
+        lineas.extend([
+            "",
+            "Horas complementarias"
+        ])
+
+        if datos["horas_complementarias"]:
+
+            for item in datos["horas_complementarias"]:
+
+                lineas.append(
+                    f"- {item['nombre']}: {item['usadas']:g} h "
+                    f"de {item['limite']:g} permitidas"
+                )
+
+        else:
+
+            lineas.append("- Ninguna")
 
         lineas.extend([
             "",

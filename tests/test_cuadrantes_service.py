@@ -395,6 +395,11 @@ class TestCuadrantesServicePorCapa(unittest.TestCase):
                 }
             },
             "resumen": [{"nombre": "Ana", "horas": 3}],
+            "horas_complementarias": [{
+                "nombre": "Ana",
+                "limite": 4,
+                "usadas": 2
+            }],
             "incidencias": [{
                 "dia": "lunes",
                 "turno": "cena",
@@ -409,6 +414,8 @@ class TestCuadrantesServicePorCapa(unittest.TestCase):
         self.assertIn("Asignaciones generadas: 1", texto)
         self.assertIn("Advertencias: 1", texto)
         self.assertIn("Turnos sin cubrir: 1", texto)
+        self.assertIn("Horas complementarias", texto)
+        self.assertIn("Ana: 2 h de 4 permitidas", texto)
 
     def test_preparar_cambio_no_duplica_mismo_repartidor_mismo_turno(self):
 
