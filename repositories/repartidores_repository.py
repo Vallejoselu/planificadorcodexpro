@@ -23,6 +23,10 @@ class RepartidoresRepository:
 
         return db.actualizar_repartidor(*args, **kwargs)
 
+    def guardar_disponibilidad(self, repartidor_id, disponibilidad):
+
+        return db.insertar_disponibilidad(repartidor_id, disponibilidad)
+
     def desactivar(self, repartidor_id):
 
         return db.eliminar_repartidor(repartidor_id)
