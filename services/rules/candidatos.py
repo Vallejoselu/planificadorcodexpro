@@ -86,7 +86,19 @@ def motivo_no_puede_trabajar(repartidor, restaurante, dia, turno, fecha):
 
             return "preferencia obligatoria de local"
 
-    if repartidor["horas_asignadas"] + turno["horas"] > repartidor["maximo_horas"]:
+    horas_despues = repartidor["horas_asignadas"] + turno["horas"]
+
+    if horas_despues > repartidor["horas_contratadas"]:
+
+        if not repartidor.get("permite_horas_complementarias", False):
+
+            return "horas complementarias no permitidas"
+
+        if horas_despues > repartidor["maximo_horas"]:
+
+            return "limite de horas complementarias"
+
+    if horas_despues > repartidor["maximo_horas"]:
 
         return "horas contratadas y complementarias"
 

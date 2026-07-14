@@ -98,6 +98,39 @@ class TestReglasDescansos(unittest.TestCase):
         self.assertNotIn("domingo", opciones)
         self.assertTrue(formulario.descanso_fin.isReadOnly())
 
+    def test_formulario_controla_permiso_de_horas_complementarias(self):
+
+        formulario = NuevoRepartidor()
+
+        self.assertFalse(formulario.permite_horas_complementarias.isChecked())
+        self.assertFalse(formulario.horas_complementarias.isEnabled())
+
+        formulario.permite_horas_complementarias.setChecked(True)
+
+        self.assertTrue(formulario.horas_complementarias.isEnabled())
+
+        formulario_editado = NuevoRepartidor({
+            "id": 1,
+            "nombre": "Ana",
+            "horas": 30,
+            "zona": "Ronda",
+            "doble_turno": 1,
+            "puede_hasta_la_una": 1,
+            "prioridad_comida": 50,
+            "prioridad_noche": 50,
+            "prioridad_grela": 50,
+            "observaciones": "",
+            "descanso_inicio": None,
+            "descanso_fin": None,
+            "disponibilidad": self.disponibilidad_roberto_listas(),
+            "horas_complementarias": 6
+        })
+
+        self.assertTrue(
+            formulario_editado.permite_horas_complementarias.isChecked()
+        )
+        self.assertEqual(formulario_editado.horas_complementarias.value(), 6)
+
     def test_formulario_calcula_segundo_dia(self):
 
         formulario = NuevoRepartidor()

@@ -160,10 +160,16 @@ def construir_planificacion(datos):
     incidencias.extend(
         incidencias_horas_pendientes(repartidores)
     )
+    incidencias.extend(
+        incidencias_horas_complementarias(repartidores)
+    )
 
     resultado = {
         "horario": horario,
         "resumen": crear_resumen(repartidores),
+        "horas_complementarias": crear_resumen_horas_complementarias(
+            repartidores
+        ),
         "incidencias": incidencias
     }
     resultado["incidencias"].extend(validar_planificacion(resultado))
@@ -248,6 +254,10 @@ def construir_planificacion_multiciudad(datos):
             incidencias_horas_pendientes(repartidores)
         )
 
+    incidencias.extend(
+        incidencias_horas_complementarias(repartidores)
+    )
+
     resultado = {
         "horario": horario,
         "ciudades": crear_vista_ciudades(
@@ -256,6 +266,9 @@ def construir_planificacion_multiciudad(datos):
             horario
         ),
         "resumen": crear_resumen(repartidores),
+        "horas_complementarias": crear_resumen_horas_complementarias(
+            repartidores
+        ),
         "incidencias": incidencias
     }
     resultado["incidencias"].extend(validar_planificacion(resultado))
@@ -303,6 +316,37 @@ def incidencias_descansos_invalidos(repartidores):
                     "Debe corregirse manualmente."
                 )
             })
+
+    return incidencias
+
+
+def incidencias_horas_complementarias(repartidores):
+
+    incidencias = []
+
+    for repartidor in repartidores:
+
+        usadas = repartidor.get("horas_complementarias", 0)
+
+        if usadas <= 0:
+
+            continue
+
+        limite = repartidor.get("limite_horas_complementarias", 0)
+        incidencias.append({
+            "dia": "",
+            "turno": "",
+            "restaurante": "",
+            "repartidor_id": repartidor["id"],
+            "regla": "horas complementarias usadas",
+            "advertencia": True,
+            "horas_complementarias": usadas,
+            "limite_horas_complementarias": limite,
+            "motivo": (
+                f"{repartidor['nombre']} usa {usadas:g} horas "
+                f"complementarias de {limite:g} permitidas."
+            )
+        })
 
     return incidencias
 
@@ -392,9 +436,43 @@ def crear_resumen(repartidores):
             "maximo": repartidor["maximo_horas"],
             "descanso": repartidor["descanso"],
             "horas_complementarias": repartidor["horas_complementarias"],
+            "horas_complementarias_permitidas": repartidor[
+                "permite_horas_complementarias"
+            ],
+            "limite_horas_complementarias": repartidor[
+                "limite_horas_complementarias"
+            ],
+            "horas_complementarias_disponibles": max(
+                0,
+                repartidor["limite_horas_complementarias"]
+                - repartidor["horas_complementarias"]
+            ),
             "comidas": repartidor["turnos_comida"],
             "cenas": repartidor["turnos_noche"],
             "desplazamientos": repartidor["desplazamientos"]
+        })
+
+    return resumen
+
+
+def crear_resumen_horas_complementarias(repartidores):
+
+    resumen = []
+
+    for repartidor in repartidores:
+
+        usadas = repartidor.get("horas_complementarias", 0)
+        limite = repartidor.get("limite_horas_complementarias", 0)
+        resumen.append({
+            "repartidor_id": repartidor["id"],
+            "nombre": repartidor["nombre"],
+            "permitidas": repartidor.get(
+                "permite_horas_complementarias",
+                False
+            ),
+            "limite": limite,
+            "usadas": usadas,
+            "disponibles": max(0, limite - usadas)
         })
 
     return resumen
@@ -470,16 +548,38 @@ def normalizar_repartidor(repartidor):
             datos["restaurantes_autorizados"] = repartidor[22]
 
     horas = int(datos.get("horas", 0) or 0)
-    horas_complementarias = int(datos.get("horas_complementarias", 0) or 0)
+    limite_horas_complementarias = int(
+        datos.get(
+            "limite_horas_complementarias",
+            datos.get("horas_complementarias", 0)
+        ) or 0
+    )
+    permite_horas_complementarias = datos.get(
+        "permite_horas_complementarias",
+        limite_horas_complementarias > 0
+    )
+    permite_horas_complementarias = valor_booleano(
+        permite_horas_complementarias
+    )
+
+    if limite_horas_complementarias < 0:
+
+        limite_horas_complementarias = 0
+
+    if not permite_horas_complementarias:
+
+        limite_horas_complementarias = 0
 
     if horas not in HORAS_CONTRATO:
 
         horas = min(horas, MAX_HORAS_SEMANALES)
 
     datos["horas_contratadas"] = horas
+    datos["permite_horas_complementarias"] = permite_horas_complementarias
+    datos["limite_horas_complementarias"] = limite_horas_complementarias
     datos["maximo_horas"] = min(
         MAX_HORAS_SEMANALES,
-        horas + horas_complementarias
+        horas + limite_horas_complementarias
     )
     datos["max_horas_diarias"] = float(
         datos.get("max_horas_diarias", 10) or 0
@@ -990,6 +1090,15 @@ def normalizar_ausencias(ausencias):
         )
 
     return resultado
+
+
+def valor_booleano(valor):
+
+    if isinstance(valor, str):
+
+        return valor.strip().lower() in ("1", "true", "si", "s", "yes")
+
+    return bool(valor)
 
 
 def normalizar_rango(rango):

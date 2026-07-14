@@ -191,6 +191,33 @@ class TestGeneradorMulticiudadDemanda(unittest.TestCase):
             14
         )
 
+    def test_multiciudad_resume_y_alerta_horas_complementarias(self):
+
+        datos = self._datos_base()
+        datos["demandas"].append({
+            "restaurante_id": 1,
+            "turno_restaurante_id": 10,
+            "dia_semana": "martes",
+            "repartidores_necesarios": 1,
+            "activo": 1
+        })
+        repartidor = self._repartidor(1, restaurante=1, ciudad=1)
+        repartidor["horas"] = 4
+        repartidor["horas_complementarias"] = 4
+        datos["repartidores"] = [repartidor]
+
+        resultado = self._generar(datos)
+
+        self.assertEqual(resultado["resumen"][0]["horas"], 8)
+        self.assertEqual(resultado["resumen"][0]["horas_complementarias"], 4)
+        self.assertEqual(resultado["horas_complementarias"][0]["usadas"], 4)
+        self.assertTrue(
+            any(
+                incidencia.get("regla") == "horas complementarias usadas"
+                for incidencia in resultado["incidencias"]
+            )
+        )
+
     def test_cobertura_incompleta_detalla_contexto_y_faltantes(self):
 
         datos = self._datos_base(necesarios=4)
