@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 from repositories.calendario_repository import CalendarioRepository
 from repositories.ciudades_repository import CiudadesRepository
 from repositories.demandas_ciudad_repository import DemandasCiudadRepository
@@ -7,6 +9,8 @@ from repositories.restaurantes_repository import RestaurantesRepository
 from repositories.plantillas_repository import PlantillasRepository
 from repositories.turnos_repository import TurnosRepository
 from database.schema import DIAS_SEMANA
+from services.rules.ausencias import esta_ausente_por_tipo
+from services.rules.disponibilidad import parsear_fecha
 from services.fechas import normalizar_fecha_inicio_semana
 from services.planning_engine import PlanningEngine
 
@@ -498,12 +502,29 @@ class CuadrantesService:
         fecha_inicio,
         turnos,
         restaurantes,
-        repartidores
+        repartidores,
+        demandas_restaurante=None,
+        demandas_zona=None,
+        demandas_ciudad=None,
+        restaurante_turnos=None
     ):
 
         calendario = self.cargar_semana(fecha_inicio)
         asignaciones = self.agrupar_calendario(calendario)
         indicadores = self.indicadores_semana(asignaciones)
+        alertas = self.alertas_estado_semana(
+            fecha_inicio,
+            calendario,
+            asignaciones,
+            indicadores,
+            turnos,
+            restaurantes,
+            repartidores,
+            demandas_restaurante=demandas_restaurante,
+            demandas_zona=demandas_zona,
+            demandas_ciudad=demandas_ciudad,
+            restaurante_turnos=restaurante_turnos
+        )
 
         return {
             "calendario": calendario,
@@ -517,6 +538,7 @@ class CuadrantesService:
                 )
             ),
             "indicadores": indicadores,
+            "alertas": alertas,
             "celdas_semana": self.construir_celdas_semana(
                 asignaciones,
                 turnos,
@@ -566,6 +588,390 @@ class CuadrantesService:
             "asignaciones": total,
             "con_repartidor": total - sin_repartidor,
             "sin_repartidor": sin_repartidor
+        }
+
+    def alertas_estado_semana(
+        self,
+        fecha_inicio,
+        calendario,
+        asignaciones,
+        indicadores,
+        turnos,
+        restaurantes,
+        repartidores,
+        demandas_restaurante=None,
+        demandas_zona=None,
+        demandas_ciudad=None,
+        restaurante_turnos=None
+    ):
+
+        alertas = []
+        alertas.extend(
+            self.alertas_asignaciones_sin_repartidor(
+                asignaciones,
+                turnos
+            )
+        )
+        alertas.extend(
+            self.alertas_horas_repartidores(
+                asignaciones,
+                turnos,
+                repartidores
+            )
+        )
+        alertas.extend(
+            self.alertas_restaurantes_sin_demanda(
+                restaurantes,
+                demandas_restaurante or [],
+                demandas_zona or [],
+                demandas_ciudad or []
+            )
+        )
+        alertas.extend(
+            self.alertas_conflictos_ausencias(
+                fecha_inicio,
+                calendario,
+                repartidores
+            )
+        )
+
+        if not calendario and indicadores["asignaciones"] == 0:
+
+            return alertas
+
+        return alertas
+
+    def alertas_asignaciones_sin_repartidor(self, asignaciones, turnos):
+
+        alertas = []
+        turnos_por_id = self.indexar_por_id(turnos)
+
+        for (dia, turno_id), elementos in sorted(asignaciones.items()):
+
+            pendientes = [
+                asignacion
+                for asignacion in elementos
+                if asignacion.get("repartidor_id") is None
+            ]
+
+            if not pendientes:
+
+                continue
+
+            turno = turnos_por_id.get(turno_id)
+            nombre_turno = self.nombre_turno(turno)
+            detalle = (
+                f"{dia} / {nombre_turno}: "
+                f"{len(pendientes)} asignaciones sin repartidor."
+            )
+            alertas.append(
+                self.crear_alerta("Turnos sin cubrir", detalle, "alta")
+            )
+            alertas.append(
+                self.crear_alerta(
+                    "Asignaciones sin repartidor",
+                    detalle,
+                    "alta"
+                )
+            )
+
+        return alertas
+
+    def alertas_horas_repartidores(self, asignaciones, turnos, repartidores):
+
+        alertas = []
+        horas = self.horas_por_repartidor_asignado(asignaciones, turnos)
+
+        for repartidor in repartidores:
+
+            repartidor_id = self.valor_campo(repartidor, "id", 0)
+            nombre = self.valor_campo(repartidor, "nombre", 1)
+            contratadas = float(self.valor_campo(repartidor, "horas", 2) or 0)
+            trabajadas = float(horas.get(repartidor_id, 0) or 0)
+            extra = max(0, trabajadas - contratadas)
+            pendientes = max(0, contratadas - trabajadas)
+
+            if pendientes > 0 and trabajadas > 0:
+
+                alertas.append(
+                    self.crear_alerta(
+                        "Horas pendientes",
+                        (
+                            f"{nombre}: {pendientes:g} h pendientes "
+                            f"de {contratadas:g} contratadas."
+                        ),
+                        "media"
+                    )
+                )
+
+            if extra > 0:
+
+                alertas.append(
+                    self.crear_alerta(
+                        "Horas extra",
+                        (
+                            f"{nombre}: {extra:g} h extra "
+                            f"({trabajadas:g}/{contratadas:g} h)."
+                        ),
+                        "media"
+                    )
+                )
+
+        return alertas
+
+    def horas_por_repartidor_asignado(self, asignaciones, turnos):
+
+        turnos_por_id = self.indexar_por_id(turnos)
+        horas = {}
+
+        for (dia, turno_id), elementos in asignaciones.items():
+
+            turno = turnos_por_id.get(turno_id)
+            duracion = float(self.valor_campo(turno, "duracion", 6) or 0)
+
+            for asignacion in elementos:
+
+                repartidor_id = asignacion.get("repartidor_id")
+
+                if repartidor_id is None:
+
+                    continue
+
+                horas[repartidor_id] = horas.get(repartidor_id, 0) + duracion
+
+        return horas
+
+    def alertas_restaurantes_sin_demanda(
+        self,
+        restaurantes,
+        demandas_restaurante,
+        demandas_zona,
+        demandas_ciudad
+    ):
+
+        alertas = []
+
+        for restaurante in restaurantes:
+
+            if not self.restaurante_activo(restaurante):
+
+                continue
+
+            if self.restaurante_tiene_demanda_configurada(
+                restaurante,
+                demandas_restaurante,
+                demandas_zona,
+                demandas_ciudad
+            ):
+
+                continue
+
+            alertas.append(
+                self.crear_alerta(
+                    "Restaurantes sin demanda",
+                    (
+                        f"{self.valor_campo(restaurante, 'nombre', 1)} "
+                        "no tiene demanda configurada."
+                    ),
+                    "media"
+                )
+            )
+
+        return alertas
+
+    def restaurante_tiene_demanda_configurada(
+        self,
+        restaurante,
+        demandas_restaurante,
+        demandas_zona,
+        demandas_ciudad
+    ):
+
+        restaurante_id = self.valor_campo(restaurante, "id", 0)
+        zona = self.valor_campo(restaurante, "zona", 3)
+        ciudad_id = self.valor_campo(restaurante, "ciudad_id", 9)
+
+        return (
+            any(
+                self.demanda_activa(demanda, 6)
+                and self.valor_campo(demanda, "restaurante_id", 1)
+                == restaurante_id
+                for demanda in demandas_restaurante
+            )
+            or any(
+                self.demanda_activa(demanda, 6)
+                and self.valor_campo(demanda, "zona", 1) == zona
+                for demanda in demandas_zona
+            )
+            or any(
+                self.demanda_activa(demanda, 7)
+                and self.valor_campo(demanda, "ciudad_id", 1) == ciudad_id
+                for demanda in demandas_ciudad
+            )
+        )
+
+    def alertas_conflictos_ausencias(
+        self,
+        fecha_inicio,
+        calendario,
+        repartidores
+    ):
+
+        alertas = []
+        fechas = self.fechas_semana(fecha_inicio)
+        repartidores_por_id = {
+            self.valor_campo(repartidor, "id", 0): repartidor
+            for repartidor in repartidores
+        }
+
+        for fila in calendario:
+
+            repartidor_id = fila[9] if len(fila) > 9 else None
+
+            if repartidor_id is None:
+
+                continue
+
+            dia = fila[1]
+            fecha = fechas.get(dia)
+            repartidor = self.repartidor_para_alertas(
+                repartidores_por_id.get(repartidor_id)
+            )
+
+            if not repartidor:
+
+                continue
+
+            if esta_ausente_por_tipo(repartidor, "vacaciones", fecha, dia):
+
+                alertas.append(
+                    self.crear_alerta(
+                        "Conflictos por vacaciones/bajas",
+                        (
+                            f"{repartidor['nombre']} esta de vacaciones "
+                            f"el {dia} y tiene un turno asignado."
+                        ),
+                        "alta"
+                    )
+                )
+
+            if esta_ausente_por_tipo(repartidor, "bajas", fecha, dia):
+
+                alertas.append(
+                    self.crear_alerta(
+                        "Conflictos por vacaciones/bajas",
+                        (
+                            f"{repartidor['nombre']} esta de baja "
+                            f"el {dia} y tiene un turno asignado."
+                        ),
+                        "alta"
+                    )
+                )
+
+        return alertas
+
+    def alertas_generacion(self, resultado):
+
+        alertas = []
+
+        for incidencia in resultado.get("incidencias", []):
+
+            alerta = self.alerta_desde_incidencia(incidencia)
+
+            if alerta:
+
+                alertas.append(alerta)
+
+        for item in resultado.get("horas_complementarias", []):
+
+            if item.get("usadas", 0) <= 0:
+
+                continue
+
+            alertas.append(
+                self.crear_alerta(
+                    "Horas extra",
+                    (
+                        f"{item['nombre']}: {item['usadas']:g} h extra "
+                        f"de {item['limite']:g} permitidas."
+                    ),
+                    "media"
+                )
+            )
+
+        for dia, turnos_dia in resultado.get("horario", {}).items():
+
+            for nombre_turno, asignaciones in turnos_dia.items():
+
+                sin_repartidor = sum(
+                    1
+                    for asignacion in asignaciones
+                    if asignacion.get("repartidor_id") is None
+                )
+
+                if sin_repartidor:
+
+                    detalle = (
+                        f"{dia} / {nombre_turno}: "
+                        f"{sin_repartidor} asignaciones sin repartidor."
+                    )
+                    alertas.append(
+                        self.crear_alerta(
+                            "Asignaciones sin repartidor",
+                            detalle,
+                            "alta"
+                        )
+                    )
+
+        return alertas
+
+    def alerta_desde_incidencia(self, incidencia):
+
+        motivo = incidencia.get("motivo", "")
+        regla = incidencia.get("regla", "")
+        texto = f"{motivo} {regla}".lower()
+        detalle = self.texto_incidencia(incidencia)
+
+        if (
+            "cobertura" in texto
+            or "faltan" in texto
+            or "minimo de repartidores" in texto
+            or "no hay repartidor" in texto
+        ):
+
+            return self.crear_alerta("Turnos sin cubrir", detalle, "alta")
+
+        if "horas pendientes" in texto:
+
+            return self.crear_alerta("Horas pendientes", detalle, "media")
+
+        if (
+            "horas complementarias" in texto
+            or "horas extra" in texto
+        ):
+
+            return self.crear_alerta("Horas extra", detalle, "media")
+
+        if (
+            "ausencia" in texto
+            or "vacaciones" in texto
+            or "baja" in texto
+        ):
+
+            return self.crear_alerta(
+                "Conflictos por vacaciones/bajas",
+                detalle,
+                "alta"
+            )
+
+        return None
+
+    def crear_alerta(self, tipo, detalle, severidad="media"):
+
+        return {
+            "tipo": tipo,
+            "detalle": detalle,
+            "severidad": severidad
         }
 
     def texto_estado_semana(self, indicadores):
@@ -807,9 +1213,72 @@ class CuadrantesService:
     def indexar_por_id(self, elementos):
 
         return {
-            elemento[0]: elemento
+            self.valor_campo(elemento, "id", 0): elemento
             for elemento in elementos
             if elemento
+        }
+
+    def valor_campo(self, elemento, clave, indice, defecto=None):
+
+        if not elemento:
+
+            return defecto
+
+        if isinstance(elemento, dict):
+
+            return elemento.get(clave, defecto)
+
+        if len(elemento) > indice:
+
+            return elemento[indice]
+
+        return defecto
+
+    def demanda_activa(self, demanda, indice_activo):
+
+        return bool(self.valor_campo(demanda, "activo", indice_activo, 1))
+
+    def restaurante_activo(self, restaurante):
+
+        return bool(self.valor_campo(restaurante, "activo", 6, 1))
+
+    def nombre_turno(self, turno):
+
+        return self.valor_campo(turno, "nombre", 2, "Turno")
+
+    def fechas_semana(self, fecha_inicio):
+
+        inicio = parsear_fecha(normalizar_fecha_inicio_semana(fecha_inicio))
+
+        if not inicio:
+
+            return {}
+
+        return {
+            dia: inicio + timedelta(days=indice)
+            for indice, dia in enumerate(DIAS_SEMANA)
+        }
+
+    def repartidor_para_alertas(self, repartidor):
+
+        if not repartidor:
+
+            return None
+
+        if isinstance(repartidor, dict):
+
+            return repartidor
+
+        return {
+            "id": self.valor_campo(repartidor, "id", 0),
+            "nombre": self.valor_campo(repartidor, "nombre", 1),
+            "vacaciones": self.valor_campo(
+                repartidor,
+                "vacaciones",
+                12,
+                []
+            ) or [],
+            "bajas": self.valor_campo(repartidor, "bajas", 13, []) or []
         }
 
     def color_restaurante(self, restaurante_id):
