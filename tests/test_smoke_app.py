@@ -40,6 +40,7 @@ class TestSmokeAplicacion(unittest.TestCase):
                     "turnos",
                     "cuadrantes",
                     "asistente",
+                    "reglas",
                     "estadisticas",
                     "exportar",
                     "configuracion"
