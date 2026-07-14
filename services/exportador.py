@@ -6,6 +6,7 @@ from PySide6.QtGui import QPageSize, QPdfWriter, QTextDocument
 
 from database.schema import DIAS_SEMANA
 from repositories.calendario_repository import CalendarioRepository
+from repositories.historial_repository import HistorialRepository
 from repositories.repartidores_repository import RepartidoresRepository
 from repositories.restaurantes_repository import RestaurantesRepository
 from repositories.turnos_repository import TurnosRepository
@@ -17,6 +18,7 @@ calendario_repository = CalendarioRepository()
 repartidores_repository = RepartidoresRepository()
 restaurantes_repository = RestaurantesRepository()
 turnos_repository = TurnosRepository()
+historial_repository = HistorialRepository()
 
 
 def exportar_excel(ruta, fecha_inicio_semana=None):
@@ -24,6 +26,7 @@ def exportar_excel(ruta, fecha_inicio_semana=None):
     from openpyxl import Workbook
     from openpyxl.styles import Font, PatternFill
 
+    fecha_inicio_semana = normalizar_fecha_inicio_semana(fecha_inicio_semana)
     datos = preparar_datos_exportacion(fecha_inicio_semana)
     libro = Workbook()
     hoja = libro.active
@@ -66,10 +69,12 @@ def exportar_excel(ruta, fecha_inicio_semana=None):
             hoja.column_dimensions[columna[0].column_letter].width = ancho + 2
 
     libro.save(ruta)
+    registrar_exportacion("Excel", ruta, fecha_inicio_semana)
 
 
 def exportar_csv(ruta, fecha_inicio_semana=None):
 
+    fecha_inicio_semana = normalizar_fecha_inicio_semana(fecha_inicio_semana)
     datos = preparar_datos_exportacion(fecha_inicio_semana)
 
     with open(ruta, "w", newline="", encoding="utf-8-sig") as archivo:
@@ -101,9 +106,12 @@ def exportar_csv(ruta, fecha_inicio_semana=None):
             datos["totales"]
         )
 
+    registrar_exportacion("CSV", ruta, fecha_inicio_semana)
+
 
 def exportar_pdf(ruta, fecha_inicio_semana=None):
 
+    fecha_inicio_semana = normalizar_fecha_inicio_semana(fecha_inicio_semana)
     documento = QTextDocument()
     documento.setHtml(_crear_html(preparar_datos_exportacion(fecha_inicio_semana)))
 
@@ -112,6 +120,17 @@ def exportar_pdf(ruta, fecha_inicio_semana=None):
     escritor.setResolution(96)
 
     documento.print_(escritor)
+    registrar_exportacion("PDF", ruta, fecha_inicio_semana)
+
+
+def registrar_exportacion(formato, ruta, fecha_inicio_semana):
+
+    historial_repository.registrar(
+        "Exportar",
+        "exportacion",
+        f"{formato}: {ruta}",
+        fecha_inicio_semana
+    )
 
 
 def preparar_datos_exportacion(fecha_inicio_semana=None):

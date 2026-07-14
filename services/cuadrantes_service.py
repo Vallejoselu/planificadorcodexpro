@@ -4,6 +4,7 @@ from repositories.calendario_repository import CalendarioRepository
 from repositories.ciudades_repository import CiudadesRepository
 from repositories.demandas_ciudad_repository import DemandasCiudadRepository
 from repositories.demandas_zona_repository import DemandasZonaRepository
+from repositories.historial_repository import HistorialRepository
 from repositories.repartidores_repository import RepartidoresRepository
 from repositories.restaurantes_repository import RestaurantesRepository
 from repositories.plantillas_repository import PlantillasRepository
@@ -25,6 +26,7 @@ class CuadrantesService:
         restaurantes_repository=None,
         demandas_ciudad_repository=None,
         demandas_zona_repository=None,
+        historial_repository=None,
         plantillas_repository=None,
         turnos_repository=None,
         planning_engine=None
@@ -45,6 +47,9 @@ class CuadrantesService:
         )
         self.demandas_zona_repository = (
             demandas_zona_repository or DemandasZonaRepository()
+        )
+        self.historial_repository = (
+            historial_repository or HistorialRepository()
         )
         self.plantillas_repository = (
             plantillas_repository or PlantillasRepository()
@@ -117,6 +122,12 @@ class CuadrantesService:
                 demandas_multinivel,
                 fecha_inicio=fecha_inicio
             )
+            self.registrar_historial(
+                "Generar cuadrante",
+                "cuadrante",
+                "Generacion automatica multiciudad",
+                fecha_inicio
+            )
 
             return {
                 "resultado": resultado,
@@ -133,6 +144,12 @@ class CuadrantesService:
             contexto["restaurantes"],
             turnos_engine,
             fecha_inicio=fecha_inicio
+        )
+        self.registrar_historial(
+            "Generar cuadrante",
+            "cuadrante",
+            "Generacion automatica",
+            fecha_inicio
         )
 
         return {
@@ -156,6 +173,21 @@ class CuadrantesService:
         if not contexto["turnos"] and not contexto["restaurante_turnos"]:
 
             raise ValueError("No hay turnos activos.")
+
+    def registrar_historial(
+        self,
+        accion,
+        entidad="",
+        detalle="",
+        fecha_inicio_semana=None
+    ):
+
+        return self.historial_repository.registrar(
+            accion,
+            entidad,
+            detalle,
+            fecha_inicio_semana
+        )
 
     def hay_demanda_multiciudad(self, demandas):
 
@@ -324,11 +356,23 @@ class CuadrantesService:
     def guardar_cuadrante(self, fecha_inicio, asignaciones):
 
         asignaciones = self.resolver_turnos_asignaciones(asignaciones)
-
-        return self.calendario_repository.reemplazar_semana(
-            normalizar_fecha_inicio_semana(fecha_inicio),
+        fecha_inicio = normalizar_fecha_inicio_semana(fecha_inicio)
+        total = sum(
+            len(elementos)
+            for elementos in (asignaciones or {}).values()
+        )
+        resultado = self.calendario_repository.reemplazar_semana(
+            fecha_inicio,
             asignaciones
         )
+        self.registrar_historial(
+            "Crear cuadrante",
+            "cuadrante",
+            f"Cuadrante guardado con {total} asignaciones",
+            fecha_inicio
+        )
+
+        return resultado
 
     def sobrescribir_semana(self, fecha_inicio, asignaciones):
 
@@ -1336,6 +1380,27 @@ class CuadrantesService:
                 turno_id,
                 asignacion["restaurante_id"],
                 asignacion.get("repartidor_id"),
+                fecha_inicio
+            )
+
+        if asignaciones:
+
+            self.registrar_historial(
+                "Editar asignacion",
+                "calendario_semanal",
+                (
+                    f"{dia} turno {turno_id}: "
+                    f"{len(asignaciones)} asignaciones"
+                ),
+                fecha_inicio
+            )
+
+        else:
+
+            self.registrar_historial(
+                "Eliminar turno",
+                "calendario_semanal",
+                f"{dia} turno {turno_id}",
                 fecha_inicio
             )
 

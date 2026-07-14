@@ -80,6 +80,98 @@ def reparar_base_datos():
     return ejecutar_reparacion_base_datos(RUTA_BD)
 
 
+def registrar_historial_accion(
+    accion,
+    entidad="",
+    detalle="",
+    fecha_inicio_semana=None,
+    ruta_bd=None
+):
+
+    accion = str(accion or "").strip()
+
+    if not accion:
+
+        raise ValueError("La accion del historial es obligatoria.")
+
+    fecha_inicio_semana = (
+        normalizar_fecha_inicio_semana(fecha_inicio_semana)
+        if fecha_inicio_semana
+        else None
+    )
+    ejecutar_migraciones(ruta_bd or RUTA_BD)
+    conexion = conectar_con_pragmas(ruta_bd or RUTA_BD)
+    cursor = conexion.cursor()
+
+    cursor.execute("""
+    INSERT INTO historial_acciones(
+        accion,
+        entidad,
+        detalle,
+        fecha_inicio_semana
+    )
+    VALUES(?,?,?,?)
+    """,(
+        accion,
+        str(entidad or "").strip() or None,
+        str(detalle or "").strip() or None,
+        fecha_inicio_semana
+    ))
+
+    conexion.commit()
+    registro_id = cursor.lastrowid
+    conexion.close()
+    return registro_id
+
+
+def obtener_historial_acciones(limite=100, fecha_inicio_semana=None):
+
+    crear_base_datos()
+    limite = int(limite or 100)
+    fecha_inicio_semana = (
+        normalizar_fecha_inicio_semana(fecha_inicio_semana)
+        if fecha_inicio_semana
+        else None
+    )
+    conexion = conectar()
+    cursor = conexion.cursor()
+
+    if fecha_inicio_semana:
+
+        cursor.execute("""
+        SELECT
+            id,
+            accion,
+            entidad,
+            detalle,
+            fecha_inicio_semana,
+            creado_en
+        FROM historial_acciones
+        WHERE fecha_inicio_semana=?
+        ORDER BY id DESC
+        LIMIT ?
+        """,(fecha_inicio_semana, limite))
+
+    else:
+
+        cursor.execute("""
+        SELECT
+            id,
+            accion,
+            entidad,
+            detalle,
+            fecha_inicio_semana,
+            creado_en
+        FROM historial_acciones
+        ORDER BY id DESC
+        LIMIT ?
+        """,(limite,))
+
+    datos = cursor.fetchall()
+    conexion.close()
+    return datos
+
+
 def validar_horas_contratadas(horas):
 
     horas = int(horas)

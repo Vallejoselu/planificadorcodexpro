@@ -3,6 +3,7 @@ import unittest
 from services.cuadrantes_service import CuadrantesService
 from tests.test_servicios_aplicacion import (
     FakeCalendarioRepository,
+    FakeHistorialRepository,
     FakeTurnosRepository
 )
 
@@ -70,9 +71,11 @@ class TestCuadrantesServicePorCapa(unittest.TestCase):
     def test_guardar_cuadrante_normaliza_semana_y_delega_reemplazo(self):
 
         calendario = FakeCalendarioRepository()
+        historial = FakeHistorialRepository()
         servicio = CuadrantesService(
             calendario_repository=calendario,
-            turnos_repository=FakeTurnosRepository()
+            turnos_repository=FakeTurnosRepository(),
+            historial_repository=historial
         )
         asignaciones = {
             ("martes", 5): [{
@@ -87,11 +90,16 @@ class TestCuadrantesServicePorCapa(unittest.TestCase):
             "2026-07-13",
             asignaciones
         )])
+        self.assertEqual(historial.registros[0][0], "Crear cuadrante")
 
     def test_guardar_cuadrante_por_semana_no_mezcla_fechas(self):
 
         calendario = FakeCalendarioRepository()
-        servicio = CuadrantesService(calendario_repository=calendario)
+        historial = FakeHistorialRepository()
+        servicio = CuadrantesService(
+            calendario_repository=calendario,
+            historial_repository=historial
+        )
 
         servicio.guardar_asignacion_turno(
             "2026-07-13",
@@ -114,10 +122,33 @@ class TestCuadrantesServicePorCapa(unittest.TestCase):
             calendario.guardados[1],
             ("lunes", 5, 3, 11, "2026-07-20")
         )
+        self.assertEqual(
+            [registro[0] for registro in historial.registros],
+            ["Editar asignacion", "Editar asignacion"]
+        )
+
+    def test_guardar_asignacion_vacia_registra_eliminar_turno(self):
+
+        calendario = FakeCalendarioRepository()
+        historial = FakeHistorialRepository()
+        servicio = CuadrantesService(
+            calendario_repository=calendario,
+            historial_repository=historial
+        )
+
+        servicio.guardar_asignacion_turno(
+            "2026-07-13",
+            "lunes",
+            5,
+            []
+        )
+
+        self.assertEqual(historial.registros[0][0], "Eliminar turno")
 
     def test_copiar_semana_conserva_restaurante_turno_y_repartidor(self):
 
         calendario = FakeCalendarioRepository()
+        historial = FakeHistorialRepository()
         calendario.semanas["2026-07-13"] = [
             (
                 1,
@@ -148,7 +179,10 @@ class TestCuadrantesServicePorCapa(unittest.TestCase):
                 "2026-07-13"
             )
         ]
-        servicio = CuadrantesService(calendario_repository=calendario)
+        servicio = CuadrantesService(
+            calendario_repository=calendario,
+            historial_repository=historial
+        )
 
         resultado = servicio.copiar_semana("2026-07-13", "2026-07-20")
 
@@ -166,11 +200,13 @@ class TestCuadrantesServicePorCapa(unittest.TestCase):
                 }]
             }
         )])
+        self.assertEqual(historial.registros[0][0], "Crear cuadrante")
 
     def test_copiar_semana_rechaza_origen_vacio_y_misma_semana(self):
 
         servicio = CuadrantesService(
-            calendario_repository=FakeCalendarioRepository()
+            calendario_repository=FakeCalendarioRepository(),
+            historial_repository=FakeHistorialRepository()
         )
 
         with self.assertRaises(ValueError):
@@ -201,7 +237,8 @@ class TestCuadrantesServicePorCapa(unittest.TestCase):
         )]
         servicio = CuadrantesService(
             calendario_repository=calendario,
-            plantillas_repository=plantillas
+            plantillas_repository=plantillas,
+            historial_repository=FakeHistorialRepository()
         )
 
         resultado = servicio.crear_plantilla_desde_semana(
@@ -241,7 +278,8 @@ class TestCuadrantesServicePorCapa(unittest.TestCase):
         )]
         servicio = CuadrantesService(
             calendario_repository=calendario,
-            plantillas_repository=plantillas
+            plantillas_repository=plantillas,
+            historial_repository=FakeHistorialRepository()
         )
 
         servicio.crear_plantilla_desde_semana(
@@ -265,7 +303,8 @@ class TestCuadrantesServicePorCapa(unittest.TestCase):
         plantillas = FakePlantillasRepository()
         servicio = CuadrantesService(
             calendario_repository=calendario,
-            plantillas_repository=plantillas
+            plantillas_repository=plantillas,
+            historial_repository=FakeHistorialRepository()
         )
         plantillas.crear(
             "Base",

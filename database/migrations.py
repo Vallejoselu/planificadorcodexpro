@@ -517,8 +517,32 @@ def crear_esquema_inicial(cursor):
     )
     """)
 
+    crear_tabla_historial_acciones(cursor)
+
+
+def crear_tabla_historial_acciones(cursor):
+
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS historial_acciones(
+
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+        accion TEXT NOT NULL,
+
+        entidad TEXT,
+
+        detalle TEXT,
+
+        fecha_inicio_semana TEXT,
+
+        creado_en TEXT DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+
 
 def aplicar_migraciones(cursor):
+
+    crear_tabla_historial_acciones(cursor)
 
     for columna, definicion in (
         ("ciudad_principal_id", "INTEGER"),
@@ -885,6 +909,16 @@ def crear_indices_consulta(cursor):
             "idx_restaurante_repartidores_restaurante",
             "CREATE INDEX IF NOT EXISTS idx_restaurante_repartidores_restaurante "
             "ON restaurante_repartidores(restaurante_id, repartidor_id, activo)"
+        ),
+        (
+            "idx_historial_acciones_creado_en",
+            "CREATE INDEX IF NOT EXISTS idx_historial_acciones_creado_en "
+            "ON historial_acciones(creado_en)"
+        ),
+        (
+            "idx_historial_acciones_semana",
+            "CREATE INDEX IF NOT EXISTS idx_historial_acciones_semana "
+            "ON historial_acciones(fecha_inicio_semana)"
         )
     ):
 
