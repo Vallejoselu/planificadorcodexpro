@@ -15,7 +15,14 @@ from services.rules.descansos import (
     descanso_es_consecutivo,
     dias_no_disponibles
 )
-from services.rules.demanda import seleccionar_demanda_prioritaria
+from services.rules.demanda import (
+    NIVEL_CIUDAD,
+    NIVEL_DEFECTO,
+    NIVEL_RESTAURANTE,
+    NIVEL_ZONA,
+    nivel_demanda,
+    seleccionar_demanda_prioritaria
+)
 from services.rules.disponibilidad import (
     categoria_turno,
     intervalo_turno,
@@ -551,10 +558,10 @@ def slots_demanda(restaurantes, turnos, demandas, dia, fecha):
 
         demanda = demanda_aplicable(
             demandas,
-            restaurante["id"],
-            turno["id"],
-            dia,
-            fecha_iso
+            restaurante=restaurante,
+            turno=turno,
+            dia=dia,
+            fecha_iso=fecha_iso
         )
 
         if demanda is None:
@@ -586,17 +593,29 @@ def slots_demanda(restaurantes, turnos, demandas, dia, fecha):
     )
 
 
-def demanda_aplicable(demandas, restaurante_id, turno_id, dia, fecha_iso):
+def demanda_aplicable(
+    demandas,
+    restaurante=None,
+    turno=None,
+    dia=None,
+    fecha_iso=None,
+    restaurante_id=None,
+    turno_id=None
+):
+
+    if restaurante is None:
+
+        restaurante = {"id": restaurante_id}
+
+    if turno is None:
+
+        turno = {"id": turno_id}
 
     candidatas = []
 
     for demanda in demandas:
 
-        if demanda["restaurante_id"] != restaurante_id:
-
-            continue
-
-        if demanda["turno_restaurante_id"] != turno_id:
+        if not demanda_aplica_a_slot(demanda, restaurante, turno):
 
             continue
 
@@ -607,6 +626,75 @@ def demanda_aplicable(demandas, restaurante_id, turno_id, dia, fecha_iso):
         candidatas.append(demanda)
 
     return seleccionar_demanda_prioritaria(candidatas, dia, fecha_iso)
+
+
+def demanda_aplica_a_slot(demanda, restaurante, turno):
+
+    nivel = nivel_demanda(demanda)
+
+    if nivel == NIVEL_RESTAURANTE:
+
+        return (
+            demanda.get("restaurante_id") == restaurante.get("id")
+            and demanda.get("turno_restaurante_id") == turno.get("id")
+        )
+
+    if nivel == NIVEL_ZONA:
+
+        return (
+            texto_normalizado(demanda.get("zona"))
+            == texto_normalizado(restaurante.get("zona"))
+            and demanda_coincide_turno(demanda, turno)
+        )
+
+    if nivel == NIVEL_CIUDAD:
+
+        return (
+            demanda.get("ciudad_id") == restaurante.get("ciudad_id")
+            and demanda_coincide_turno(demanda, turno)
+        )
+
+    if nivel == NIVEL_DEFECTO:
+
+        return demanda_coincide_turno(demanda, turno)
+
+    return False
+
+
+def demanda_coincide_turno(demanda, turno):
+
+    turno_restaurante_id = demanda.get("turno_restaurante_id")
+
+    if turno_restaurante_id is not None:
+
+        return turno_restaurante_id == turno.get("id")
+
+    turno_nombre = demanda.get("turno_nombre")
+
+    if turno_nombre:
+
+        if texto_normalizado(turno_nombre) == texto_normalizado(
+            turno.get("nombre")
+        ):
+
+            return True
+
+        return categoria_turno({"nombre": turno_nombre}) == categoria_turno(
+            turno
+        )
+
+    turno_id = demanda.get("turno_id")
+
+    if turno_id is not None and turno.get("turno_id") is not None:
+
+        return turno_id == turno.get("turno_id")
+
+    return turno_id is None
+
+
+def texto_normalizado(valor):
+
+    return str(valor or "").strip().casefold()
 
 
 def crear_horario_demanda(restaurantes, turnos, demandas, fechas):

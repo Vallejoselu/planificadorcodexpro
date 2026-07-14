@@ -48,6 +48,123 @@ class TestGeneradorMulticiudadDemanda(unittest.TestCase):
             2
         )
 
+    def test_prioridad_demanda_restaurante_supera_zona_ciudad_y_defecto(self):
+
+        datos = self._datos_base(necesarios=1)
+        datos["demandas"].extend([
+            {
+                "nivel": "zona",
+                "zona": "Centro",
+                "turno_nombre": "Comida A",
+                "dia_semana": "lunes",
+                "repartidores_necesarios": 2,
+                "activo": 1
+            },
+            {
+                "nivel": "ciudad",
+                "ciudad_id": 1,
+                "turno_nombre": "Comida",
+                "dia_semana": "lunes",
+                "repartidores_necesarios": 2,
+                "activo": 1
+            },
+            {
+                "nivel": "defecto",
+                "turno_nombre": "Comida A",
+                "dia_semana": "lunes",
+                "repartidores_necesarios": 2,
+                "activo": 1
+            }
+        ])
+
+        resultado = self._generar(datos)
+
+        self.assertEqual(
+            len(resultado["horario"]["lunes"]["restaurante_1_turno_10"]),
+            1
+        )
+
+    def test_prioridad_demanda_zona_supera_ciudad_y_defecto(self):
+
+        datos = self._datos_base()
+        datos["demandas"] = [
+            {
+                "nivel": "zona",
+                "zona": "Centro",
+                "turno_nombre": "Comida A",
+                "dia_semana": "lunes",
+                "repartidores_necesarios": 1,
+                "activo": 1
+            },
+            {
+                "nivel": "ciudad",
+                "ciudad_id": 1,
+                "turno_nombre": "Comida A",
+                "dia_semana": "lunes",
+                "repartidores_necesarios": 2,
+                "activo": 1
+            },
+            {
+                "nivel": "defecto",
+                "turno_nombre": "Comida A",
+                "dia_semana": "lunes",
+                "repartidores_necesarios": 2,
+                "activo": 1
+            }
+        ]
+
+        resultado = self._generar(datos)
+
+        self.assertEqual(
+            len(resultado["horario"]["lunes"]["restaurante_1_turno_10"]),
+            1
+        )
+
+    def test_prioridad_demanda_ciudad_supera_defecto(self):
+
+        datos = self._datos_base()
+        datos["demandas"] = [
+            {
+                "nivel": "ciudad",
+                "ciudad_id": 1,
+                "turno_nombre": "Comida A",
+                "dia_semana": "lunes",
+                "repartidores_necesarios": 2,
+                "activo": 1
+            },
+            {
+                "nivel": "defecto",
+                "turno_nombre": "Comida A",
+                "dia_semana": "lunes",
+                "repartidores_necesarios": 1,
+                "activo": 1
+            }
+        ]
+
+        resultado = self._generar(datos)
+
+        self.assertEqual(
+            len(resultado["horario"]["lunes"]["restaurante_1_turno_10"]),
+            2
+        )
+
+    def test_demanda_restaurante_cero_sustituye_demanda_ciudad(self):
+
+        datos = self._datos_base(necesarios=0)
+        datos["demandas"].append({
+            "nivel": "ciudad",
+            "ciudad_id": 1,
+            "turno_nombre": "Comida A",
+            "dia_semana": "lunes",
+            "repartidores_necesarios": 2,
+            "activo": 1
+        })
+
+        resultado = self._generar(datos)
+
+        self.assertEqual(resultado["horario"]["lunes"], {})
+        self.assertFalse(resultado["incidencias"])
+
     def test_demanda_cero_no_crea_asignaciones_ni_incidencia(self):
 
         datos = self._datos_base(necesarios=0)
