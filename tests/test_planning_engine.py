@@ -3,10 +3,19 @@ import unittest
 from services.rules.candidatos import buscar_candidatos
 from services.planning_engine import PlanningEngine, generar_horarios
 from services.planificador import generar_horarios as generar_horarios_legacy
+from services.reglas_runtime import actualizar_reglas_motor, resetear_reglas_motor
 from services.validators import validar_horario
 
 
 class TestPlanningEngine(unittest.TestCase):
+
+    def setUp(self):
+
+        resetear_reglas_motor()
+
+    def tearDown(self):
+
+        resetear_reglas_motor()
 
     def repartidores(self):
 
@@ -418,6 +427,76 @@ class TestPlanningEngine(unittest.TestCase):
                 for incidencia in resultado["incidencias"]
             )
         )
+
+    def test_generador_aplica_maximo_horas_semanales_configurado(self):
+
+        actualizar_reglas_motor({"max_horas_semanales": 8})
+        repartidor = self.repartidor_base(1, "Ana")
+        repartidor["horas"] = 20
+
+        resultado = generar_horarios(
+            [repartidor],
+            self.restaurantes(),
+            turnos=[{
+                "nombre": "comida",
+                "horas": 4
+            }]
+        )
+
+        self.assertEqual(resultado["resumen"][0]["maximo"], 8)
+        self.assertEqual(resultado["resumen"][0]["horas"], 8)
+        self.assertTrue(
+            any(
+                "horas contratadas y complementarias" in incidencia["motivo"]
+                for incidencia in resultado["incidencias"]
+            )
+        )
+
+    def test_generador_prohibe_horas_complementarias_por_configuracion(self):
+
+        actualizar_reglas_motor({"horas_complementarias": "prohibir"})
+        repartidor = self.repartidor_base(1, "Ana")
+        repartidor["horas"] = 10
+        repartidor["horas_complementarias"] = 4
+        repartidor["permite_horas_complementarias"] = True
+
+        resultado = generar_horarios(
+            [repartidor],
+            self.restaurantes(),
+            turnos=[{
+                "nombre": "comida",
+                "horas": 6
+            }]
+        )
+
+        self.assertEqual(resultado["resumen"][0]["maximo"], 10)
+        self.assertFalse(
+            resultado["resumen"][0]["horas_complementarias_permitidas"]
+        )
+        self.assertEqual(resultado["resumen"][0]["horas_complementarias"], 0)
+
+    def test_generador_permite_horas_complementarias_por_configuracion(self):
+
+        actualizar_reglas_motor({"horas_complementarias": "permitir"})
+        repartidor = self.repartidor_base(1, "Ana")
+        repartidor["horas"] = 10
+        repartidor["horas_complementarias"] = 2
+        repartidor["permite_horas_complementarias"] = False
+
+        resultado = generar_horarios(
+            [repartidor],
+            self.restaurantes(),
+            turnos=[{
+                "nombre": "comida",
+                "horas": 6
+            }]
+        )
+
+        self.assertEqual(resultado["resumen"][0]["maximo"], 12)
+        self.assertTrue(
+            resultado["resumen"][0]["horas_complementarias_permitidas"]
+        )
+        self.assertEqual(resultado["resumen"][0]["horas_complementarias"], 2)
 
     def test_generador_no_usa_horas_complementarias_si_no_estan_permitidas(self):
 

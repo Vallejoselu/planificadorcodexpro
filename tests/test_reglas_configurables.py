@@ -12,6 +12,7 @@ from PySide6.QtWidgets import QApplication
 import database.database as database
 from database.database import crear_base_datos
 from database.schema import SCHEMA_VERSION_ACTUAL
+from services.reglas_runtime import obtener_reglas_motor, resetear_reglas_motor
 from services.reglas_configurables import ReglasConfigurablesService
 import views.reglas as reglas_view
 from views.reglas import VistaReglas
@@ -34,6 +35,7 @@ class TestReglasConfigurables(unittest.TestCase):
 
     def tearDown(self):
 
+        resetear_reglas_motor()
         database.RUTA_BD = self.ruta_original
         self.temporal.cleanup()
 
@@ -45,8 +47,9 @@ class TestReglasConfigurables(unittest.TestCase):
 
         self.assertGreaterEqual(len(reglas), 8)
         self.assertEqual(resumen["modo"], "preparacion")
-        self.assertEqual(resumen["editables"], 3)
+        self.assertEqual(resumen["editables"], 5)
         self.assertEqual(resumen["configuradas"], 0)
+        self.assertEqual(resumen["aplicadas_motor"], 3)
         self.assertTrue(
             any(regla["clave"] == "descanso_consecutivo" for regla in reglas)
         )
@@ -85,7 +88,9 @@ class TestReglasConfigurables(unittest.TestCase):
         servicio = ReglasConfigurablesService()
 
         resultado = servicio.guardar_configuracion({
+            "max_horas_semanales": "36",
             "horas_complementarias": "prohibir",
+            "penalizacion_desplazamiento": "2",
             "max_horas_diarias": "9,5",
             "max_dias_consecutivos": "4"
         })
@@ -94,10 +99,18 @@ class TestReglasConfigurables(unittest.TestCase):
             for regla in servicio.listar_reglas()
         }
 
-        self.assertEqual(resultado["guardadas"], 3)
+        self.assertEqual(resultado["guardadas"], 5)
+        self.assertEqual(
+            reglas["max_horas_semanales"]["valor_configurado"],
+            "36"
+        )
         self.assertEqual(
             reglas["horas_complementarias"]["valor_configurado"],
             "prohibir"
+        )
+        self.assertEqual(
+            reglas["penalizacion_desplazamiento"]["valor_configurado"],
+            "2"
         )
         self.assertEqual(
             reglas["max_horas_diarias"]["valor_configurado"],
@@ -105,8 +118,27 @@ class TestReglasConfigurables(unittest.TestCase):
         )
         self.assertEqual(
             servicio.resumen()["configuradas"],
-            3
+            5
         )
+        self.assertEqual(
+            obtener_reglas_motor()["horas_complementarias"],
+            "prohibir"
+        )
+
+    def test_servicio_expone_configuracion_de_motor(self):
+
+        servicio = ReglasConfigurablesService()
+        servicio.guardar_configuracion({
+            "max_horas_semanales": "35",
+            "horas_complementarias": "permitir",
+            "penalizacion_desplazamiento": "3"
+        })
+
+        configuracion = servicio.configuracion_motor()
+
+        self.assertEqual(configuracion["max_horas_semanales"], 35)
+        self.assertEqual(configuracion["horas_complementarias"], "permitir")
+        self.assertEqual(configuracion["penalizacion_desplazamiento"], 3)
 
     def test_servicio_valida_reglas_editables(self):
 
@@ -126,6 +158,14 @@ class TestReglasConfigurables(unittest.TestCase):
 
         with self.assertRaises(ValueError):
 
+            servicio.guardar_configuracion({"max_horas_semanales": "100"})
+
+        with self.assertRaises(ValueError):
+
+            servicio.guardar_configuracion({"penalizacion_desplazamiento": "20"})
+
+        with self.assertRaises(ValueError):
+
             servicio.guardar_configuracion({"max_dias_consecutivos": "texto"})
 
     def test_servicio_restaura_valores_preparados(self):
@@ -135,14 +175,14 @@ class TestReglasConfigurables(unittest.TestCase):
 
         resultado = servicio.restaurar_valores()
 
-        self.assertEqual(resultado["restauradas"], 3)
+        self.assertEqual(resultado["restauradas"], 5)
         self.assertEqual(servicio.resumen()["configuradas"], 0)
 
     def test_vista_muestra_catalogo_con_edicion_controlada(self):
 
         vista = VistaReglas()
 
-        self.assertEqual(vista.tabla.rowCount(), 10)
+        self.assertEqual(vista.tabla.rowCount(), 12)
         self.assertEqual(vista.tabla.columnCount(), 6)
         self.assertIn("Modo preparacion", vista.resumen.text())
         self.assertTrue(
@@ -179,7 +219,7 @@ class TestReglasConfigurables(unittest.TestCase):
 
             vista.tabla.item(fila, 2).setText("8")
             vista.guardar_configuracion()
-            self.assertIn("3 configuradas", vista.resumen.text())
+            self.assertIn("5 configuradas", vista.resumen.text())
             vista.restaurar_valores()
             self.assertIn("0 configuradas", vista.resumen.text())
 

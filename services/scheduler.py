@@ -33,6 +33,7 @@ from services.planning_scoring import (
     puntuacion_solucion as calcular_puntuacion_solucion
 )
 from services.planning_validation import validar_planificacion
+from services.reglas_runtime import obtener_reglas_motor
 
 
 def preparar_datos(
@@ -47,6 +48,7 @@ def preparar_datos(
     demandas=None
 ):
 
+    reglas_motor = obtener_reglas_motor()
     restaurantes = normalizar_restaurantes(restaurantes)
     turnos = turnos if turnos else TURNOS
     fechas = crear_fechas_semana(fecha_inicio)
@@ -54,7 +56,7 @@ def preparar_datos(
     bajas = normalizar_ausencias(bajas)
 
     repartidores = [
-        normalizar_repartidor(repartidor)
+        normalizar_repartidor(repartidor, reglas_motor)
         for repartidor in repartidores
     ]
 
@@ -81,7 +83,8 @@ def preparar_datos(
         "restaurante_turnos": normalizar_restaurante_turnos(
             restaurante_turnos
         ),
-        "demandas": normalizar_demandas(demandas)
+        "demandas": normalizar_demandas(demandas),
+        "reglas_motor": reglas_motor
     }
 
 
@@ -493,7 +496,7 @@ def crear_horario_base(restaurantes, turnos):
     return horario
 
 
-def normalizar_repartidor(repartidor):
+def normalizar_repartidor(repartidor, reglas_motor=None):
 
     if isinstance(repartidor, dict):
 
@@ -547,7 +550,20 @@ def normalizar_repartidor(repartidor):
             datos["ciudades_autorizadas"] = repartidor[21]
             datos["restaurantes_autorizados"] = repartidor[22]
 
+    reglas_motor = reglas_motor or obtener_reglas_motor()
     horas = int(datos.get("horas", 0) or 0)
+    max_horas_semanales = float(
+        reglas_motor.get("max_horas_semanales", MAX_HORAS_SEMANALES)
+        or MAX_HORAS_SEMANALES
+    )
+    politica_horas_complementarias = str(
+        reglas_motor.get("horas_complementarias", "segun repartidor")
+        or "segun repartidor"
+    )
+    penalizacion_desplazamiento = float(
+        reglas_motor.get("penalizacion_desplazamiento", 1)
+        or 0
+    )
     limite_horas_complementarias = int(
         datos.get(
             "limite_horas_complementarias",
@@ -562,6 +578,14 @@ def normalizar_repartidor(repartidor):
         permite_horas_complementarias
     )
 
+    if politica_horas_complementarias == "prohibir":
+
+        permite_horas_complementarias = False
+
+    elif politica_horas_complementarias == "permitir":
+
+        permite_horas_complementarias = True
+
     if limite_horas_complementarias < 0:
 
         limite_horas_complementarias = 0
@@ -572,15 +596,18 @@ def normalizar_repartidor(repartidor):
 
     if horas not in HORAS_CONTRATO:
 
-        horas = min(horas, MAX_HORAS_SEMANALES)
+        horas = min(horas, max_horas_semanales)
 
     datos["horas_contratadas"] = horas
     datos["permite_horas_complementarias"] = permite_horas_complementarias
     datos["limite_horas_complementarias"] = limite_horas_complementarias
     datos["maximo_horas"] = min(
-        MAX_HORAS_SEMANALES,
+        max_horas_semanales,
         horas + limite_horas_complementarias
     )
+    datos["max_horas_semanales_configurado"] = max_horas_semanales
+    datos["politica_horas_complementarias"] = politica_horas_complementarias
+    datos["penalizacion_desplazamiento"] = penalizacion_desplazamiento
     datos["max_horas_diarias"] = float(
         datos.get("max_horas_diarias", 10) or 0
     )
