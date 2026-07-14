@@ -7,6 +7,7 @@ from PySide6.QtWidgets import (
     QTableWidget,
     QTableWidgetItem,
     QHeaderView,
+    QFileDialog,
     QMessageBox,
 )
 
@@ -44,12 +45,14 @@ class VistaRestaurantes(QWidget):
 
         self.btn_nuevo = QPushButton("Nuevo restaurante")
         self.btn_nuevo.setProperty("variant", "primary")
+        self.btn_importar = QPushButton("Importar")
         self.btn_editar = QPushButton("Editar")
         self.btn_eliminar = QPushButton("Eliminar")
         self.btn_eliminar.setProperty("variant", "danger")
         self.btn_actualizar = QPushButton("Actualizar")
 
         barra.addWidget(self.btn_nuevo)
+        barra.addWidget(self.btn_importar)
         barra.addWidget(self.btn_editar)
         barra.addWidget(self.btn_eliminar)
         barra.addWidget(self.btn_actualizar)
@@ -94,6 +97,7 @@ class VistaRestaurantes(QWidget):
 
         self.btn_actualizar.clicked.connect(self.cargar_tabla)
         self.btn_nuevo.clicked.connect(self.nuevo_restaurante)
+        self.btn_importar.clicked.connect(self.importar_restaurantes)
         self.btn_editar.clicked.connect(self.editar_restaurante)
         self.btn_eliminar.clicked.connect(self.eliminar_restaurante)
         self.tabla.doubleClicked.connect(self.editar_restaurante)
@@ -202,6 +206,57 @@ class VistaRestaurantes(QWidget):
         if ventana.exec():
 
             self.cargar_tabla()
+
+    # ======================================
+
+    def importar_restaurantes(self):
+
+        ruta, _ = QFileDialog.getOpenFileName(
+            self,
+            "Importar restaurantes",
+            "",
+            "Datos (*.csv *.xlsx *.xlsm)"
+        )
+
+        if not ruta:
+
+            return
+
+        try:
+
+            resultado = restaurantes_service.importar_desde_archivo(ruta)
+
+        except ValueError as error:
+
+            QMessageBox.warning(
+                self,
+                "Importar restaurantes",
+                str(error)
+            )
+            return
+
+        self.cargar_tabla()
+        errores = len(resultado["errores"])
+        detalle_errores = ""
+
+        if errores:
+
+            detalle_errores = "\n\nErrores:\n" + "\n".join(
+                f"Fila {error['fila']}: {error['error']}"
+                for error in resultado["errores"][:5]
+            )
+
+        QMessageBox.information(
+            self,
+            "Importar restaurantes",
+            (
+                f"Leidos: {resultado['leidos']}\n"
+                f"Creados: {resultado['creados']}\n"
+                f"Actualizados: {resultado['actualizados']}\n"
+                f"Errores: {errores}"
+                f"{detalle_errores}"
+            )
+        )
 
     # ======================================
 
