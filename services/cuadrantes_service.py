@@ -1,5 +1,7 @@
 from repositories.calendario_repository import CalendarioRepository
 from repositories.ciudades_repository import CiudadesRepository
+from repositories.demandas_ciudad_repository import DemandasCiudadRepository
+from repositories.demandas_zona_repository import DemandasZonaRepository
 from repositories.repartidores_repository import RepartidoresRepository
 from repositories.restaurantes_repository import RestaurantesRepository
 from repositories.plantillas_repository import PlantillasRepository
@@ -17,6 +19,8 @@ class CuadrantesService:
         ciudades_repository=None,
         repartidores_repository=None,
         restaurantes_repository=None,
+        demandas_ciudad_repository=None,
+        demandas_zona_repository=None,
         plantillas_repository=None,
         turnos_repository=None,
         planning_engine=None
@@ -31,6 +35,12 @@ class CuadrantesService:
         )
         self.restaurantes_repository = (
             restaurantes_repository or RestaurantesRepository()
+        )
+        self.demandas_ciudad_repository = (
+            demandas_ciudad_repository or DemandasCiudadRepository()
+        )
+        self.demandas_zona_repository = (
+            demandas_zona_repository or DemandasZonaRepository()
         )
         self.plantillas_repository = (
             plantillas_repository or PlantillasRepository()
@@ -73,6 +83,16 @@ class CuadrantesService:
             "restaurantes": restaurantes,
             "restaurante_turnos": restaurante_turnos,
             "demandas_restaurante": demandas_restaurante,
+            "demandas_zona": [
+                demanda
+                for demanda in self.demandas_zona_repository.listar()
+                if demanda[6]
+            ],
+            "demandas_ciudad": [
+                demanda
+                for demanda in self.demandas_ciudad_repository.listar()
+                if demanda[7]
+            ],
             "repartidores": self.repartidores_repository.listar_activos()
         }
 
@@ -81,14 +101,16 @@ class CuadrantesService:
         fecha_inicio = normalizar_fecha_inicio_semana(fecha_inicio)
         self.validar_contexto_generacion(contexto)
 
-        if self.hay_demanda_multiciudad(contexto["demandas_restaurante"]):
+        demandas_multinivel = self.preparar_demandas_multinivel(contexto)
+
+        if self.hay_demanda_multiciudad(demandas_multinivel):
 
             resultado = self.planning_engine.generar_multiciudad(
                 contexto["repartidores"],
                 contexto["ciudades"],
                 contexto["restaurantes"],
                 contexto["restaurante_turnos"],
-                contexto["demandas_restaurante"],
+                demandas_multinivel,
                 fecha_inicio=fecha_inicio
             )
 
@@ -131,12 +153,70 @@ class CuadrantesService:
 
             raise ValueError("No hay turnos activos.")
 
-    def hay_demanda_multiciudad(self, demandas_restaurante):
+    def hay_demanda_multiciudad(self, demandas):
 
         return any(
-            demanda[6]
-            for demanda in demandas_restaurante
+            demanda.get("activo", 1)
+            for demanda in demandas
         )
+
+    def preparar_demandas_multinivel(self, contexto):
+
+        nombres_turno = {
+            turno[0]: turno[2]
+            for turno in contexto.get("turnos", [])
+        }
+        demandas = []
+
+        for demanda in contexto.get("demandas_restaurante", []):
+
+            demandas.append({
+                "nivel": "restaurante",
+                "id": demanda[0],
+                "restaurante_id": demanda[1],
+                "turno_restaurante_id": demanda[2],
+                "fecha": demanda[3],
+                "dia_semana": demanda[4],
+                "repartidores_necesarios": demanda[5],
+                "activo": demanda[6]
+            })
+
+        for demanda in contexto.get("demandas_zona", []):
+
+            demandas.append({
+                "nivel": "zona",
+                "id": demanda[0],
+                "zona": demanda[1],
+                "turno_id": demanda[2],
+                "turno_nombre": nombres_turno.get(demanda[2]),
+                "fecha": demanda[3],
+                "dia_semana": demanda[4],
+                "repartidores_necesarios": demanda[5],
+                "activo": demanda[6]
+            })
+
+        for demanda in contexto.get("demandas_ciudad", []):
+
+            demandas.append({
+                "nivel": "ciudad",
+                "id": demanda[0],
+                "ciudad_id": demanda[1],
+                "ciudad": demanda[2],
+                "turno_id": demanda[3],
+                "turno_nombre": nombres_turno.get(demanda[3]),
+                "fecha": demanda[4],
+                "dia_semana": demanda[5],
+                "repartidores_necesarios": demanda[6],
+                "activo": demanda[7]
+            })
+
+        for demanda in contexto.get("demandas_defecto", []):
+
+            datos = dict(demanda)
+            datos.setdefault("nivel", "defecto")
+            demandas.append(datos)
+
+        return demandas
 
     def preparar_turnos_engine(self, turnos):
 

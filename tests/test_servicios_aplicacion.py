@@ -192,6 +192,17 @@ class FakeCiudadesRepository:
         return self.ciudades
 
 
+class FakeDemandasRepository:
+
+    def __init__(self, demandas=None):
+
+        self.demandas = demandas or []
+
+    def listar(self):
+
+        return self.demandas
+
+
 class TestServiciosAplicacion(unittest.TestCase):
 
     def test_cuadrantes_service_convierte_resultado_legacy(self):
@@ -319,6 +330,30 @@ class TestServiciosAplicacion(unittest.TestCase):
             generado["asignaciones"],
             {("lunes", 5): [{"restaurante_id": 1, "repartidor_id": 10}]}
         )
+
+    def test_cuadrantes_service_prepara_demandas_multinivel(self):
+
+        servicio = CuadrantesService()
+
+        demandas = servicio.preparar_demandas_multinivel({
+            "turnos": [(5, "Comida", "Comida", "13:00", "16:00", "", 3, 1)],
+            "demandas_restaurante": [
+                (1, 10, 20, None, "lunes", 2, 1)
+            ],
+            "demandas_zona": [
+                (2, "Centro", 5, None, "lunes", 3, 1)
+            ],
+            "demandas_ciudad": [
+                (3, 7, "Santiago", 5, None, "lunes", 4, 1)
+            ]
+        })
+
+        self.assertEqual(
+            [demanda["nivel"] for demanda in demandas],
+            ["restaurante", "zona", "ciudad"]
+        )
+        self.assertEqual(demandas[1]["turno_nombre"], "Comida")
+        self.assertEqual(demandas[2]["ciudad_id"], 7)
 
     def test_cuadrantes_service_prepara_estado_para_vista(self):
 
