@@ -404,8 +404,9 @@ def construir_respuesta_simulacion(
 
     lineas.append("")
     lineas.append(
-        "No se ha guardado ningun cambio. Aplicar propuesta no esta disponible "
-        "hasta que los horarios por repartidor se persistan de forma segura."
+        "No se ha guardado ningun cambio. Puedes aplicar la propuesta "
+        "editando el cuadrante y asignando el primer sustituto sugerido "
+        "en el turno correspondiente."
     )
 
     return "\n".join(lineas)
@@ -426,6 +427,7 @@ def describir_descubierto(descubierto):
     if candidatos:
 
         partes = []
+        primer_candidato = candidatos[0]["repartidor"]
 
         for candidato in candidatos[:5]:
 
@@ -437,6 +439,10 @@ def describir_descubierto(descubierto):
             )
 
         lineas.append("  Sustitutos posibles: " + "; ".join(partes) + ".")
+        lineas.append(
+            f"  Accion sugerida: asignar a {primer_candidato['nombre']} "
+            "a este turno en el cuadrante."
+        )
 
     else:
 
