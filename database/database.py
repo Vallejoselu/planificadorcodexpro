@@ -172,6 +172,84 @@ def obtener_historial_acciones(limite=100, fecha_inicio_semana=None):
     return datos
 
 
+def obtener_reglas_configuracion():
+
+    crear_base_datos()
+    conexion = conectar()
+    cursor = conexion.cursor()
+    cursor.execute("""
+    SELECT
+        clave,
+        valor,
+        activo,
+        actualizado_en
+    FROM reglas_configuracion
+    ORDER BY clave
+    """)
+    datos = cursor.fetchall()
+    conexion.close()
+
+    return datos
+
+
+def guardar_regla_configuracion(clave, valor, activo=1):
+
+    clave = str(clave or "").strip()
+    valor = str(valor or "").strip()
+
+    if not clave:
+
+        raise ValueError("La clave de regla es obligatoria.")
+
+    if not valor:
+
+        raise ValueError("El valor de regla es obligatorio.")
+
+    crear_base_datos()
+    conexion = conectar()
+    cursor = conexion.cursor()
+    cursor.execute("""
+    INSERT INTO reglas_configuracion(
+        clave,
+        valor,
+        activo,
+        actualizado_en
+    )
+    VALUES(?,?,?,CURRENT_TIMESTAMP)
+    ON CONFLICT(clave) DO UPDATE SET
+        valor=excluded.valor,
+        activo=excluded.activo,
+        actualizado_en=CURRENT_TIMESTAMP
+    """,(
+        clave,
+        valor,
+        int(activo)
+    ))
+    conexion.commit()
+    conexion.close()
+
+
+def eliminar_reglas_configuracion(claves=None):
+
+    crear_base_datos()
+    conexion = conectar()
+    cursor = conexion.cursor()
+
+    if claves:
+
+        cursor.executemany(
+            "DELETE FROM reglas_configuracion WHERE clave=?",
+            [(str(clave),) for clave in claves]
+        )
+
+    else:
+
+        cursor.execute("DELETE FROM reglas_configuracion")
+
+    conexion.commit()
+    conexion.close()
+
+
 def validar_horas_contratadas(horas):
 
     horas = int(horas)

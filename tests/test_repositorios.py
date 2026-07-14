@@ -11,6 +11,7 @@ from repositories.demandas_zona_repository import DemandasZonaRepository
 from repositories.integraciones_repository import IntegracionesRepository
 from repositories.plantillas_repository import PlantillasRepository
 from repositories.repartidores_repository import RepartidoresRepository
+from repositories.reglas_repository import ReglasRepository
 from repositories.restaurantes_repository import RestaurantesRepository
 from repositories.turnos_repository import TurnosRepository
 
@@ -319,6 +320,25 @@ class TestRepositorios(unittest.TestCase):
             "Shipday"
         )
         self.assertEqual(repositorio.listar_eventos()[0][3], "Sincronizado")
+
+    def test_reglas_repository_guarda_y_elimina_configuracion(self):
+
+        repositorio = ReglasRepository()
+
+        repositorio.guardar("max_horas_diarias", "8")
+
+        self.assertEqual(
+            repositorio.listar_configuracion()[0][0],
+            "max_horas_diarias"
+        )
+        self.assertEqual(
+            repositorio.listar_configuracion()[0][1],
+            "8"
+        )
+
+        repositorio.eliminar(["max_horas_diarias"])
+
+        self.assertEqual(repositorio.listar_configuracion(), [])
 
     def test_ausencias_repository_guarda_descansos_y_disponibilidad(self):
 

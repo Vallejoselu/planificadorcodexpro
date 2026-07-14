@@ -518,6 +518,7 @@ def crear_esquema_inicial(cursor):
     """)
 
     crear_tabla_historial_acciones(cursor)
+    crear_tabla_reglas_configuracion(cursor)
 
 
 def crear_tabla_historial_acciones(cursor):
@@ -540,9 +541,26 @@ def crear_tabla_historial_acciones(cursor):
     """)
 
 
+def crear_tabla_reglas_configuracion(cursor):
+
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS reglas_configuracion(
+
+        clave TEXT PRIMARY KEY,
+
+        valor TEXT NOT NULL,
+
+        activo INTEGER DEFAULT 1,
+
+        actualizado_en TEXT DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+
+
 def aplicar_migraciones(cursor):
 
     crear_tabla_historial_acciones(cursor)
+    crear_tabla_reglas_configuracion(cursor)
 
     for columna, definicion in (
         ("ciudad_principal_id", "INTEGER"),
@@ -919,6 +937,11 @@ def crear_indices_consulta(cursor):
             "idx_historial_acciones_semana",
             "CREATE INDEX IF NOT EXISTS idx_historial_acciones_semana "
             "ON historial_acciones(fecha_inicio_semana)"
+        ),
+        (
+            "idx_reglas_configuracion_activo",
+            "CREATE INDEX IF NOT EXISTS idx_reglas_configuracion_activo "
+            "ON reglas_configuracion(activo)"
         )
     ):
 
