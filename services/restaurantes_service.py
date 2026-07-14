@@ -1,5 +1,6 @@
 from repositories.repartidores_repository import RepartidoresRepository
 from repositories.restaurantes_repository import RestaurantesRepository
+from services.importacion_restaurantes import ImportadorRestaurantes
 
 
 class RestaurantesService:
@@ -67,3 +68,9 @@ class RestaurantesService:
     def desactivar(self, restaurante_id):
 
         return self.restaurantes_repository.desactivar(restaurante_id)
+
+    def importar_desde_archivo(self, ruta):
+
+        return ImportadorRestaurantes(
+            self.restaurantes_repository
+        ).importar(ruta)
