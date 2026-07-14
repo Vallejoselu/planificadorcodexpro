@@ -384,6 +384,121 @@ class TestCuadrantesServicePorCapa(unittest.TestCase):
             estado["estado_texto"],
             "Asignaciones: 1 | Con repartidor: 0 | Sin repartidor: 1"
         )
+        self.assertIn(
+            "Asignaciones sin repartidor",
+            {alerta["tipo"] for alerta in estado["alertas"]}
+        )
+
+    def test_alertas_estado_semana_cubren_panel_de_problemas(self):
+
+        servicio = CuadrantesService()
+        turnos = [
+            (5, "Comida", "Comida", "13:00", "16:00", "#2563EB", 3, 1)
+        ]
+        restaurantes = [
+            (2, "BK Centro", "", "Centro", "", 50, 1)
+        ]
+        repartidores = [
+            {
+                "id": 10,
+                "nombre": "Ana",
+                "horas": 2,
+                "vacaciones": [{"dia": "lunes"}],
+                "bajas": []
+            },
+            {
+                "id": 11,
+                "nombre": "Luis",
+                "horas": 6,
+                "vacaciones": [],
+                "bajas": []
+            }
+        ]
+        asignaciones = {
+            ("lunes", 5): [
+                {"restaurante_id": 2, "repartidor_id": None},
+                {"restaurante_id": 2, "repartidor_id": 10}
+            ],
+            ("martes", 5): [
+                {"restaurante_id": 2, "repartidor_id": 11}
+            ]
+        }
+        calendario = [
+            (
+                1,
+                "lunes",
+                5,
+                "Comida",
+                "Comida",
+                "#2563EB",
+                2,
+                "BK Centro",
+                "Centro",
+                10,
+                "Ana",
+                "2026-07-13"
+            )
+        ]
+
+        alertas = servicio.alertas_estado_semana(
+            "2026-07-13",
+            calendario,
+            asignaciones,
+            {"asignaciones": 3, "sin_repartidor": 1},
+            turnos,
+            restaurantes,
+            repartidores,
+            demandas_restaurante=[],
+            demandas_zona=[],
+            demandas_ciudad=[]
+        )
+        tipos = {alerta["tipo"] for alerta in alertas}
+
+        self.assertIn("Turnos sin cubrir", tipos)
+        self.assertIn("Asignaciones sin repartidor", tipos)
+        self.assertIn("Horas pendientes", tipos)
+        self.assertIn("Horas extra", tipos)
+        self.assertIn("Restaurantes sin demanda", tipos)
+        self.assertIn("Conflictos por vacaciones/bajas", tipos)
+
+    def test_alertas_generacion_clasifica_incidencias_y_horas_extra(self):
+
+        servicio = CuadrantesService()
+
+        alertas = servicio.alertas_generacion({
+            "horario": {
+                "lunes": {
+                    "Comida": [{"repartidor_id": None}]
+                }
+            },
+            "horas_complementarias": [{
+                "nombre": "Ana",
+                "usadas": 2,
+                "limite": 4
+            }],
+            "incidencias": [
+                {
+                    "dia": "lunes",
+                    "turno": "Comida",
+                    "restaurante": "BK Centro",
+                    "regla": "cobertura requerida por demanda",
+                    "motivo": "Faltan 1 repartidores."
+                },
+                {
+                    "motivo": "Luis tiene 3 horas pendientes."
+                },
+                {
+                    "motivo": "Ana tiene ausencia, vacaciones o baja."
+                }
+            ]
+        })
+        tipos = [alerta["tipo"] for alerta in alertas]
+
+        self.assertIn("Turnos sin cubrir", tipos)
+        self.assertIn("Horas pendientes", tipos)
+        self.assertIn("Horas extra", tipos)
+        self.assertIn("Asignaciones sin repartidor", tipos)
+        self.assertIn("Conflictos por vacaciones/bajas", tipos)
 
     def test_texto_resumen_generacion_muestra_resultado_y_advertencias(self):
 

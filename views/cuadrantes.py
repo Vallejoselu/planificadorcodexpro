@@ -39,9 +39,12 @@ class VistaCuadrantes(QWidget):
         self.ciudades = []
         self.restaurante_turnos = []
         self.demandas_restaurante = []
+        self.demandas_zona = []
+        self.demandas_ciudad = []
         self.restaurantes = []
         self.repartidores = []
         self.asignaciones = {}
+        self.alertas = []
         self.celdas_semana = {}
         self.filas_locales = []
         self.plantillas = []
@@ -156,6 +159,27 @@ class VistaCuadrantes(QWidget):
 
         self.layout.addWidget(self.tabla_locales)
 
+        self.titulo_alertas = QLabel("Alertas del cuadrante")
+        self.titulo_alertas.setStyleSheet("font-weight:bold;")
+        self.layout.addWidget(self.titulo_alertas)
+
+        self.tabla_alertas = QTableWidget(self)
+        configure_table(self.tabla_alertas)
+        self.tabla_alertas.setColumnCount(3)
+        self.tabla_alertas.setHorizontalHeaderLabels([
+            "Tipo",
+            "Detalle",
+            "Nivel"
+        ])
+        self.tabla_alertas.horizontalHeader().setSectionResizeMode(
+            1,
+            QHeaderView.Stretch
+        )
+        self.tabla_alertas.verticalHeader().setVisible(False)
+        self.tabla_alertas.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.tabla_alertas.setMaximumHeight(180)
+        self.layout.addWidget(self.tabla_alertas)
+
         self.btn_actualizar.clicked.connect(self.cargar_datos)
         self.selector_semana.dateChanged.connect(self.cambiar_semana)
         self.selector_vista.currentIndexChanged.connect(self.cambiar_vista)
@@ -221,6 +245,9 @@ class VistaCuadrantes(QWidget):
 
         resultado = generacion["resultado"]
         asignaciones = generacion["asignaciones"]
+        self.actualizar_panel_alertas(
+            cuadrantes_service.alertas_generacion(resultado)
+        )
 
         if not self.mostrar_resumen_generacion(resultado):
 
@@ -257,6 +284,8 @@ class VistaCuadrantes(QWidget):
             "restaurantes": self.restaurantes,
             "restaurante_turnos": self.restaurante_turnos,
             "demandas_restaurante": self.demandas_restaurante,
+            "demandas_zona": self.demandas_zona,
+            "demandas_ciudad": self.demandas_ciudad,
             "repartidores": self.repartidores
         }
 
@@ -362,6 +391,8 @@ class VistaCuadrantes(QWidget):
         self.restaurantes = contexto["restaurantes"]
         self.restaurante_turnos = contexto["restaurante_turnos"]
         self.demandas_restaurante = contexto["demandas_restaurante"]
+        self.demandas_zona = contexto["demandas_zona"]
+        self.demandas_ciudad = contexto["demandas_ciudad"]
         self.repartidores = contexto["repartidores"]
         self.plantillas = cuadrantes_service.listar_plantillas()
 
@@ -415,15 +446,21 @@ class VistaCuadrantes(QWidget):
             self.fecha_inicio_semana(),
             self.turnos,
             self.restaurantes,
-            self.repartidores
+            self.repartidores,
+            demandas_restaurante=self.demandas_restaurante,
+            demandas_zona=self.demandas_zona,
+            demandas_ciudad=self.demandas_ciudad,
+            restaurante_turnos=self.restaurante_turnos
         )
         self.asignaciones = estado["asignaciones"]
+        self.alertas = estado["alertas"]
         self.celdas_semana = estado["celdas_semana"]
         self.filas_locales = estado["filas_locales"]
         self.estado_semana.setText(estado["estado_texto"])
 
         self.pintar_tabla()
         self.pintar_tabla_locales()
+        self.actualizar_panel_alertas(self.alertas)
         self.cambiar_vista()
 
     # ======================================
@@ -483,6 +520,43 @@ class VistaCuadrantes(QWidget):
                 )
                 item.setTextAlignment(Qt.AlignTop | Qt.AlignLeft)
                 self.tabla_locales.setItem(fila, columna, item)
+
+    # ======================================
+
+    def actualizar_panel_alertas(self, alertas):
+
+        self.alertas = alertas or []
+        filas = self.alertas or [{
+            "tipo": "Sin alertas",
+            "detalle": "No hay problemas detectados en el cuadrante.",
+            "severidad": "ok"
+        }]
+        self.tabla_alertas.clearContents()
+        self.tabla_alertas.setRowCount(len(filas))
+
+        colores = {
+            "alta": "#FCE4E4",
+            "media": "#FFF2CC",
+            "ok": "#EAF4EA"
+        }
+
+        for fila, alerta in enumerate(filas):
+
+            valores = [
+                alerta.get("tipo", ""),
+                alerta.get("detalle", ""),
+                alerta.get("severidad", "")
+            ]
+            fondo = colores.get(alerta.get("severidad"), "#FFFFFF")
+
+            for columna, valor in enumerate(valores):
+
+                item = QTableWidgetItem(str(valor))
+                item.setTextAlignment(Qt.AlignTop | Qt.AlignLeft)
+                item.setBackground(QBrush(QColor(fondo)))
+                self.tabla_alertas.setItem(fila, columna, item)
+
+        self.tabla_alertas.resizeColumnsToContents()
 
     # ======================================
 
