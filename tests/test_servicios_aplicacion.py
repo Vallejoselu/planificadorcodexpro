@@ -203,6 +203,33 @@ class FakeDemandasRepository:
         return self.demandas
 
 
+class FakeHistorialRepository:
+
+    def __init__(self):
+
+        self.registros = []
+
+    def registrar(
+        self,
+        accion,
+        entidad="",
+        detalle="",
+        fecha_inicio_semana=None
+    ):
+
+        self.registros.append((
+            accion,
+            entidad,
+            detalle,
+            fecha_inicio_semana
+        ))
+        return len(self.registros)
+
+    def listar(self, limite=100, fecha_inicio_semana=None):
+
+        return self.registros[-limite:]
+
+
 class TestServiciosAplicacion(unittest.TestCase):
 
     def test_cuadrantes_service_convierte_resultado_legacy(self):
@@ -262,7 +289,8 @@ class TestServiciosAplicacion(unittest.TestCase):
         turnos = FakeTurnosRepository()
         servicio = CuadrantesService(
             calendario_repository=calendario,
-            turnos_repository=turnos
+            turnos_repository=turnos,
+            historial_repository=FakeHistorialRepository()
         )
 
         servicio.guardar_cuadrante(
@@ -311,7 +339,10 @@ class TestServiciosAplicacion(unittest.TestCase):
             "incidencias": []
         }
         engine = FakePlanningEngine(resultado)
-        servicio = CuadrantesService(planning_engine=engine)
+        servicio = CuadrantesService(
+            planning_engine=engine,
+            historial_repository=FakeHistorialRepository()
+        )
 
         generado = servicio.generar_cuadrante(
             {

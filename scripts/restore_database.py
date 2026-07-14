@@ -13,6 +13,8 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from database.database import RUTA_BD
+from database.database import registrar_historial_accion
+from database.migrations import crear_base_datos
 from scripts.backup_database import create_backup, validate_sqlite
 
 
@@ -77,9 +79,21 @@ def main():
     database.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(backup, database)
     validate_sqlite(database)
+    registrar_restauracion(database, backup)
 
     print("Restauracion completada correctamente.")
     return 0
+
+
+def registrar_restauracion(database, backup):
+
+    crear_base_datos(database)
+    return registrar_historial_accion(
+        "Restaurar backup",
+        "backup",
+        f"Restaurado desde {backup}",
+        ruta_bd=database
+    )
 
 
 def list_backups(backup_dir):
