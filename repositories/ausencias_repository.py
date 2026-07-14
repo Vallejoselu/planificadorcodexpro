@@ -18,3 +18,37 @@ class AusenciasRepository:
     def insertar_disponibilidad(self, repartidor_id, disponibilidad):
 
         return db.insertar_disponibilidad(repartidor_id, disponibilidad)
+
+    def insertar_vacacion(
+        self,
+        repartidor_id,
+        fecha_inicio,
+        fecha_fin,
+        observaciones="",
+        activo=1
+    ):
+
+        return db.insertar_vacacion(
+            repartidor_id,
+            fecha_inicio,
+            fecha_fin,
+            observaciones,
+            activo
+        )
+
+    def insertar_baja(
+        self,
+        repartidor_id,
+        fecha_inicio,
+        fecha_fin=None,
+        observaciones="",
+        activa=1
+    ):
+
+        return db.insertar_baja(
+            repartidor_id,
+            fecha_inicio,
+            fecha_fin,
+            observaciones,
+            activa
+        )

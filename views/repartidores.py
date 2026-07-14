@@ -47,6 +47,7 @@ class VistaRepartidores(QWidget):
         self.btn_nuevo.setProperty("variant", "primary")
         self.btn_importar = QPushButton("Importar")
         self.btn_importar_disponibilidad = QPushButton("Importar disponibilidad")
+        self.btn_importar_ausencias = QPushButton("Importar ausencias")
         self.btn_editar = QPushButton("Editar")
         self.btn_eliminar = QPushButton("Desactivar")
         self.btn_eliminar.setProperty("variant", "danger")
@@ -55,6 +56,7 @@ class VistaRepartidores(QWidget):
         barra.addWidget(self.btn_nuevo)
         barra.addWidget(self.btn_importar)
         barra.addWidget(self.btn_importar_disponibilidad)
+        barra.addWidget(self.btn_importar_ausencias)
         barra.addWidget(self.btn_editar)
         barra.addWidget(self.btn_eliminar)
         barra.addWidget(self.btn_actualizar)
@@ -97,6 +99,7 @@ class VistaRepartidores(QWidget):
         self.btn_importar_disponibilidad.clicked.connect(
             self.importar_disponibilidad
         )
+        self.btn_importar_ausencias.clicked.connect(self.importar_ausencias)
         self.btn_editar.clicked.connect(self.editar_repartidor)
         self.btn_eliminar.clicked.connect(self.desactivar_repartidor)
 
@@ -274,6 +277,60 @@ class VistaRepartidores(QWidget):
             (
                 f"Leidos: {resultado['leidos']}\n"
                 f"Repartidores actualizados: {resultado['actualizados']}\n"
+                f"Errores: {errores}"
+                f"{detalle_errores}"
+            )
+        )
+
+    # ======================================
+
+    def importar_ausencias(self):
+
+        ruta, _ = QFileDialog.getOpenFileName(
+            self,
+            "Importar vacaciones y bajas",
+            "",
+            "Datos (*.csv *.xlsx *.xlsm)"
+        )
+
+        if not ruta:
+
+            return
+
+        try:
+
+            resultado = repartidores_service.importar_ausencias_desde_archivo(
+                ruta
+            )
+
+        except ValueError as error:
+
+            QMessageBox.warning(
+                self,
+                "Importar vacaciones y bajas",
+                str(error)
+            )
+            return
+
+        self.cargar_tabla()
+        errores = len(resultado["errores"])
+        detalle_errores = ""
+
+        if errores:
+
+            detalle_errores = "\n\nErrores:\n" + "\n".join(
+                f"Fila {error['fila']}: {error['error']}"
+                for error in resultado["errores"][:5]
+            )
+
+        QMessageBox.information(
+            self,
+            "Importar vacaciones y bajas",
+            (
+                f"Leidos: {resultado['leidos']}\n"
+                f"Vacaciones: {resultado['vacaciones']}\n"
+                f"Bajas: {resultado['bajas']}\n"
+                f"Duplicados: {resultado['duplicados']}\n"
                 f"Errores: {errores}"
                 f"{detalle_errores}"
             )
