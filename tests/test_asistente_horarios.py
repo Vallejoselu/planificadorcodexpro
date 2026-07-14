@@ -253,6 +253,48 @@ class TestAsistenteHorarios(unittest.TestCase):
         self.assertIn("Ana", respuesta)
         self.assertIn("pendientes", respuesta)
 
+    def test_quien_trabaja_en_turno(self):
+
+        respuesta = responder(
+            "Quien trabaja el viernes en comida?",
+            self.contexto_base()
+        )
+
+        self.assertIn("Trabajan el viernes", respuesta)
+        self.assertIn("Ana", respuesta)
+        self.assertNotIn("Luis", respuesta)
+
+    def test_resumen_cuadrante(self):
+
+        respuesta = responder(
+            "Dame un resumen del cuadrante",
+            self.contexto_base()
+        )
+
+        self.assertIn("Resumen del cuadrante", respuesta)
+        self.assertIn("2 asignaciones", respuesta)
+        self.assertIn("horas pendientes", respuesta)
+
+    def test_explica_por_que_no_puede_cubrir_turno(self):
+
+        respuesta = responder(
+            "Por que Luis no puede cubrir la comida del viernes?",
+            self.contexto_base()
+        )
+
+        self.assertIn("Luis no puede cubrir", respuesta)
+        self.assertIn("disponibilidad", respuesta)
+
+    def test_explica_que_si_puede_cubrir_turno(self):
+
+        respuesta = responder(
+            "Por que Ana no puede cubrir la cena del viernes?",
+            self.contexto_base()
+        )
+
+        self.assertIn("Ana puede cubrir", respuesta)
+        self.assertIn("no tiene bloqueos", respuesta)
+
     def test_simulacion_vacaciones_no_modifica_contexto(self):
 
         contexto = self.contexto_base()
@@ -286,6 +328,17 @@ class TestAsistenteHorarios(unittest.TestCase):
             len(contexto["asignaciones_repartidor"]),
             total_asignaciones
         )
+
+    def test_simulacion_propone_accion_aplicable(self):
+
+        respuesta = responder(
+            "Que ocurre si elimino a Luis del turno del viernes?",
+            self.contexto_base()
+        )
+
+        self.assertIn("Accion sugerida", respuesta)
+        self.assertIn("asignar a Ana", respuesta)
+        self.assertIn("editando el cuadrante", respuesta)
 
     def test_simulacion_no_modifica_base_real(self):
 

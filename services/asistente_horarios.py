@@ -9,6 +9,7 @@ from repositories.restaurantes_repository import RestaurantesRepository
 from repositories.turnos_repository import TurnosRepository
 from services.rules.candidatos import (
     buscar_candidatos,
+    motivos_rechazo_asistente,
     solapa_turno
 )
 from services.rules.descansos import (
@@ -89,6 +90,18 @@ def responder(pregunta, contexto=None, fecha_referencia=None):
 
         return responder_turnos_sin_cubrir(contexto)
 
+    if intencion == "resumen_cuadrante":
+
+        return responder_resumen_cuadrante(contexto)
+
+    if intencion == "trabajan":
+
+        return responder_trabajan(texto, contexto, fecha_referencia)
+
+    if intencion == "explicacion_no_puede":
+
+        return responder_explicacion_no_puede(texto, contexto, fecha_referencia)
+
     if intencion == "candidatos":
 
         if "sin superar" in texto and not extraer_dia(texto, fecha_referencia)[0]:
@@ -126,6 +139,30 @@ def detectar_intencion(texto):
     if "sin cubrir" in texto:
 
         return "turnos_sin_cubrir"
+
+    if (
+        "por que" in texto
+        and ("no puede" in texto or "no podria" in texto)
+    ):
+
+        return "explicacion_no_puede"
+
+    if (
+        "resumen" in texto
+        or "estado del cuadrante" in texto
+        or "como va el cuadrante" in texto
+    ):
+
+        return "resumen_cuadrante"
+
+    if (
+        "quien trabaja" in texto
+        or "quienes trabajan" in texto
+        or "quien esta asignado" in texto
+        or "quienes estan asignados" in texto
+    ):
+
+        return "trabajan"
 
     if "puede cubrir" in texto or "puede trabajar" in texto or "sin superar" in texto:
 
@@ -655,6 +692,100 @@ def responder_turnos_sin_cubrir(contexto):
     return "Turnos sin cubrir: " + "; ".join(primeros) + "." + extra
 
 
+def responder_resumen_cuadrante(contexto):
+
+    asignaciones = contexto.get("asignaciones_repartidor", [])
+    calendario = contexto.get("calendario", [])
+    repartidores = repartidores_activos(contexto)
+    horas = horas_por_repartidor(contexto)
+    asignadas = len(asignaciones)
+    sin_repartidor = [
+        asignacion
+        for asignacion in calendario
+        if not asignacion.get("repartidor_id")
+    ]
+    pendientes = [
+        repartidor
+        for repartidor in repartidores
+        if horas_pendientes(repartidor, horas) > 0
+    ]
+    extra = [
+        repartidor
+        for repartidor in repartidores
+        if horas.get(repartidor["id"], 0) > repartidor["horas"]
+    ]
+
+    partes = [
+        f"Resumen del cuadrante: {asignadas} asignaciones con repartidor"
+    ]
+
+    if sin_repartidor:
+
+        partes.append(f"{len(sin_repartidor)} asignaciones sin repartidor")
+
+    else:
+
+        partes.append("sin asignaciones vacias registradas")
+
+    if pendientes:
+
+        partes.append(
+            f"{len(pendientes)} repartidores con horas pendientes"
+        )
+
+    if extra:
+
+        partes.append(
+            f"{len(extra)} repartidores por encima de contrato"
+        )
+
+    return ", ".join(partes) + "." + aviso_sin_asignaciones(contexto)
+
+
+def responder_trabajan(texto, contexto, fecha_referencia):
+
+    dia, _ = extraer_dia(texto, fecha_referencia)
+    turno = extraer_turno(texto, contexto)
+    restaurante = extraer_restaurante(texto, contexto)
+
+    if not dia:
+
+        return "Indica el dia para consultar quien trabaja."
+
+    nombres = []
+
+    for asignacion in contexto.get("asignaciones_repartidor", []):
+
+        if asignacion.get("dia") != dia:
+
+            continue
+
+        if turno and asignacion.get("turno_id") != turno.get("id"):
+
+            continue
+
+        if restaurante and asignacion.get("restaurante_id") != restaurante.get("id"):
+
+            continue
+
+        repartidor = buscar_repartidor_por_id(
+            contexto,
+            asignacion.get("repartidor_id")
+        )
+
+        if repartidor:
+
+            nombres.append(repartidor["nombre"])
+
+    if not nombres:
+
+        filtro = describir_filtro_turno_restaurante(turno, restaurante)
+        return f"No hay repartidores asignados el {dia}{filtro}."
+
+    filtro = describir_filtro_turno_restaurante(turno, restaurante)
+    return f"Trabajan el {dia}{filtro}: {', '.join(sorted(set(nombres)))}."
+
+
 def responder_candidatos(texto, contexto, fecha_referencia):
 
     dia, fecha = extraer_dia(texto, fecha_referencia)
@@ -700,6 +831,68 @@ def responder_candidatos(texto, contexto, fecha_referencia):
         partes.append(motivo + ".")
 
     return " ".join(partes)
+
+
+def responder_explicacion_no_puede(texto, contexto, fecha_referencia):
+
+    repartidor = extraer_nombre_repartidor(
+        texto,
+        repartidores_activos(contexto)
+    )
+    dia, fecha = extraer_dia(texto, fecha_referencia)
+    turno = extraer_turno(texto, contexto)
+    restaurante = extraer_restaurante(texto, contexto)
+
+    if not repartidor:
+
+        return "Indica el repartidor que quieres revisar."
+
+    if not dia:
+
+        return "Indica el dia del turno que quieres revisar."
+
+    if not turno:
+
+        return "Indica el turno que quieres revisar."
+
+    motivos = motivos_rechazo_asistente(
+        contexto,
+        repartidor,
+        dia,
+        turno,
+        restaurante,
+        fecha,
+        horas_por_repartidor(contexto)
+    )
+
+    if not motivos:
+
+        destino = (
+            f" en {restaurante['nombre']}"
+            if restaurante
+            else ""
+        )
+        return (
+            f"{repartidor['nombre']} puede cubrir {turno['nombre']} "
+            f"el {dia}{destino}: no tiene bloqueos con las reglas actuales."
+        )
+
+    explicaciones = [
+        explicar_motivo_rechazo(motivo, repartidor, dia, turno)
+        for motivo in motivos
+    ]
+    destino = (
+        f" en {restaurante['nombre']}"
+        if restaurante
+        else ""
+    )
+
+    return (
+        f"{repartidor['nombre']} no puede cubrir {turno['nombre']} "
+        f"el {dia}{destino} por: "
+        + "; ".join(explicaciones)
+        + "."
+    )
 
 
 def responder_pueden_sin_superar(contexto):
@@ -852,6 +1045,17 @@ def extraer_restaurante(texto, contexto):
     return None
 
 
+def buscar_repartidor_por_id(contexto, repartidor_id):
+
+    for repartidor in repartidores_activos(contexto):
+
+        if repartidor.get("id") == repartidor_id:
+
+            return repartidor
+
+    return None
+
+
 def extraer_nombre_repartidor(texto, repartidores):
 
     for repartidor in repartidores:
@@ -872,6 +1076,48 @@ def extraer_horas(texto):
         return None
 
     return int(coincidencia.group(1))
+
+
+def describir_filtro_turno_restaurante(turno, restaurante):
+
+    partes = []
+
+    if turno:
+
+        partes.append(f" en {turno['nombre']}")
+
+    if restaurante:
+
+        partes.append(f" de {restaurante['nombre']}")
+
+    return "".join(partes)
+
+
+def explicar_motivo_rechazo(motivo, repartidor, dia, turno):
+
+    explicaciones = {
+        "no estan activos": "no esta activo",
+        "estan descansando": f"tiene descanso configurado el {dia}",
+        "estan de vacaciones": f"esta de vacaciones el {dia}",
+        "estan de baja": f"esta de baja el {dia}",
+        "no tienen disponibilidad": (
+            f"su disponibilidad no incluye {turno['nombre']} el {dia}"
+        ),
+        "tienen otro turno solapado": (
+            "ya tiene otro turno que se solapa en horario"
+        ),
+        "superarian sus horas contratadas": (
+            "superaria sus horas contratadas"
+        ),
+        "no cumplen restaurante o zona": (
+            "no coincide con el restaurante, zona o autorizaciones configuradas"
+        ),
+        "no pueden trabajar hasta la una": (
+            "no puede trabajar hasta la una"
+        )
+    }
+
+    return explicaciones.get(motivo, motivo)
 
 
 def resumir_rechazos(rechazos):
