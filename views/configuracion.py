@@ -16,6 +16,8 @@ from PySide6.QtWidgets import (
 )
 
 from database.schema import DIAS_SEMANA
+from repositories.ciudades_repository import CiudadesRepository
+from repositories.demandas_ciudad_repository import DemandasCiudadRepository
 from repositories.demandas_zona_repository import DemandasZonaRepository
 from repositories.integraciones_repository import IntegracionesRepository
 from repositories.turnos_repository import TurnosRepository
@@ -24,6 +26,8 @@ from ui.theme_manager import ThemeManager
 from ui.widgets import PageHeader, configure_table, make_button
 
 
+ciudades_repository = CiudadesRepository()
+demandas_ciudad_repository = DemandasCiudadRepository()
 demandas_zona_repository = DemandasZonaRepository()
 integraciones_repository = IntegracionesRepository()
 turnos_repository = TurnosRepository()
@@ -37,7 +41,10 @@ class VistaConfiguracion(QWidget):
         self.layout = QVBoxLayout(self)
         self.layout.setContentsMargins(24, 22, 24, 22)
         self.layout.setSpacing(14)
+        self.ciudades_demanda_ciudad = []
+        self.demandas_ciudad = []
         self.demandas_zona = []
+        self.turnos_demanda_ciudad = []
         self.turnos_demanda_zona = []
 
         self.layout.addWidget(
@@ -81,6 +88,7 @@ class VistaConfiguracion(QWidget):
         self.layout.addWidget(self.panel_actualizaciones)
 
         self.crear_panel_demanda_zona()
+        self.crear_panel_demanda_ciudad()
 
         barra = QHBoxLayout()
         self.btn_actualizar = make_button("Actualizar", "secondary")
@@ -111,6 +119,15 @@ class VistaConfiguracion(QWidget):
         )
         self.btn_guardar_demanda_zona.clicked.connect(
             self.guardar_demanda_zona
+        )
+        self.btn_agregar_demanda_ciudad.clicked.connect(
+            self.agregar_demanda_ciudad
+        )
+        self.btn_eliminar_demanda_ciudad.clicked.connect(
+            self.eliminar_demanda_ciudad
+        )
+        self.btn_guardar_demanda_ciudad.clicked.connect(
+            self.guardar_demanda_ciudad
         )
 
         self.cargar_datos()
@@ -188,9 +205,79 @@ class VistaConfiguracion(QWidget):
 
     # ======================================
 
+    def crear_panel_demanda_ciudad(self):
+
+        self.panel_demanda_ciudad = QFrame()
+        self.panel_demanda_ciudad.setObjectName("card")
+        layout = QVBoxLayout(self.panel_demanda_ciudad)
+        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSpacing(10)
+
+        layout.addWidget(QLabel("Demanda por ciudad y turno"))
+
+        formulario = QHBoxLayout()
+
+        self.selector_ciudad_demanda = QComboBox()
+        self.selector_turno_demanda_ciudad = QComboBox()
+
+        self.selector_dia_demanda_ciudad = QComboBox()
+        self.selector_dia_demanda_ciudad.addItem("", "")
+
+        for dia in DIAS_SEMANA:
+
+            self.selector_dia_demanda_ciudad.addItem(dia, dia)
+
+        self.campo_fecha_demanda_ciudad = QLineEdit()
+        self.campo_fecha_demanda_ciudad.setPlaceholderText("YYYY-MM-DD")
+
+        self.campo_repartidores_demanda_ciudad = QSpinBox()
+        self.campo_repartidores_demanda_ciudad.setRange(0, 200)
+        self.campo_repartidores_demanda_ciudad.setValue(1)
+
+        formulario.addWidget(QLabel("Ciudad"))
+        formulario.addWidget(self.selector_ciudad_demanda)
+        formulario.addWidget(QLabel("Turno"))
+        formulario.addWidget(self.selector_turno_demanda_ciudad)
+        formulario.addWidget(QLabel("Dia"))
+        formulario.addWidget(self.selector_dia_demanda_ciudad)
+        formulario.addWidget(QLabel("Fecha"))
+        formulario.addWidget(self.campo_fecha_demanda_ciudad)
+        formulario.addWidget(QLabel("Repartidores"))
+        formulario.addWidget(self.campo_repartidores_demanda_ciudad)
+
+        layout.addLayout(formulario)
+
+        acciones = QHBoxLayout()
+        self.btn_agregar_demanda_ciudad = make_button(
+            "Agregar demanda",
+            "secondary"
+        )
+        self.btn_eliminar_demanda_ciudad = make_button(
+            "Eliminar demanda",
+            "secondary"
+        )
+        self.btn_guardar_demanda_ciudad = make_button(
+            "Guardar demanda por ciudad",
+            "primary"
+        )
+        acciones.addWidget(self.btn_agregar_demanda_ciudad)
+        acciones.addWidget(self.btn_eliminar_demanda_ciudad)
+        acciones.addStretch()
+        acciones.addWidget(self.btn_guardar_demanda_ciudad)
+        layout.addLayout(acciones)
+
+        self.tabla_demanda_ciudad = QTableWidget()
+        configure_table(self.tabla_demanda_ciudad)
+        layout.addWidget(self.tabla_demanda_ciudad)
+
+        self.layout.addWidget(self.panel_demanda_ciudad)
+
+    # ======================================
+
     def cargar_datos(self):
 
         self.cargar_demanda_zona()
+        self.cargar_demanda_ciudad()
         self.cargar_integraciones()
         self.cargar_eventos()
 
@@ -405,6 +492,202 @@ class VistaConfiguracion(QWidget):
             self.pintar_fila(self.tabla_demanda_zona, fila, valores)
 
         self.tabla_demanda_zona.resizeColumnsToContents()
+
+    # ======================================
+
+    def cargar_demanda_ciudad(self):
+
+        self.ciudades_demanda_ciudad = ciudades_repository.listar_activas()
+        self.turnos_demanda_ciudad = turnos_repository.listar_activos()
+        self.demandas_ciudad = [
+            {
+                "id": demanda[0],
+                "ciudad_id": demanda[1],
+                "ciudad": demanda[2],
+                "turno_id": demanda[3],
+                "fecha": demanda[4],
+                "dia_semana": demanda[5],
+                "repartidores_necesarios": demanda[6],
+                "activo": demanda[7]
+            }
+            for demanda in demandas_ciudad_repository.listar()
+            if demanda[7]
+        ]
+
+        ciudad_actual = self.selector_ciudad_demanda.currentData()
+        self.selector_ciudad_demanda.clear()
+
+        for ciudad in self.ciudades_demanda_ciudad:
+
+            self.selector_ciudad_demanda.addItem(ciudad[1], ciudad[0])
+
+        indice_ciudad = self.selector_ciudad_demanda.findData(ciudad_actual)
+
+        if indice_ciudad >= 0:
+
+            self.selector_ciudad_demanda.setCurrentIndex(indice_ciudad)
+
+        turno_actual = self.selector_turno_demanda_ciudad.currentData()
+        self.selector_turno_demanda_ciudad.clear()
+
+        for turno in self.turnos_demanda_ciudad:
+
+            self.selector_turno_demanda_ciudad.addItem(turno[2], turno[0])
+
+        indice_turno = self.selector_turno_demanda_ciudad.findData(
+            turno_actual
+        )
+
+        if indice_turno >= 0:
+
+            self.selector_turno_demanda_ciudad.setCurrentIndex(indice_turno)
+
+        self.refrescar_tabla_demanda_ciudad()
+
+    # ======================================
+
+    def agregar_demanda_ciudad(self):
+
+        ciudad_id = self.selector_ciudad_demanda.currentData()
+        ciudad = self.selector_ciudad_demanda.currentText()
+        turno_id = self.selector_turno_demanda_ciudad.currentData()
+        dia_semana = self.selector_dia_demanda_ciudad.currentData() or None
+        fecha = self.campo_fecha_demanda_ciudad.text().strip() or None
+
+        if not ciudad_id:
+
+            QMessageBox.warning(
+                self,
+                "Demanda por ciudad",
+                "Selecciona una ciudad."
+            )
+            return
+
+        if not turno_id:
+
+            QMessageBox.warning(
+                self,
+                "Demanda por ciudad",
+                "Selecciona un turno."
+            )
+            return
+
+        if bool(fecha) == bool(dia_semana):
+
+            QMessageBox.warning(
+                self,
+                "Demanda por ciudad",
+                "Configura una fecha concreta o un dia de semana, solo uno."
+            )
+            return
+
+        clave = (
+            int(ciudad_id),
+            int(turno_id),
+            "fecha" if fecha else "dia",
+            fecha or dia_semana
+        )
+
+        for demanda in self.demandas_ciudad:
+
+            clave_existente = (
+                int(demanda["ciudad_id"]),
+                int(demanda["turno_id"]),
+                "fecha" if demanda.get("fecha") else "dia",
+                demanda.get("fecha") or demanda.get("dia_semana")
+            )
+
+            if clave == clave_existente:
+
+                QMessageBox.warning(
+                    self,
+                    "Demanda por ciudad",
+                    "Ya existe demanda para esa ciudad, turno y periodo."
+                )
+                return
+
+        self.demandas_ciudad.append({
+            "ciudad_id": int(ciudad_id),
+            "ciudad": ciudad,
+            "turno_id": int(turno_id),
+            "fecha": fecha,
+            "dia_semana": dia_semana,
+            "repartidores_necesarios": (
+                self.campo_repartidores_demanda_ciudad.value()
+            ),
+            "activo": 1
+        })
+        self.refrescar_tabla_demanda_ciudad()
+
+    # ======================================
+
+    def eliminar_demanda_ciudad(self):
+
+        fila = self.tabla_demanda_ciudad.currentRow()
+
+        if fila < 0 or fila >= len(self.demandas_ciudad):
+
+            QMessageBox.warning(
+                self,
+                "Demanda por ciudad",
+                "Selecciona una demanda."
+            )
+            return
+
+        del self.demandas_ciudad[fila]
+        self.refrescar_tabla_demanda_ciudad()
+
+    # ======================================
+
+    def guardar_demanda_ciudad(self):
+
+        try:
+
+            demandas_ciudad_repository.guardar(self.demandas_ciudad)
+
+        except ValueError as error:
+
+            QMessageBox.warning(self, "Demanda por ciudad", str(error))
+            return
+
+        self.cargar_demanda_ciudad()
+        QMessageBox.information(
+            self,
+            "Demanda por ciudad",
+            "Demanda por ciudad guardada."
+        )
+
+    # ======================================
+
+    def refrescar_tabla_demanda_ciudad(self):
+
+        nombres_turno = {
+            turno[0]: turno[2]
+            for turno in self.turnos_demanda_ciudad
+        }
+
+        self.tabla_demanda_ciudad.setColumnCount(5)
+        self.tabla_demanda_ciudad.setHorizontalHeaderLabels([
+            "Ciudad",
+            "Turno",
+            "Dia",
+            "Fecha",
+            "Repartidores"
+        ])
+        self.tabla_demanda_ciudad.setRowCount(len(self.demandas_ciudad))
+
+        for fila, demanda in enumerate(self.demandas_ciudad):
+
+            valores = [
+                demanda.get("ciudad", demanda["ciudad_id"]),
+                nombres_turno.get(demanda["turno_id"], demanda["turno_id"]),
+                demanda.get("dia_semana") or "",
+                demanda.get("fecha") or "",
+                demanda["repartidores_necesarios"]
+            ]
+            self.pintar_fila(self.tabla_demanda_ciudad, fila, valores)
+
+        self.tabla_demanda_ciudad.resizeColumnsToContents()
 
     # ======================================
 
