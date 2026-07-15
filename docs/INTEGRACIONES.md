@@ -63,3 +63,15 @@ La pantalla de exportaciones permite:
 
 El envio pide confirmacion antes de usar SMTP. Si faltan servidor, remitente,
 destinatarios o referencia de credenciales, la app muestra un error y no envia.
+
+## Fase 14.10C1: plataforma delivery generica
+
+Antes de conectar APIs reales, la app prepara una integracion generica:
+
+- exportacion del cuadrante a JSON con esquema `planificador.delivery.v1`;
+- payload reutilizable por futuras integraciones;
+- webhook simulado configurable desde `api_generica.base_url` u opciones;
+- sin llamadas reales a Shipday, Glovo ni Uber.
+
+El webhook simulado genera la solicitud que se enviaria, pero no contacta ningun
+servicio externo.
