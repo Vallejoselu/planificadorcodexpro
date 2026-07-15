@@ -2947,3 +2947,238 @@ def obtener_eventos_integracion(limite=100):
     conexion.close()
 
     return datos
+
+
+def registrar_sincronizacion_integracion(
+    proveedor,
+    accion,
+    estado="pendiente",
+    payload="",
+    respuesta="",
+    error="",
+    intentos=0,
+    max_reintentos=3,
+    proximo_intento=None
+):
+
+    proveedor = validar_proveedor_integracion(proveedor)
+    crear_base_datos()
+
+    conexion = conectar()
+    cursor = conexion.cursor()
+
+    cursor.execute("""
+    INSERT INTO integraciones_sincronizaciones(
+        proveedor,
+        accion,
+        estado,
+        payload,
+        respuesta,
+        error,
+        intentos,
+        max_reintentos,
+        proximo_intento,
+        actualizado_en
+    )
+    VALUES(?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP)
+    """,(
+        proveedor,
+        accion,
+        estado,
+        payload,
+        respuesta,
+        error,
+        intentos,
+        max_reintentos,
+        proximo_intento
+    ))
+    sincronizacion_id = cursor.lastrowid
+
+    conexion.commit()
+    conexion.close()
+
+    return sincronizacion_id
+
+
+def actualizar_sincronizacion_integracion(
+    sincronizacion_id,
+    estado,
+    respuesta="",
+    error="",
+    intentos=None,
+    proximo_intento=None
+):
+
+    crear_base_datos()
+
+    conexion = conectar()
+    cursor = conexion.cursor()
+
+    if intentos is None:
+
+        cursor.execute("""
+        UPDATE integraciones_sincronizaciones
+        SET
+            estado=?,
+            respuesta=?,
+            error=?,
+            proximo_intento=?,
+            actualizado_en=CURRENT_TIMESTAMP
+        WHERE id=?
+        """,(
+            estado,
+            respuesta,
+            error,
+            proximo_intento,
+            sincronizacion_id
+        ))
+
+    else:
+
+        cursor.execute("""
+        UPDATE integraciones_sincronizaciones
+        SET
+            estado=?,
+            respuesta=?,
+            error=?,
+            intentos=?,
+            proximo_intento=?,
+            actualizado_en=CURRENT_TIMESTAMP
+        WHERE id=?
+        """,(
+            estado,
+            respuesta,
+            error,
+            intentos,
+            proximo_intento,
+            sincronizacion_id
+        ))
+
+    conexion.commit()
+    conexion.close()
+
+
+def obtener_sincronizacion_integracion(sincronizacion_id):
+
+    crear_base_datos()
+
+    conexion = conectar()
+    cursor = conexion.cursor()
+
+    cursor.execute("""
+    SELECT
+        id,
+        proveedor,
+        accion,
+        estado,
+        payload,
+        respuesta,
+        error,
+        intentos,
+        max_reintentos,
+        proximo_intento,
+        creado_en,
+        actualizado_en
+    FROM integraciones_sincronizaciones
+    WHERE id=?
+    """,(sincronizacion_id,))
+    datos = cursor.fetchone()
+
+    conexion.close()
+
+    return datos
+
+
+def obtener_sincronizaciones_integracion(
+    limite=100,
+    estado=None,
+    proveedor=None
+):
+
+    crear_base_datos()
+
+    conexion = conectar()
+    cursor = conexion.cursor()
+    filtros = []
+    parametros = []
+
+    if estado:
+
+        filtros.append("estado=?")
+        parametros.append(estado)
+
+    if proveedor:
+
+        filtros.append("proveedor=?")
+        parametros.append(validar_proveedor_integracion(proveedor))
+
+    where = f"WHERE {' AND '.join(filtros)}" if filtros else ""
+    parametros.append(limite)
+
+    cursor.execute(f"""
+    SELECT
+        id,
+        proveedor,
+        accion,
+        estado,
+        payload,
+        respuesta,
+        error,
+        intentos,
+        max_reintentos,
+        proximo_intento,
+        creado_en,
+        actualizado_en
+    FROM integraciones_sincronizaciones
+    {where}
+    ORDER BY creado_en DESC, id DESC
+    LIMIT ?
+    """,parametros)
+    datos = cursor.fetchall()
+
+    conexion.close()
+
+    return datos
+
+
+def obtener_sincronizaciones_pendientes(ahora, limite=100):
+
+    crear_base_datos()
+
+    conexion = conectar()
+    cursor = conexion.cursor()
+
+    cursor.execute("""
+    SELECT
+        id,
+        proveedor,
+        accion,
+        estado,
+        payload,
+        respuesta,
+        error,
+        intentos,
+        max_reintentos,
+        proximo_intento,
+        creado_en,
+        actualizado_en
+    FROM integraciones_sincronizaciones
+    WHERE estado IN ('pendiente', 'reintento')
+      AND intentos < max_reintentos
+      AND (
+          proximo_intento IS NULL
+          OR proximo_intento <= ?
+      )
+    ORDER BY
+        COALESCE(proximo_intento, creado_en),
+        id
+    LIMIT ?
+    """,(
+        ahora,
+        limite
+    ))
+    datos = cursor.fetchall()
+
+    conexion.close()
+
+    return datos
