@@ -38,6 +38,7 @@ TIPOS_TURNO = (
     "Personalizado"
 )
 PROVEEDORES_INTEGRACION = (
+    "email",
     "shipday",
     "glovo",
     "uber",
