@@ -1,4 +1,5 @@
 import csv
+from datetime import UTC, datetime, time, timedelta
 from html import escape
 from pathlib import Path
 
@@ -107,6 +108,19 @@ def exportar_csv(ruta, fecha_inicio_semana=None):
         )
 
     registrar_exportacion("CSV", ruta, fecha_inicio_semana)
+
+
+def exportar_ics(ruta, fecha_inicio_semana=None):
+
+    fecha_inicio_semana = normalizar_fecha_inicio_semana(fecha_inicio_semana)
+    datos = preparar_datos_exportacion(fecha_inicio_semana)
+    contenido = crear_calendario_ics(datos)
+
+    with open(ruta, "w", newline="", encoding="utf-8") as archivo:
+
+        archivo.write(contenido)
+
+    registrar_exportacion("ICS", ruta, fecha_inicio_semana)
 
 
 def exportar_pdf(ruta, fecha_inicio_semana=None):
@@ -383,6 +397,147 @@ def _crear_html(datos):
     partes.append("</body></html>")
 
     return "".join(partes)
+
+
+def crear_calendario_ics(datos):
+
+    fecha_inicio_semana = normalizar_fecha_inicio_semana(
+        datos.get("fecha_inicio_semana")
+    )
+    eventos = []
+
+    for indice, fila in enumerate(datos.get("horarios", []), start=1):
+
+        evento = _crear_evento_ics(fila, fecha_inicio_semana, indice)
+
+        if evento:
+
+            eventos.extend(evento)
+
+    lineas = [
+        "BEGIN:VCALENDAR",
+        "VERSION:2.0",
+        "PRODID:-//Planificador Delivery Pro//ES",
+        "CALSCALE:GREGORIAN",
+        "METHOD:PUBLISH",
+        "X-WR-CALNAME:Planificador Delivery Pro"
+    ]
+    lineas.extend(eventos)
+    lineas.append("END:VCALENDAR")
+
+    return "\r\n".join(_plegar_linea(linea) for linea in lineas) + "\r\n"
+
+
+def _crear_evento_ics(fila, fecha_inicio_semana, indice):
+
+    inicio = _datetime_evento(fecha_inicio_semana, fila[0], fila[6])
+    fin = _datetime_evento(fecha_inicio_semana, fila[0], fila[7])
+
+    if not inicio or not fin:
+
+        return None
+
+    if fin <= inicio:
+
+        fin += timedelta(days=1)
+
+    repartidor = fila[5] or "Sin repartidor"
+    resumen = f"{fila[1]} - {fila[3]}"
+    descripcion = (
+        f"Tipo: {fila[2]}\n"
+        f"Repartidor: {repartidor}\n"
+        f"Zona: {fila[4] or ''}\n"
+        f"Horas: {fila[8]}"
+    )
+
+    return [
+        "BEGIN:VEVENT",
+        f"UID:{_valor_ics(f'planificador-{fecha_inicio_semana}-{indice}@planificador-delivery-pro')}",
+        f"DTSTAMP:{datetime.now(UTC).strftime('%Y%m%dT%H%M%SZ')}",
+        f"DTSTART:{_formatear_datetime_ics(inicio)}",
+        f"DTEND:{_formatear_datetime_ics(fin)}",
+        f"SUMMARY:{_valor_ics(resumen)}",
+        f"LOCATION:{_valor_ics(fila[3])}",
+        f"DESCRIPTION:{_valor_ics(descripcion)}",
+        "END:VEVENT"
+    ]
+
+
+def _datetime_evento(fecha_inicio_semana, dia, hora):
+
+    if dia not in DIAS_SEMANA:
+
+        return None
+
+    hora = _parsear_hora(hora)
+
+    if hora is None:
+
+        return None
+
+    fecha = (
+        datetime.strptime(fecha_inicio_semana, "%Y-%m-%d").date()
+        + timedelta(days=DIAS_SEMANA.index(dia))
+    )
+
+    return datetime.combine(fecha, hora)
+
+
+def _parsear_hora(valor):
+
+    valor = str(valor or "").strip()
+
+    if not valor:
+
+        return None
+
+    for formato in ("%H:%M", "%H:%M:%S"):
+
+        try:
+
+            return datetime.strptime(valor, formato).time()
+
+        except ValueError:
+
+            continue
+
+    return None
+
+
+def _formatear_datetime_ics(valor):
+
+    if isinstance(valor, time):
+
+        raise TypeError("Se esperaba fecha y hora completas.")
+
+    return valor.strftime("%Y%m%dT%H%M%S")
+
+
+def _valor_ics(valor):
+
+    texto = str(valor or "")
+    texto = texto.replace("\\", "\\\\")
+    texto = texto.replace(";", "\\;")
+    texto = texto.replace(",", "\\,")
+    texto = texto.replace("\r\n", "\\n")
+    texto = texto.replace("\n", "\\n")
+
+    return texto
+
+
+def _plegar_linea(linea):
+
+    partes = []
+    restante = str(linea)
+
+    while len(restante) > 75:
+
+        partes.append(restante[:75])
+        restante = " " + restante[75:]
+
+    partes.append(restante)
+
+    return "\r\n".join(partes)
 
 
 def _formatear_numero(valor):

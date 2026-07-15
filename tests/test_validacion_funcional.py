@@ -20,7 +20,7 @@ from database.database import (
 )
 from services.asistente_horarios import responder
 from services.cuadrantes_service import CuadrantesService
-from services.exportador import exportar_csv, exportar_excel, exportar_pdf
+from services.exportador import exportar_csv, exportar_excel, exportar_ics, exportar_pdf
 from ui.theme_manager import ThemeManager
 from views.ventana_principal import VentanaPrincipal
 
@@ -115,12 +115,14 @@ class TestValidacionFuncionalCompleta(unittest.TestCase):
         ruta_excel = carpeta_exportacion / "cuadrante.xlsx"
         ruta_pdf = carpeta_exportacion / "cuadrante.pdf"
         ruta_csv = carpeta_exportacion / "cuadrante.csv"
+        ruta_ics = carpeta_exportacion / "cuadrante.ics"
 
         exportar_excel(ruta_excel, semana_actual)
         exportar_pdf(str(ruta_pdf), semana_actual)
         exportar_csv(ruta_csv, semana_actual)
+        exportar_ics(ruta_ics, semana_actual)
 
-        for ruta in (ruta_excel, ruta_pdf, ruta_csv):
+        for ruta in (ruta_excel, ruta_pdf, ruta_csv, ruta_ics):
 
             self.assertTrue(ruta.exists())
             self.assertGreater(ruta.stat().st_size, 0)
