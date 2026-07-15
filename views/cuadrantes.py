@@ -4,6 +4,8 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QPushButton,
+    QScrollArea,
+    QFrame,
     QTableWidget,
     QTableWidgetItem,
     QHeaderView,
@@ -15,7 +17,8 @@ from PySide6.QtWidgets import (
     QTextEdit,
     QDialogButtonBox,
     QLineEdit,
-    QCheckBox
+    QCheckBox,
+    QSizePolicy
 )
 
 from PySide6.QtGui import QColor, QBrush, QUndoCommand, QUndoStack
@@ -61,8 +64,6 @@ class VistaCuadrantes(QWidget):
 
         self.layout.addWidget(titulo)
 
-        barra = QHBoxLayout()
-
         self.selector_restaurante = QComboBox()
         self.selector_turno = QComboBox()
         self.selector_repartidor = QComboBox()
@@ -75,6 +76,8 @@ class VistaCuadrantes(QWidget):
             hoy.addDays(1 - hoy.dayOfWeek())
         )
         self.estado_semana = QLabel("")
+        self.estado_semana.setMinimumWidth(170)
+        self.estado_semana.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
 
         self.btn_generar = QPushButton("Generar cuadrante")
         self.btn_generar.setProperty("variant", "primary")
@@ -100,28 +103,8 @@ class VistaCuadrantes(QWidget):
         self.btn_deshacer.setShortcut("Ctrl+Z")
         self.btn_rehacer.setShortcut("Ctrl+Y")
 
-        barra.addWidget(QLabel("Semana"))
-        barra.addWidget(self.selector_semana)
-        barra.addWidget(QLabel("Vista"))
-        barra.addWidget(self.selector_vista)
-        barra.addWidget(self.estado_semana)
-        barra.addWidget(self.btn_generar)
-        barra.addWidget(self.selector_restaurante)
-        barra.addWidget(self.selector_turno)
-        barra.addWidget(self.selector_repartidor)
-        barra.addWidget(self.btn_asignar)
-        barra.addWidget(self.btn_copiar)
-        barra.addWidget(self.btn_pegar)
-        barra.addWidget(self.btn_copiar_semana)
-        barra.addWidget(self.btn_guardar_plantilla)
-        barra.addWidget(self.btn_aplicar_plantilla)
-        barra.addWidget(self.btn_eliminar)
-        barra.addWidget(self.btn_deshacer)
-        barra.addWidget(self.btn_rehacer)
-        barra.addWidget(self.btn_actualizar)
-        barra.addStretch()
-
-        self.layout.addLayout(barra)
+        self.configurar_controles_barra()
+        self.crear_barras_superiores()
 
         self.tabla = TablaCalendario(self)
         configure_table(self.tabla)
@@ -195,6 +178,105 @@ class VistaCuadrantes(QWidget):
         self.btn_rehacer.clicked.connect(self.undo_stack.redo)
 
         self.cargar_datos()
+
+    # ======================================
+
+    def configurar_controles_barra(self):
+
+        self.selector_semana.setFixedWidth(112)
+        self.selector_vista.setFixedWidth(96)
+        self.selector_restaurante.setMinimumWidth(160)
+        self.selector_turno.setMinimumWidth(130)
+        self.selector_repartidor.setMinimumWidth(150)
+
+        for selector in (
+            self.selector_restaurante,
+            self.selector_turno,
+            self.selector_repartidor
+        ):
+
+            selector.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+
+        for boton in (
+            self.btn_generar,
+            self.btn_asignar,
+            self.btn_copiar,
+            self.btn_pegar,
+            self.btn_copiar_semana,
+            self.btn_guardar_plantilla,
+            self.btn_aplicar_plantilla,
+            self.btn_eliminar,
+            self.btn_deshacer,
+            self.btn_rehacer,
+            self.btn_actualizar
+        ):
+
+            boton.setMinimumHeight(36)
+            boton.setMinimumWidth(max(82, boton.sizeHint().width() + 18))
+            boton.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+
+    # ======================================
+
+    def crear_barras_superiores(self):
+
+        self.barra_filtros_widget = QWidget()
+        barra_filtros = QHBoxLayout(self.barra_filtros_widget)
+        barra_filtros.setContentsMargins(0, 0, 0, 0)
+        barra_filtros.setSpacing(8)
+
+        barra_filtros.addWidget(QLabel("Semana"))
+        barra_filtros.addWidget(self.selector_semana)
+        barra_filtros.addWidget(QLabel("Vista"))
+        barra_filtros.addWidget(self.selector_vista)
+        barra_filtros.addWidget(self.estado_semana)
+        barra_filtros.addWidget(self.btn_generar)
+
+        self.barra_acciones_widget = QWidget()
+        barra_acciones = QHBoxLayout(self.barra_acciones_widget)
+        barra_acciones.setContentsMargins(0, 0, 0, 0)
+        barra_acciones.setSpacing(8)
+
+        barra_acciones.addWidget(self.selector_restaurante)
+        barra_acciones.addWidget(self.selector_turno)
+        barra_acciones.addWidget(self.selector_repartidor)
+        barra_acciones.addWidget(self.btn_asignar)
+        barra_acciones.addWidget(self.btn_copiar)
+        barra_acciones.addWidget(self.btn_pegar)
+        barra_acciones.addWidget(self.btn_copiar_semana)
+        barra_acciones.addWidget(self.btn_guardar_plantilla)
+        barra_acciones.addWidget(self.btn_aplicar_plantilla)
+        barra_acciones.addWidget(self.btn_eliminar)
+        barra_acciones.addWidget(self.btn_deshacer)
+        barra_acciones.addWidget(self.btn_rehacer)
+        barra_acciones.addWidget(self.btn_actualizar)
+
+        self.barra_filtros_scroll = self.crear_barra_desplazable(
+            self.barra_filtros_widget
+        )
+        self.barra_acciones_scroll = self.crear_barra_desplazable(
+            self.barra_acciones_widget
+        )
+
+        self.layout.addWidget(self.barra_filtros_scroll)
+        self.layout.addWidget(self.barra_acciones_scroll)
+
+    # ======================================
+
+    def crear_barra_desplazable(self, widget):
+
+        widget.adjustSize()
+        widget.setMinimumWidth(widget.sizeHint().width())
+        widget.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+
+        scroll = QScrollArea()
+        scroll.setFrameShape(QFrame.NoFrame)
+        scroll.setWidgetResizable(False)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        scroll.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        scroll.setWidget(widget)
+        scroll.setFixedHeight(widget.sizeHint().height() + 18)
+        return scroll
 
     # ======================================
 
@@ -457,6 +539,7 @@ class VistaCuadrantes(QWidget):
         self.celdas_semana = estado["celdas_semana"]
         self.filas_locales = estado["filas_locales"]
         self.estado_semana.setText(estado["estado_texto"])
+        self.estado_semana.setToolTip(estado["estado_texto"])
 
         self.pintar_tabla()
         self.pintar_tabla_locales()
