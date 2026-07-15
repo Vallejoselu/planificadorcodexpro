@@ -50,6 +50,7 @@ class VistaCuadrantes(QWidget):
         self.alertas = []
         self.celdas_semana = {}
         self.filas_locales = []
+        self.filas_repartidores = []
         self.plantillas = []
         self.portapapeles = None
         self.undo_stack = QUndoStack(self)
@@ -96,6 +97,7 @@ class VistaCuadrantes(QWidget):
 
         self.selector_vista.addItem("Semana", "semana")
         self.selector_vista.addItem("Por local", "local")
+        self.selector_vista.addItem("Por empleado", "empleado")
 
         self.btn_copiar.setShortcut("Ctrl+C")
         self.btn_pegar.setShortcut("Ctrl+V")
@@ -141,6 +143,32 @@ class VistaCuadrantes(QWidget):
         self.tabla_locales.hide()
 
         self.layout.addWidget(self.tabla_locales)
+
+        self.tabla_empleados = QTableWidget(self)
+        configure_table(self.tabla_empleados)
+        self.tabla_empleados.setColumnCount(len(DIAS_SEMANA) + 2)
+        self.tabla_empleados.setHorizontalHeaderLabels([
+            "Empleado",
+            "Contrato",
+            *DIAS_SEMANA
+        ])
+        self.tabla_empleados.horizontalHeader().setSectionResizeMode(
+            QHeaderView.Stretch
+        )
+        self.tabla_empleados.horizontalHeader().setSectionResizeMode(
+            0,
+            QHeaderView.ResizeToContents
+        )
+        self.tabla_empleados.horizontalHeader().setSectionResizeMode(
+            1,
+            QHeaderView.ResizeToContents
+        )
+        self.tabla_empleados.verticalHeader().setVisible(False)
+        self.tabla_empleados.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.tabla_empleados.setSelectionBehavior(QTableWidget.SelectRows)
+        self.tabla_empleados.hide()
+
+        self.layout.addWidget(self.tabla_empleados)
 
         self.titulo_alertas = QLabel("Alertas del cuadrante")
         self.titulo_alertas.setStyleSheet("font-weight:bold;")
@@ -289,9 +317,12 @@ class VistaCuadrantes(QWidget):
 
     def cambiar_vista(self):
 
-        vista_local = self.selector_vista.currentData() == "local"
-        self.tabla.setVisible(not vista_local)
+        vista = self.selector_vista.currentData()
+        vista_local = vista == "local"
+        vista_empleado = vista == "empleado"
+        self.tabla.setVisible(vista == "semana")
         self.tabla_locales.setVisible(vista_local)
+        self.tabla_empleados.setVisible(vista_empleado)
 
     # ======================================
 
@@ -538,11 +569,13 @@ class VistaCuadrantes(QWidget):
         self.alertas = estado["alertas"]
         self.celdas_semana = estado["celdas_semana"]
         self.filas_locales = estado["filas_locales"]
+        self.filas_repartidores = estado["filas_repartidores"]
         self.estado_semana.setText(estado["estado_texto"])
         self.estado_semana.setToolTip(estado["estado_texto"])
 
         self.pintar_tabla()
         self.pintar_tabla_locales()
+        self.pintar_tabla_empleados()
         self.actualizar_panel_alertas(self.alertas)
         self.cambiar_vista()
 
@@ -603,6 +636,56 @@ class VistaCuadrantes(QWidget):
                 )
                 item.setTextAlignment(Qt.AlignTop | Qt.AlignLeft)
                 self.tabla_locales.setItem(fila, columna, item)
+
+    # ======================================
+
+    def pintar_tabla_empleados(self):
+
+        self.tabla_empleados.clearContents()
+        self.tabla_empleados.setRowCount(len(self.filas_repartidores))
+
+        for fila, repartidor in enumerate(self.filas_repartidores):
+
+            self.tabla_empleados.setItem(
+                fila,
+                0,
+                QTableWidgetItem(repartidor["nombre"])
+            )
+            self.tabla_empleados.setItem(
+                fila,
+                1,
+                QTableWidgetItem(repartidor["contrato"])
+            )
+
+            for columna, dia in enumerate(DIAS_SEMANA, start=2):
+
+                celda = repartidor["celdas"].get(dia, {})
+                item = QTableWidgetItem(celda.get("texto", ""))
+                item.setTextAlignment(Qt.AlignCenter)
+                item.setToolTip(celda.get("tooltip", ""))
+                item.setBackground(
+                    QBrush(QColor(
+                        self.color_celda_empleado(celda.get("estado"))
+                    ))
+                )
+                self.tabla_empleados.setItem(fila, columna, item)
+
+        self.tabla_empleados.resizeRowsToContents()
+
+    # ======================================
+
+    def color_celda_empleado(self, estado):
+
+        colores = {
+            "libre": "#F8D7DA",
+            "doble": "#FFF3CD",
+            "comida": "#D9EAF7",
+            "cena": "#E3E0F3",
+            "disponible": "#FFFFFF",
+            "turno": "#E2F0D9"
+        }
+
+        return colores.get(estado, "#FFFFFF")
 
     # ======================================
 
@@ -808,6 +891,15 @@ class VistaCuadrantes(QWidget):
             self.turnos,
             self.restaurantes,
             self.repartidores
+        )
+        self.filas_repartidores = (
+            cuadrantes_service.construir_filas_repartidores(
+                self.asignaciones,
+                self.turnos,
+                self.restaurantes,
+                self.repartidores,
+                self.fecha_inicio_semana()
+            )
         )
 
     # ======================================
