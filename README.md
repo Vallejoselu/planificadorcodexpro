@@ -2,7 +2,7 @@
 
 Planificador Delivery Pro es una aplicacion de escritorio para Windows creada con PySide6 y SQLite. Permite gestionar repartidores, restaurantes, turnos, calendarios semanales, exportaciones, estadisticas y un asistente local basado en reglas.
 
-Version actual: 2.0.0
+Version actual: 2.1.0
 
 ## Requisitos para desarrollo
 
@@ -85,6 +85,13 @@ docs\FLUJO_GIT_SEGURO.md
 - Generador de horarios con restricciones de contrato, descanso, disponibilidad, vacaciones y bajas.
 - Asistente local para consultas sobre horas, descansos, disponibilidad, cobertura y simulaciones.
 - Exportacion a Excel, PDF y CSV.
+- Copia de cuadrantes entre semanas y plantillas reutilizables.
+- Demanda configurable por restaurante, zona y ciudad con prioridad documentada.
+- Panel de alertas del cuadrante e historial de acciones importantes.
+- Importacion de repartidores, restaurantes, disponibilidad, vacaciones y bajas.
+- Exportacion ICS, resumen por email, delivery JSON y webhook generico simulado.
+- Credenciales externas por referencia y visor de sincronizaciones recientes.
+- Reglas configurables preparadas y aplicadas de forma controlada al motor.
 - Panel de estadisticas.
 - Temas claro y oscuro.
 - Arquitectura preparada para integraciones futuras con Shipday, Glovo, Uber y APIs genericas.
@@ -159,12 +166,13 @@ Con Inno Setup 6 instalado, ejecuta:
 El instalador se genera en:
 
 ```text
-installer_output\PlanificadorDeliveryPro-Setup-2.0.0.exe
+installer_output\PlanificadorDeliveryPro-Setup-2.1.0.exe
 ```
 
 ## Limitaciones conocidas
 
-- Las integraciones con Shipday, Glovo, Uber y APIs futuras estan preparadas, pero no conectan todavia con servicios externos.
+- Las integraciones reales con Shipday, Glovo, Uber y APIs futuras estan preparadas, pero no conectan todavia con servicios externos.
+- El webhook generico puede prepararse y simular payloads, pero no realiza llamadas obligatorias.
 - El asistente es local y basado en reglas; no usa IA externa ni lenguaje natural avanzado.
 - Las simulaciones no se aplican automaticamente a la base de datos.
 - El sistema de actualizaciones esta preparado, pero no hay servidor ni canal de descarga configurado.
