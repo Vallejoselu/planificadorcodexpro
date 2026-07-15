@@ -1,5 +1,19 @@
 # CHANGELOG
 
+## 2.1.2 - Correccion de interfaz en cuadrantes
+
+### Corregido
+
+- La pantalla de Cuadrantes ya no comprime los controles superiores en una
+  unica fila.
+- Los filtros y las acciones del cuadrante se muestran en dos barras separadas
+  con desplazamiento horizontal cuando la ventana no tiene suficiente ancho.
+
+### Validacion
+
+- Se anadio una prueba especifica para comprobar que la barra superior de
+  Cuadrantes no comprime botones ni selectores.
+
 ## 2.1.1 - Correccion de dialogos responsivos
 
 ### Corregido

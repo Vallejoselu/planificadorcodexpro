@@ -7,7 +7,7 @@ from pathlib import Path
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PySide6.QtCore import QDate
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QScrollArea
 
 import database.database as database
 import views.cuadrantes as cuadrantes_view
@@ -69,6 +69,27 @@ class TestCuadrantesPlanningEngine(unittest.TestCase):
         self.assertEqual(
             vista.btn_aplicar_plantilla.text(),
             "Aplicar plantilla"
+        )
+
+    def test_barras_superiores_no_comprimen_controles(self):
+
+        vista = VistaCuadrantes()
+        barras = vista.findChildren(QScrollArea)
+
+        self.assertIn(vista.barra_filtros_scroll, barras)
+        self.assertIn(vista.barra_acciones_scroll, barras)
+        self.assertGreaterEqual(len(barras), 2)
+        self.assertGreater(
+            vista.barra_acciones_widget.minimumWidth(),
+            vista.barra_acciones_scroll.width()
+        )
+        self.assertGreaterEqual(
+            vista.btn_generar.minimumWidth(),
+            vista.btn_generar.sizeHint().width()
+        )
+        self.assertGreaterEqual(
+            vista.btn_guardar_plantilla.minimumWidth(),
+            vista.btn_guardar_plantilla.sizeHint().width()
         )
 
     def test_cancelar_generacion_no_modifica_ninguna_semana(self):
