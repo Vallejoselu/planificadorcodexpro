@@ -1,4 +1,4 @@
 APP_NAME = "Planificador Delivery Pro"
 APP_ID = "PlanificadorDeliveryPro"
-VERSION = "2.1.3"
+VERSION = "2.1.4"
 UPDATE_MANIFEST_URL = ""
