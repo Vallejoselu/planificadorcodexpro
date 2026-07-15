@@ -38,3 +38,18 @@ Esta fase permite:
 La configuracion visual queda para la fase 14.10B3. El envio no guarda claves en
 `delivery.db`: el campo `credenciales_referencia` debe apuntar a `env:VARIABLE`
 o `local://proveedor/nombre`.
+
+## Fase 14.10B3: configuracion desde UI
+
+La pantalla de configuracion permite preparar la integracion de email:
+
+- servidor SMTP;
+- puerto;
+- uso de TLS;
+- remitente;
+- destinatarios;
+- referencia segura de credenciales.
+
+La pantalla guarda la configuracion en `integraciones_api` y mantiene las claves
+fuera de la base de datos. El envio directo y pruebas de conexion avanzadas
+quedan para fases posteriores.

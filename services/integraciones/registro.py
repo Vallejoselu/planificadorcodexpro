@@ -3,6 +3,7 @@ import json
 from models.integracion import ConfiguracionIntegracion
 from repositories.integraciones_repository import IntegracionesRepository
 from services.integraciones.generica import IntegracionGenerica
+from services.integraciones.email import EmailIntegracion
 from services.integraciones.glovo import GlovoIntegracion
 from services.integraciones.shipday import ShipdayIntegracion
 from services.integraciones.uber import UberIntegracion
@@ -10,6 +11,7 @@ from services.credenciales import validar_referencia_credenciales
 
 
 PROVEEDORES = {
+    EmailIntegracion.proveedor: EmailIntegracion,
     ShipdayIntegracion.proveedor: ShipdayIntegracion,
     GlovoIntegracion.proveedor: GlovoIntegracion,
     UberIntegracion.proveedor: UberIntegracion,

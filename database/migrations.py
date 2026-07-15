@@ -951,6 +951,7 @@ def crear_indices_consulta(cursor):
 def sembrar_datos_iniciales(cursor):
 
     for proveedor, nombre in (
+        ("email", "Email"),
         ("shipday", "Shipday"),
         ("glovo", "Glovo"),
         ("uber", "Uber"),

@@ -1,3 +1,5 @@
+import json
+
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QComboBox,
@@ -16,12 +18,15 @@ from PySide6.QtWidgets import (
 )
 
 from database.schema import DIAS_SEMANA
+from models.integracion import ConfiguracionIntegracion
 from repositories.ciudades_repository import CiudadesRepository
 from repositories.demandas_ciudad_repository import DemandasCiudadRepository
 from repositories.demandas_zona_repository import DemandasZonaRepository
 from repositories.integraciones_repository import IntegracionesRepository
 from repositories.turnos_repository import TurnosRepository
 from services.actualizaciones import ServicioActualizaciones
+from services.email_resumen import normalizar_destinatarios
+from services.integraciones.registro import guardar_configuracion as guardar_integracion
 from ui.theme_manager import ThemeManager
 from ui.widgets import PageHeader, configure_table, make_button
 
@@ -87,6 +92,7 @@ class VistaConfiguracion(QWidget):
 
         self.layout.addWidget(self.panel_actualizaciones)
 
+        self.crear_panel_email()
         self.crear_panel_demanda_zona()
         self.crear_panel_demanda_ciudad()
 
@@ -111,6 +117,9 @@ class VistaConfiguracion(QWidget):
         self.btn_comprobar_actualizaciones.clicked.connect(
             self.comprobar_actualizaciones
         )
+        self.btn_guardar_email.clicked.connect(
+            self.guardar_configuracion_email
+        )
         self.btn_agregar_demanda_zona.clicked.connect(
             self.agregar_demanda_zona
         )
@@ -131,6 +140,57 @@ class VistaConfiguracion(QWidget):
         )
 
         self.cargar_datos()
+
+    # ======================================
+
+    def crear_panel_email(self):
+
+        self.panel_email = QFrame()
+        self.panel_email.setObjectName("card")
+        layout = QVBoxLayout(self.panel_email)
+        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSpacing(10)
+
+        layout.addWidget(QLabel("Email"))
+
+        formulario = QFormLayout()
+        self.campo_email_host = QLineEdit()
+        self.campo_email_host.setPlaceholderText("smtp.ejemplo.com")
+        self.campo_email_puerto = QSpinBox()
+        self.campo_email_puerto.setRange(1, 65535)
+        self.campo_email_puerto.setValue(587)
+        self.selector_email_tls = QComboBox()
+        self.selector_email_tls.addItem("TLS activado", True)
+        self.selector_email_tls.addItem("TLS desactivado", False)
+        self.campo_email_remitente = QLineEdit()
+        self.campo_email_remitente.setPlaceholderText("planificador@empresa.com")
+        self.campo_email_destinatarios = QLineEdit()
+        self.campo_email_destinatarios.setPlaceholderText(
+            "responsable@empresa.com; tienda@empresa.com"
+        )
+        self.campo_email_credenciales = QLineEdit()
+        self.campo_email_credenciales.setPlaceholderText(
+            "env:SMTP_PASSWORD o local://email/principal"
+        )
+
+        formulario.addRow("Servidor SMTP", self.campo_email_host)
+        formulario.addRow("Puerto", self.campo_email_puerto)
+        formulario.addRow("Seguridad", self.selector_email_tls)
+        formulario.addRow("Remitente", self.campo_email_remitente)
+        formulario.addRow("Destinatarios", self.campo_email_destinatarios)
+        formulario.addRow("Credenciales", self.campo_email_credenciales)
+        layout.addLayout(formulario)
+
+        acciones = QHBoxLayout()
+        self.btn_guardar_email = make_button(
+            "Guardar configuracion de email",
+            "primary"
+        )
+        acciones.addStretch()
+        acciones.addWidget(self.btn_guardar_email)
+        layout.addLayout(acciones)
+
+        self.layout.addWidget(self.panel_email)
 
     # ======================================
 
@@ -276,6 +336,7 @@ class VistaConfiguracion(QWidget):
 
     def cargar_datos(self):
 
+        self.cargar_configuracion_email()
         self.cargar_demanda_zona()
         self.cargar_demanda_ciudad()
         self.cargar_integraciones()
@@ -311,6 +372,102 @@ class VistaConfiguracion(QWidget):
                 "Actualizaciones",
                 mensaje
             )
+
+    # ======================================
+
+    def cargar_configuracion_email(self):
+
+        datos = integraciones_repository.obtener_configuracion("email")
+
+        if not datos:
+
+            self.campo_email_host.clear()
+            self.campo_email_puerto.setValue(587)
+            self.selector_email_tls.setCurrentIndex(0)
+            self.campo_email_remitente.clear()
+            self.campo_email_destinatarios.clear()
+            self.campo_email_credenciales.clear()
+            return
+
+        opciones = self.decodificar_opciones_integracion(datos[5])
+        self.campo_email_host.setText(opciones.get("smtp_host") or datos[3] or "")
+        self.campo_email_puerto.setValue(int(opciones.get("smtp_puerto") or 587))
+        indice_tls = self.selector_email_tls.findData(
+            bool(opciones.get("smtp_tls", True))
+        )
+        self.selector_email_tls.setCurrentIndex(max(0, indice_tls))
+        self.campo_email_remitente.setText(opciones.get("remitente", ""))
+        self.campo_email_destinatarios.setText(
+            opciones.get("destinatarios", "")
+        )
+        self.campo_email_credenciales.setText(datos[4] or "")
+
+    # ======================================
+
+    def guardar_configuracion_email(self):
+
+        opciones = {
+            "smtp_host": self.campo_email_host.text().strip(),
+            "smtp_puerto": self.campo_email_puerto.value(),
+            "smtp_tls": bool(self.selector_email_tls.currentData()),
+            "remitente": self.campo_email_remitente.text().strip(),
+            "destinatarios": self.campo_email_destinatarios.text().strip()
+        }
+
+        try:
+
+            if opciones["destinatarios"]:
+
+                normalizar_destinatarios(opciones["destinatarios"])
+
+            guardar_integracion(
+                ConfiguracionIntegracion(
+                    proveedor="email",
+                    nombre="Email",
+                    activo=bool(
+                        opciones["smtp_host"]
+                        and opciones["remitente"]
+                        and self.campo_email_credenciales.text().strip()
+                    ),
+                    base_url=opciones["smtp_host"],
+                    credenciales_referencia=(
+                        self.campo_email_credenciales.text().strip()
+                    ),
+                    opciones=opciones
+                )
+            )
+
+        except ValueError as error:
+
+            QMessageBox.warning(
+                self,
+                "Email",
+                str(error)
+            )
+            return
+
+        self.cargar_integraciones()
+        QMessageBox.information(
+            self,
+            "Email",
+            "Configuracion de email guardada."
+        )
+
+    # ======================================
+
+    def decodificar_opciones_integracion(self, opciones):
+
+        if not opciones:
+
+            return {}
+
+        try:
+
+            return json.loads(opciones)
+
+        except json.JSONDecodeError:
+
+            return {}
 
     # ======================================
 
