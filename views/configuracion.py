@@ -93,6 +93,7 @@ class VistaConfiguracion(QWidget):
         self.layout.addWidget(self.panel_actualizaciones)
 
         self.crear_panel_email()
+        self.crear_panel_delivery_generico()
         self.crear_panel_demanda_zona()
         self.crear_panel_demanda_ciudad()
 
@@ -119,6 +120,9 @@ class VistaConfiguracion(QWidget):
         )
         self.btn_guardar_email.clicked.connect(
             self.guardar_configuracion_email
+        )
+        self.btn_guardar_delivery_generico.clicked.connect(
+            self.guardar_configuracion_delivery_generico
         )
         self.btn_agregar_demanda_zona.clicked.connect(
             self.agregar_demanda_zona
@@ -191,6 +195,47 @@ class VistaConfiguracion(QWidget):
         layout.addLayout(acciones)
 
         self.layout.addWidget(self.panel_email)
+
+    # ======================================
+
+    def crear_panel_delivery_generico(self):
+
+        self.panel_delivery_generico = QFrame()
+        self.panel_delivery_generico.setObjectName("card")
+        layout = QVBoxLayout(self.panel_delivery_generico)
+        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSpacing(10)
+
+        layout.addWidget(QLabel("Delivery generico"))
+
+        formulario = QFormLayout()
+        self.campo_delivery_webhook = QLineEdit()
+        self.campo_delivery_webhook.setPlaceholderText(
+            "https://proveedor.example/webhook"
+        )
+        self.selector_delivery_modo = QComboBox()
+        self.selector_delivery_modo.addItem("Simulado, no enviar", True)
+        self.selector_delivery_modo.addItem("Preparado para envio futuro", False)
+        self.campo_delivery_credenciales = QLineEdit()
+        self.campo_delivery_credenciales.setPlaceholderText(
+            "Opcional: env:VARIABLE o local://api_generica/principal"
+        )
+
+        formulario.addRow("Webhook", self.campo_delivery_webhook)
+        formulario.addRow("Modo", self.selector_delivery_modo)
+        formulario.addRow("Credenciales", self.campo_delivery_credenciales)
+        layout.addLayout(formulario)
+
+        acciones = QHBoxLayout()
+        self.btn_guardar_delivery_generico = make_button(
+            "Guardar webhook generico",
+            "primary"
+        )
+        acciones.addStretch()
+        acciones.addWidget(self.btn_guardar_delivery_generico)
+        layout.addLayout(acciones)
+
+        self.layout.addWidget(self.panel_delivery_generico)
 
     # ======================================
 
@@ -337,6 +382,7 @@ class VistaConfiguracion(QWidget):
     def cargar_datos(self):
 
         self.cargar_configuracion_email()
+        self.cargar_configuracion_delivery_generico()
         self.cargar_demanda_zona()
         self.cargar_demanda_ciudad()
         self.cargar_integraciones()
@@ -452,6 +498,88 @@ class VistaConfiguracion(QWidget):
             "Email",
             "Configuracion de email guardada."
         )
+
+    # ======================================
+
+    def cargar_configuracion_delivery_generico(self):
+
+        datos = integraciones_repository.obtener_configuracion("api_generica")
+
+        if not datos:
+
+            self.campo_delivery_webhook.clear()
+            self.selector_delivery_modo.setCurrentIndex(0)
+            self.campo_delivery_credenciales.clear()
+            return
+
+        opciones = self.decodificar_opciones_integracion(datos[5])
+        self.campo_delivery_webhook.setText(
+            opciones.get("webhook_url") or datos[3] or ""
+        )
+        indice_modo = self.selector_delivery_modo.findData(
+            bool(opciones.get("simulado", True))
+        )
+        self.selector_delivery_modo.setCurrentIndex(max(0, indice_modo))
+        self.campo_delivery_credenciales.setText(datos[4] or "")
+
+    # ======================================
+
+    def guardar_configuracion_delivery_generico(self):
+
+        webhook_url = self.campo_delivery_webhook.text().strip()
+        credenciales = self.campo_delivery_credenciales.text().strip()
+        opciones = {
+            "webhook_url": webhook_url,
+            "simulado": bool(self.selector_delivery_modo.currentData()),
+            "schema": "planificador.delivery.v1"
+        }
+
+        try:
+
+            self.validar_url_webhook(webhook_url)
+            guardar_integracion(
+                ConfiguracionIntegracion(
+                    proveedor="api_generica",
+                    nombre="API generica",
+                    activo=bool(webhook_url),
+                    base_url=webhook_url,
+                    credenciales_referencia=credenciales,
+                    opciones=opciones
+                )
+            )
+
+        except ValueError as error:
+
+            QMessageBox.warning(
+                self,
+                "Delivery generico",
+                str(error)
+            )
+            return
+
+        self.cargar_integraciones()
+        QMessageBox.information(
+            self,
+            "Delivery generico",
+            "Webhook generico guardado."
+        )
+
+    # ======================================
+
+    def validar_url_webhook(self, url):
+
+        if not url:
+
+            return
+
+        if not (
+            url.startswith("https://")
+            or url.startswith("http://")
+        ):
+
+            raise ValueError(
+                "El webhook generico debe empezar por http:// o https://."
+            )
 
     # ======================================
 
