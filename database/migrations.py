@@ -517,8 +517,41 @@ def crear_esquema_inicial(cursor):
     )
     """)
 
+    crear_tabla_integraciones_sincronizaciones(cursor)
     crear_tabla_historial_acciones(cursor)
     crear_tabla_reglas_configuracion(cursor)
+
+
+def crear_tabla_integraciones_sincronizaciones(cursor):
+
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS integraciones_sincronizaciones(
+
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+        proveedor TEXT NOT NULL,
+
+        accion TEXT NOT NULL,
+
+        estado TEXT NOT NULL,
+
+        payload TEXT,
+
+        respuesta TEXT,
+
+        error TEXT,
+
+        intentos INTEGER DEFAULT 0,
+
+        max_reintentos INTEGER DEFAULT 3,
+
+        proximo_intento TEXT,
+
+        creado_en TEXT DEFAULT CURRENT_TIMESTAMP,
+
+        actualizado_en TEXT DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
 
 
 def crear_tabla_historial_acciones(cursor):
@@ -559,6 +592,7 @@ def crear_tabla_reglas_configuracion(cursor):
 
 def aplicar_migraciones(cursor):
 
+    crear_tabla_integraciones_sincronizaciones(cursor)
     crear_tabla_historial_acciones(cursor)
     crear_tabla_reglas_configuracion(cursor)
 
@@ -942,6 +976,13 @@ def crear_indices_consulta(cursor):
             "idx_reglas_configuracion_activo",
             "CREATE INDEX IF NOT EXISTS idx_reglas_configuracion_activo "
             "ON reglas_configuracion(activo)"
+        ),
+        (
+            "idx_integraciones_sincronizaciones_estado",
+            "CREATE INDEX IF NOT EXISTS "
+            "idx_integraciones_sincronizaciones_estado "
+            "ON integraciones_sincronizaciones("
+            "estado, proximo_intento, proveedor)"
         )
     ):
 

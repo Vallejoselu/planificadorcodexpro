@@ -86,3 +86,21 @@ La pantalla de configuracion permite preparar la integracion `api_generica`:
 
 La URL se valida para aceptar solo `http://` o `https://`. Las credenciales se
 guardan como referencia segura, nunca como valor directo.
+
+## Fase 14.10D: registro y reintentos de sincronizacion
+
+Las sincronizaciones externas tienen un registro propio:
+
+- proveedor;
+- accion;
+- estado;
+- payload;
+- respuesta;
+- error;
+- numero de intentos;
+- maximo de reintentos;
+- proximo intento.
+
+El servicio calcula reintentos con espera incremental y marca como agotadas las
+sincronizaciones que superan su limite. Esta fase no obliga a hacer llamadas
+reales: deja preparado el seguimiento para webhooks y APIs futuras.
