@@ -13,6 +13,7 @@ from PySide6.QtCore import QDate
 from services.exportador import (
     exportar_csv,
     exportar_excel,
+    exportar_ics,
     exportar_pdf,
     normalizar_ruta
 )
@@ -47,12 +48,14 @@ class VistaExportaciones(QWidget):
         self.btn_excel.setProperty("variant", "primary")
         self.btn_pdf = QPushButton("PDF")
         self.btn_csv = QPushButton("CSV")
+        self.btn_ics = QPushButton("ICS")
 
         barra.addWidget(QLabel("Semana"))
         barra.addWidget(self.selector_semana)
         barra.addWidget(self.btn_excel)
         barra.addWidget(self.btn_pdf)
         barra.addWidget(self.btn_csv)
+        barra.addWidget(self.btn_ics)
         barra.addStretch()
 
         self.layout.addLayout(barra)
@@ -68,6 +71,7 @@ class VistaExportaciones(QWidget):
         self.btn_excel.clicked.connect(self.exportar_excel)
         self.btn_pdf.clicked.connect(self.exportar_pdf)
         self.btn_csv.clicked.connect(self.exportar_csv)
+        self.btn_ics.clicked.connect(self.exportar_ics)
 
     # ======================================
 
@@ -100,6 +104,17 @@ class VistaExportaciones(QWidget):
             ".csv",
             "CSV (*.csv)",
             exportar_csv
+        )
+
+    # ======================================
+
+    def exportar_ics(self):
+
+        self.exportar(
+            "ICS",
+            ".ics",
+            "Calendario (*.ics)",
+            exportar_ics
         )
 
     # ======================================
