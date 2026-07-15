@@ -159,6 +159,57 @@ class TestValidacionFuncionalCompleta(unittest.TestCase):
         )
         ventana_reiniciada.close()
 
+    def test_generar_cuadrante_crea_turnos_base_si_no_existen(self):
+
+        semana = "2026-07-13"
+        insertar_repartidor(
+            "Ana",
+            40,
+            "Centro",
+            1,
+            1,
+            80,
+            50,
+            50,
+            descanso_inicio="lunes",
+            descanso_fin="martes",
+            disponibilidad={
+                "lunes": "No disponible",
+                "martes": "No disponible",
+                "miercoles": "Ambos",
+                "jueves": "Ambos",
+                "viernes": "Ambos",
+                "sabado": "Ambos",
+                "domingo": "Ambos"
+            }
+        )
+        insertar_restaurante(
+            "BK Centro",
+            "Rua 1",
+            "Centro",
+            "600000001",
+            80,
+            horario_comida="13:00-16:00",
+            horario_cena="20:00-23:30"
+        )
+        self.assertEqual(obtener_turnos(), [])
+
+        servicio = CuadrantesService()
+        generacion = servicio.generar_cuadrante(
+            servicio.obtener_contexto(),
+            semana
+        )
+        servicio.guardar_cuadrante(
+            semana,
+            generacion["asignaciones"]
+        )
+
+        nombres_turnos = {turno[2] for turno in obtener_turnos()}
+
+        self.assertIn("Comida", nombres_turnos)
+        self.assertIn("Cena", nombres_turnos)
+        self.assertTrue(obtener_calendario_semanal(semana))
+
     def crear_repartidores(self):
 
         disponibilidad_total = {

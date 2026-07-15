@@ -119,6 +119,8 @@ class CuadrantesService:
     def generar_cuadrante(self, contexto, fecha_inicio):
 
         fecha_inicio = normalizar_fecha_inicio_semana(fecha_inicio)
+        self.validar_contexto_base_generacion(contexto)
+        self.asegurar_turnos_generacion(contexto)
         self.validar_contexto_generacion(contexto)
 
         demandas_multinivel = self.preparar_demandas_multinivel(contexto)
@@ -173,6 +175,14 @@ class CuadrantesService:
 
     def validar_contexto_generacion(self, contexto):
 
+        self.validar_contexto_base_generacion(contexto)
+
+        if not contexto["turnos"] and not contexto["restaurante_turnos"]:
+
+            raise ValueError("No hay turnos activos.")
+
+    def validar_contexto_base_generacion(self, contexto):
+
         if not contexto["repartidores"]:
 
             raise ValueError("No hay repartidores activos.")
@@ -181,9 +191,45 @@ class CuadrantesService:
 
             raise ValueError("No hay restaurantes activos.")
 
-        if not contexto["turnos"] and not contexto["restaurante_turnos"]:
+    def asegurar_turnos_generacion(self, contexto):
 
-            raise ValueError("No hay turnos activos.")
+        if contexto.get("turnos") or contexto.get("restaurante_turnos"):
+
+            return
+
+        for turno in self.turnos_basicos():
+
+            self.turnos_repository.crear(
+                turno["tipo"],
+                turno["nombre"],
+                turno["hora_inicio"],
+                turno["hora_fin"],
+                turno["color"],
+                turno["duracion"]
+            )
+
+        contexto["turnos"] = self.turnos_repository.listar_activos()
+
+    def turnos_basicos(self):
+
+        return [
+            {
+                "tipo": "Comida",
+                "nombre": "Comida",
+                "hora_inicio": "13:00",
+                "hora_fin": "16:00",
+                "color": "#2563EB",
+                "duracion": 3
+            },
+            {
+                "tipo": "Cena",
+                "nombre": "Cena",
+                "hora_inicio": "20:00",
+                "hora_fin": "23:30",
+                "color": "#16A34A",
+                "duracion": 3.5
+            }
+        ]
 
     def registrar_historial(
         self,
