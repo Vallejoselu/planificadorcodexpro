@@ -564,6 +564,18 @@ def normalizar_repartidor(repartidor, reglas_motor=None):
         reglas_motor.get("penalizacion_desplazamiento", 1)
         or 0
     )
+    peso_prioridad_zona = float(
+        reglas_motor.get("peso_prioridad_zona", 10)
+        or 0
+    )
+    peso_restaurante_fijo = float(
+        reglas_motor.get("peso_restaurante_fijo", 20)
+        or 0
+    )
+    peso_balance_comidas_cenas = float(
+        reglas_motor.get("peso_balance_comidas_cenas", 1)
+        or 0
+    )
     limite_horas_complementarias = int(
         datos.get(
             "limite_horas_complementarias",
@@ -608,6 +620,9 @@ def normalizar_repartidor(repartidor, reglas_motor=None):
     datos["max_horas_semanales_configurado"] = max_horas_semanales
     datos["politica_horas_complementarias"] = politica_horas_complementarias
     datos["penalizacion_desplazamiento"] = penalizacion_desplazamiento
+    datos["peso_prioridad_zona"] = peso_prioridad_zona
+    datos["peso_restaurante_fijo"] = peso_restaurante_fijo
+    datos["peso_balance_comidas_cenas"] = peso_balance_comidas_cenas
     datos["max_horas_diarias"] = float(
         datos.get("max_horas_diarias", 10) or 0
     )

@@ -81,6 +81,39 @@ class ReglasConfigurablesService:
             "aplicada_motor": True
         },
         {
+            "clave": "peso_prioridad_zona",
+            "nombre": "Peso de prioridad por zona",
+            "valor": str(int(REGLAS_MOTOR_DEFECTO["peso_prioridad_zona"])),
+            "origen": "services.rules.candidatos",
+            "editable": True,
+            "tipo": "decimal",
+            "min": 0,
+            "max": 100,
+            "aplicada_motor": True
+        },
+        {
+            "clave": "peso_restaurante_fijo",
+            "nombre": "Peso de restaurante fijo",
+            "valor": str(int(REGLAS_MOTOR_DEFECTO["peso_restaurante_fijo"])),
+            "origen": "services.rules.candidatos",
+            "editable": True,
+            "tipo": "decimal",
+            "min": 0,
+            "max": 100,
+            "aplicada_motor": True
+        },
+        {
+            "clave": "peso_balance_comidas_cenas",
+            "nombre": "Balance comidas/cenas",
+            "valor": str(int(REGLAS_MOTOR_DEFECTO["peso_balance_comidas_cenas"])),
+            "origen": "services.planning_scoring",
+            "editable": True,
+            "tipo": "decimal",
+            "min": 0,
+            "max": 10,
+            "aplicada_motor": True
+        },
+        {
             "clave": "max_horas_diarias",
             "nombre": "Maximo de horas diarias",
             "valor": "10",
@@ -202,6 +235,24 @@ class ReglasConfigurablesService:
 
             resultado["penalizacion_desplazamiento"] = float(
                 configuracion["penalizacion_desplazamiento"]
+            )
+
+        if "peso_prioridad_zona" in configuracion:
+
+            resultado["peso_prioridad_zona"] = float(
+                configuracion["peso_prioridad_zona"]
+            )
+
+        if "peso_restaurante_fijo" in configuracion:
+
+            resultado["peso_restaurante_fijo"] = float(
+                configuracion["peso_restaurante_fijo"]
+            )
+
+        if "peso_balance_comidas_cenas" in configuracion:
+
+            resultado["peso_balance_comidas_cenas"] = float(
+                configuracion["peso_balance_comidas_cenas"]
             )
 
         return resultado

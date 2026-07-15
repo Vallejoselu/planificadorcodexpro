@@ -14,6 +14,9 @@ def puntuacion_solucion(
     config = config or PuntuacionConfig(
         peso_desplazamiento=float(
             repartidor.get("penalizacion_desplazamiento", 1)
+        ),
+        peso_diferencia_turnos=float(
+            repartidor.get("peso_balance_comidas_cenas", 1)
         )
     )
     horas_turno = turno["horas"]
