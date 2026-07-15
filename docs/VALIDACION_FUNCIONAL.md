@@ -2,6 +2,22 @@
 
 Fase 10 de preparacion de Planificador Delivery Pro 2.0.
 
+## Release 2.1.0
+
+La release 2.1.0 consolida el Bloque 14 de mejoras funcionales. No anade una
+funcionalidad nueva en esta fase; valida que las mejoras ya integradas conviven
+correctamente:
+
+- copia de cuadrantes y plantillas de semanas;
+- demanda por restaurante, zona y ciudad;
+- prioridad de demanda aplicada al generador;
+- horas complementarias controladas;
+- panel de alertas e historial de acciones;
+- importaciones desde Excel/CSV;
+- asistente mejorado y reglas configurables;
+- exportacion ICS, email, delivery JSON, webhook generico, reintentos y visor
+  de sincronizaciones.
+
 La validacion funcional principal esta automatizada en:
 
 ```text

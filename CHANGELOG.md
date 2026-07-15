@@ -1,5 +1,43 @@
 # CHANGELOG
 
+## 2.1.0 - Consolidacion Bloque 14
+
+### Incluido
+
+- Copia de cuadrantes entre semanas y plantillas reutilizables.
+- Demanda ampliada por restaurante, zona y ciudad con prioridad formal:
+  restaurante > zona > ciudad > defecto.
+- Integracion de la prioridad de demanda en el generador de cuadrantes.
+- Control de horas complementarias, alertas de uso y resumen por repartidor.
+- Panel de alertas para turnos sin cubrir, horas pendientes, horas extra,
+  restaurantes sin demanda, asignaciones sin repartidor y conflictos de
+  vacaciones o bajas.
+- Historial de acciones importantes: crear, editar, eliminar, generar,
+  exportar y restaurar backup.
+- Importacion de repartidores, restaurantes, disponibilidad, vacaciones y
+  bajas desde Excel o CSV.
+- Mejoras del asistente para consultas, simulaciones y explicaciones de por
+  que una persona no puede cubrir un turno.
+- Reglas configurables desde interfaz, con aplicacion controlada al motor:
+  maximo de horas semanales, horas complementarias, desplazamiento, prioridad
+  por zona, restaurante fijo y balance comidas/cenas.
+- Integraciones preparadas: credenciales por referencia, exportacion ICS,
+  resumen por email, delivery JSON, webhook generico simulado, registro de
+  reintentos y visor de sincronizaciones.
+
+### Consolidacion
+
+- Actualizacion de version a 2.1.0.
+- Revision de README y documentacion del Bloque 14.
+- Preparacion de ejecutable, instalador, tag `v2.1.0` y release estable.
+
+### Limitaciones conocidas
+
+- Las integraciones reales con plataformas externas siguen sin llamadas
+  obligatorias a APIs de terceros.
+- El visor de sincronizaciones muestra registros y reintentos guardados, pero
+  no ejecuta reintentos automaticos.
+
 ## 2.0.0 - Version 2.0
 
 ### Incluido
