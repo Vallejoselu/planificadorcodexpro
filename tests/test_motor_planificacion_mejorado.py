@@ -96,6 +96,40 @@ class TestMotorPlanificacionMejorado(unittest.TestCase):
         self.assertLess(con_preferencia.valores[5], sin_preferencia.valores[5])
         self.assertIn("preferencia", con_preferencia.detalle)
 
+    def test_puntuacion_aplica_penalizacion_desplazamiento_configurada(self):
+
+        repartidor = self.repartidor(1)
+        repartidor["_restaurante_por_dia"]["lunes"] = 1
+        repartidor["_zona_por_dia"]["lunes"] = "Centro"
+        restaurante = {
+            "id": 2,
+            "nombre": "Local B",
+            "zona": "Sur",
+            "ciudad_id": 1
+        }
+        turno = self.turno()
+
+        repartidor["penalizacion_desplazamiento"] = 1
+        baja = puntuacion_solucion(
+            repartidor,
+            restaurante,
+            "lunes",
+            turno,
+            devolver_detalle=True
+        )
+        repartidor["penalizacion_desplazamiento"] = 5
+        alta = puntuacion_solucion(
+            repartidor,
+            restaurante,
+            "lunes",
+            turno,
+            devolver_detalle=True
+        )
+
+        self.assertEqual(baja.detalle["desplazamiento"], 3)
+        self.assertEqual(alta.detalle["desplazamiento"], 3)
+        self.assertGreater(alta.valores[9], baja.valores[9])
+
     def test_incidencia_explica_motivos_agregados(self):
 
         repartidor = self.repartidor(1)

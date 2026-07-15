@@ -11,7 +11,11 @@ def puntuacion_solucion(
     devolver_detalle=False
 ):
 
-    config = config or PuntuacionConfig()
+    config = config or PuntuacionConfig(
+        peso_desplazamiento=float(
+            repartidor.get("penalizacion_desplazamiento", 1)
+        )
+    )
     horas_turno = turno["horas"]
     horas_despues = repartidor["horas_asignadas"] + horas_turno
     maximo = max(1, repartidor["maximo_horas"])

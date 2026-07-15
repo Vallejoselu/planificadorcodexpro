@@ -1,4 +1,8 @@
 from repositories.reglas_repository import ReglasRepository
+from services.reglas_runtime import (
+    REGLAS_MOTOR_DEFECTO,
+    actualizar_reglas_motor
+)
 
 
 class ReglasConfigurablesService:
@@ -45,13 +49,36 @@ class ReglasConfigurablesService:
             "tipo": "texto"
         },
         {
+            "clave": "max_horas_semanales",
+            "nombre": "Maximo de horas semanales",
+            "valor": str(int(REGLAS_MOTOR_DEFECTO["max_horas_semanales"])),
+            "origen": "services.scheduler",
+            "editable": True,
+            "tipo": "decimal",
+            "min": 1,
+            "max": 80,
+            "aplicada_motor": True
+        },
+        {
             "clave": "horas_complementarias",
             "nombre": "Horas complementarias",
             "valor": "segun repartidor",
             "origen": "services.rules.candidatos",
             "editable": True,
             "tipo": "opcion",
-            "opciones": ("segun repartidor", "permitir", "prohibir")
+            "opciones": ("segun repartidor", "permitir", "prohibir"),
+            "aplicada_motor": True
+        },
+        {
+            "clave": "penalizacion_desplazamiento",
+            "nombre": "Penalizacion por desplazamiento",
+            "valor": str(int(REGLAS_MOTOR_DEFECTO["penalizacion_desplazamiento"])),
+            "origen": "services.planning_scoring",
+            "editable": True,
+            "tipo": "decimal",
+            "min": 0,
+            "max": 10,
+            "aplicada_motor": True
         },
         {
             "clave": "max_horas_diarias",
@@ -59,7 +86,10 @@ class ReglasConfigurablesService:
             "valor": "10",
             "origen": "services.rules.candidatos",
             "editable": True,
-            "tipo": "decimal"
+            "tipo": "decimal",
+            "min": 1,
+            "max": 24,
+            "aplicada_motor": False
         },
         {
             "clave": "max_dias_consecutivos",
@@ -67,7 +97,10 @@ class ReglasConfigurablesService:
             "valor": "5",
             "origen": "services.rules.candidatos",
             "editable": True,
-            "tipo": "entero"
+            "tipo": "entero",
+            "min": 1,
+            "max": 7,
+            "aplicada_motor": False
         },
         {
             "clave": "autorizaciones",
@@ -94,6 +127,7 @@ class ReglasConfigurablesService:
     def listar_reglas(self):
 
         configuracion = self.configuracion_por_clave()
+        actualizar_reglas_motor(self.configuracion_motor(configuracion))
         reglas = []
 
         for regla in self.CATALOGO:
@@ -136,8 +170,41 @@ class ReglasConfigurablesService:
             "total": len(reglas),
             "editables": len(editables),
             "configuradas": len(configuradas),
+            "aplicadas_motor": len([
+                regla
+                for regla in reglas
+                if regla.get("aplicada_motor")
+            ]),
             "modo": "preparacion"
         }
+
+    def configuracion_motor(self, configuracion=None):
+
+        if configuracion is None:
+
+            configuracion = self.configuracion_por_clave()
+
+        resultado = dict(REGLAS_MOTOR_DEFECTO)
+
+        if "max_horas_semanales" in configuracion:
+
+            resultado["max_horas_semanales"] = float(
+                configuracion["max_horas_semanales"]
+            )
+
+        if "horas_complementarias" in configuracion:
+
+            resultado["horas_complementarias"] = configuracion[
+                "horas_complementarias"
+            ]
+
+        if "penalizacion_desplazamiento" in configuracion:
+
+            resultado["penalizacion_desplazamiento"] = float(
+                configuracion["penalizacion_desplazamiento"]
+            )
+
+        return resultado
 
     def guardar_configuracion(self, valores):
 
@@ -159,6 +226,8 @@ class ReglasConfigurablesService:
             self.reglas_repository.guardar(clave, valor_validado)
             guardadas += 1
 
+        actualizar_reglas_motor(self.configuracion_motor())
+
         return {
             "guardadas": guardadas
         }
@@ -171,6 +240,7 @@ class ReglasConfigurablesService:
             if regla["editable"]
         ]
         self.reglas_repository.eliminar(claves)
+        actualizar_reglas_motor(self.configuracion_motor())
 
         return {
             "restauradas": len(claves)
@@ -219,10 +289,14 @@ class ReglasConfigurablesService:
                     f"{regla['nombre']} debe ser numerico."
                 ) from error
 
-            if numero <= 0 or numero > 24:
+            minimo = float(regla.get("min", 1))
+            maximo = float(regla.get("max", 24))
+
+            if numero < minimo or numero > maximo:
 
                 raise ValueError(
-                    f"{regla['nombre']} debe estar entre 1 y 24."
+                    f"{regla['nombre']} debe estar entre "
+                    f"{formatear_numero(minimo)} y {formatear_numero(maximo)}."
                 )
 
             return str(int(numero)) if numero.is_integer() else str(numero)
@@ -239,12 +313,26 @@ class ReglasConfigurablesService:
                     f"{regla['nombre']} debe ser un numero entero."
                 ) from error
 
-            if numero <= 0 or numero > 7:
+            minimo = int(regla.get("min", 1))
+            maximo = int(regla.get("max", 7))
+
+            if numero < minimo or numero > maximo:
 
                 raise ValueError(
-                    f"{regla['nombre']} debe estar entre 1 y 7."
+                    f"{regla['nombre']} debe estar entre {minimo} y {maximo}."
                 )
 
             return str(numero)
 
         return valor
+
+
+def formatear_numero(valor):
+
+    valor = float(valor)
+
+    if valor.is_integer():
+
+        return str(int(valor))
+
+    return str(valor)
