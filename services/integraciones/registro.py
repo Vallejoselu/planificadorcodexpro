@@ -6,6 +6,7 @@ from services.integraciones.generica import IntegracionGenerica
 from services.integraciones.glovo import GlovoIntegracion
 from services.integraciones.shipday import ShipdayIntegracion
 from services.integraciones.uber import UberIntegracion
+from services.credenciales import validar_referencia_credenciales
 
 
 PROVEEDORES = {
@@ -73,12 +74,16 @@ def cargar_configuracion(proveedor, clase=None):
 
 def guardar_configuracion(configuracion):
 
+    credenciales_referencia = validar_referencia_credenciales(
+        configuracion.credenciales_referencia
+    )
+
     integraciones_repository.guardar_configuracion(
         configuracion.proveedor,
         configuracion.nombre,
         int(configuracion.activo),
         configuracion.base_url,
-        configuracion.credenciales_referencia,
+        credenciales_referencia,
         json.dumps(configuracion.opciones)
     )
 
