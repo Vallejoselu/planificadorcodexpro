@@ -422,11 +422,11 @@ class TestServiciosAplicacion(unittest.TestCase):
         )
         self.assertEqual(
             estado["celdas_semana"][("lunes", 5)]["texto"],
-            "Ronda Centro - Ana"
+            "13:00-16:00 (3 h)\nRonda Centro - Ana"
         )
         self.assertEqual(
             estado["filas_locales"][0]["dias"]["lunes"],
-            "Comida - Ana"
+            "Comida 13:00-16:00 (3 h) - Ana"
         )
 
     def test_cuadrantes_service_prepara_cambios_sin_duplicar_asignaciones(self):

@@ -716,6 +716,17 @@ class VistaCuadrantes(QWidget):
             repartidor_id,
             limpiar
         )
+        if not limpiar:
+
+            propuestas = self.asignaciones_con_cambio(
+                dia,
+                turno_id,
+                cambio["nuevo"]
+            )
+
+            if not self.validar_asignaciones_propuestas(propuestas):
+
+                return
 
         self.undo_stack.push(
             CambioCalendario(
@@ -821,6 +832,23 @@ class VistaCuadrantes(QWidget):
         asignacion = self.asignaciones.get(origen)
 
         if not asignacion:
+
+            return
+
+        propuestas = {
+            clave: [
+                dict(item)
+                for item in elementos
+            ]
+            for clave, elementos in self.asignaciones.items()
+        }
+        propuestas.pop(origen, None)
+        propuestas[destino] = [
+            dict(item)
+            for item in asignacion
+        ]
+
+        if not self.validar_asignaciones_propuestas(propuestas):
 
             return
 
@@ -1058,6 +1086,16 @@ class VistaCuadrantes(QWidget):
                 asignacion.get("repartidor_id")
             )
 
+        propuestas = self.asignaciones_con_cambio(
+            clave[0],
+            clave[1],
+            nuevo
+        )
+
+        if not self.validar_asignaciones_propuestas(propuestas):
+
+            return
+
         self.undo_stack.push(
             CambioCalendario(
                 self,
@@ -1119,6 +1157,56 @@ class VistaCuadrantes(QWidget):
             DIAS_SEMANA[columna],
             self.turnos[fila][0]
         )
+
+    # ======================================
+
+    def asignaciones_con_cambio(self, dia, turno_id, nuevas):
+
+        propuestas = {
+            clave: [
+                dict(item)
+                for item in elementos
+            ]
+            for clave, elementos in self.asignaciones.items()
+        }
+
+        if nuevas:
+
+            propuestas[(dia, turno_id)] = [
+                dict(item)
+                for item in nuevas
+            ]
+
+        else:
+
+            propuestas.pop((dia, turno_id), None)
+
+        return propuestas
+
+    # ======================================
+
+    def validar_asignaciones_propuestas(self, propuestas):
+
+        try:
+
+            cuadrantes_service.validar_asignaciones_semana(
+                propuestas,
+                self.fecha_inicio_semana(),
+                self.turnos,
+                self.restaurantes,
+                self.repartidores
+            )
+
+        except ValueError as error:
+
+            QMessageBox.warning(
+                self,
+                "Asignacion no permitida",
+                str(error)
+            )
+            return False
+
+        return True
 
     # ======================================
 

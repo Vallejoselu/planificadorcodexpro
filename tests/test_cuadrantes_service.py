@@ -355,11 +355,11 @@ class TestCuadrantesServicePorCapa(unittest.TestCase):
 
         self.assertEqual(
             estado["celdas_semana"][("lunes", 5)]["texto"],
-            "BK Centro - Ana"
+            "13:00-16:00 (3 h)\nBK Centro - Ana"
         )
         self.assertEqual(
             estado["filas_locales"][0]["dias"]["lunes"],
-            "Comida - Ana"
+            "Comida 13:00-16:00 (3 h) - Ana"
         )
         self.assertEqual(
             estado["estado_texto"],
@@ -417,7 +417,7 @@ class TestCuadrantesServicePorCapa(unittest.TestCase):
         self.assertEqual(estado["indicadores"]["sin_repartidor"], 1)
         self.assertEqual(
             estado["filas_locales"][0]["dias"]["lunes"],
-            "Comida - Sin repartidor"
+            "Comida 13:00-16:00 (3 h) - Sin repartidor"
         )
         self.assertEqual(
             estado["estado_texto"],
