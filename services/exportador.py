@@ -1,4 +1,5 @@
 import csv
+import json
 from datetime import UTC, datetime, time, timedelta
 from html import escape
 from pathlib import Path
@@ -12,6 +13,7 @@ from repositories.repartidores_repository import RepartidoresRepository
 from repositories.restaurantes_repository import RestaurantesRepository
 from repositories.turnos_repository import TurnosRepository
 from services.descansos import descanso_es_valido
+from services.delivery_payload import crear_payload_delivery
 from services.fechas import normalizar_fecha_inicio_semana
 
 
@@ -121,6 +123,19 @@ def exportar_ics(ruta, fecha_inicio_semana=None):
         archivo.write(contenido)
 
     registrar_exportacion("ICS", ruta, fecha_inicio_semana)
+
+
+def exportar_delivery_json(ruta, fecha_inicio_semana=None):
+
+    fecha_inicio_semana = normalizar_fecha_inicio_semana(fecha_inicio_semana)
+    datos = preparar_datos_exportacion(fecha_inicio_semana)
+    payload = crear_payload_delivery(datos)
+
+    with open(ruta, "w", encoding="utf-8") as archivo:
+
+        json.dump(payload, archivo, ensure_ascii=False, indent=2)
+
+    registrar_exportacion("Delivery JSON", ruta, fecha_inicio_semana)
 
 
 def exportar_pdf(ruta, fecha_inicio_semana=None):

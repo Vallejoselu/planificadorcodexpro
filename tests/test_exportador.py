@@ -1,5 +1,6 @@
 import tempfile
 import unittest
+import json
 from pathlib import Path
 
 import database.database as database
@@ -10,7 +11,12 @@ from database.database import (
     insertar_restaurante,
     insertar_turno
 )
-from services.exportador import crear_calendario_ics, exportar_excel, exportar_ics
+from services.exportador import (
+    crear_calendario_ics,
+    exportar_delivery_json,
+    exportar_excel,
+    exportar_ics
+)
 
 
 class TestExportador(unittest.TestCase):
@@ -119,6 +125,53 @@ class TestExportador(unittest.TestCase):
         self.assertIn("DTSTART:20260715T130000", contenido)
         self.assertIn("DTEND:20260715T160000", contenido)
         self.assertIn("Repartidor: Ana", contenido)
+
+    def test_exportar_delivery_json_crea_payload_generico(self):
+
+        repartidor_id = insertar_repartidor(
+            "Ana",
+            30,
+            "Centro",
+            1,
+            1,
+            50,
+            50,
+            50,
+            descanso_inicio="lunes",
+            descanso_fin="martes",
+            disponibilidad={"miercoles": "Ambos"}
+        )
+        restaurante_id = insertar_restaurante(
+            "BK Centro",
+            "Rua 1",
+            "Centro",
+            "600000000",
+            50
+        )
+        turno_id = insertar_turno(
+            "Comida",
+            "Comida",
+            "13:00",
+            "16:00",
+            "#2563EB",
+            3
+        )
+        guardar_turno_calendario(
+            "miercoles",
+            turno_id,
+            restaurante_id,
+            repartidor_id,
+            "2026-07-13"
+        )
+        salida = Path(self.temporal.name) / "delivery.json"
+
+        exportar_delivery_json(salida, "2026-07-13")
+
+        payload = json.loads(salida.read_text(encoding="utf-8"))
+        self.assertEqual(payload["schema"], "planificador.delivery.v1")
+        self.assertEqual(payload["fecha_inicio_semana"], "2026-07-13")
+        self.assertEqual(payload["turnos"][0]["restaurante"], "BK Centro")
+        self.assertEqual(payload["turnos"][0]["repartidor"], "Ana")
 
     def test_ics_extiende_turnos_que_cruzan_medianoche(self):
 

@@ -12,6 +12,7 @@ from PySide6.QtCore import QDate
 
 from services.exportador import (
     exportar_csv,
+    exportar_delivery_json,
     exportar_excel,
     exportar_ics,
     exportar_pdf,
@@ -53,6 +54,7 @@ class VistaExportaciones(QWidget):
         self.btn_pdf = QPushButton("PDF")
         self.btn_csv = QPushButton("CSV")
         self.btn_ics = QPushButton("ICS")
+        self.btn_delivery_json = QPushButton("Delivery JSON")
         self.btn_email_eml = QPushButton("Email .eml")
         self.btn_enviar_email = QPushButton("Enviar email")
 
@@ -62,6 +64,7 @@ class VistaExportaciones(QWidget):
         barra.addWidget(self.btn_pdf)
         barra.addWidget(self.btn_csv)
         barra.addWidget(self.btn_ics)
+        barra.addWidget(self.btn_delivery_json)
         barra.addWidget(self.btn_email_eml)
         barra.addWidget(self.btn_enviar_email)
         barra.addStretch()
@@ -80,6 +83,7 @@ class VistaExportaciones(QWidget):
         self.btn_pdf.clicked.connect(self.exportar_pdf)
         self.btn_csv.clicked.connect(self.exportar_csv)
         self.btn_ics.clicked.connect(self.exportar_ics)
+        self.btn_delivery_json.clicked.connect(self.exportar_delivery_json)
         self.btn_email_eml.clicked.connect(self.exportar_email_eml)
         self.btn_enviar_email.clicked.connect(self.enviar_email)
 
@@ -125,6 +129,17 @@ class VistaExportaciones(QWidget):
             ".ics",
             "Calendario (*.ics)",
             exportar_ics
+        )
+
+    # ======================================
+
+    def exportar_delivery_json(self):
+
+        self.exportar(
+            "Delivery JSON",
+            ".json",
+            "JSON (*.json)",
+            exportar_delivery_json
         )
 
     # ======================================
