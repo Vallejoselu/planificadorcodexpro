@@ -456,8 +456,19 @@ def iter_text_files():
 
 def is_excluded(path):
 
-    parts = set(path.relative_to(ROOT).parts)
-    return bool(parts & EXCLUDED_DIRS)
+    parts = path.relative_to(ROOT).parts
+
+    for part in parts:
+
+        if part in EXCLUDED_DIRS:
+
+            return True
+
+        if part.startswith("build_") or part.startswith("dist_"):
+
+            return True
+
+    return False
 
 
 def file_hash(path):

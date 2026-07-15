@@ -1,5 +1,19 @@
 # CHANGELOG
 
+## 2.1.1 - Correccion de dialogos responsivos
+
+### Corregido
+
+- Los dialogos largos de repartidores y restaurantes ahora se adaptan mejor a
+  pantallas pequenas.
+- Los formularios largos usan desplazamiento interno para que los botones de
+  accion sigan siendo accesibles.
+
+### Validacion
+
+- Se anadieron pruebas especificas para comprobar que los dialogos usan scroll
+  y respetan un alto maximo.
+
 ## 2.1.0 - Consolidacion Bloque 14
 
 ### Incluido

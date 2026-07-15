@@ -6,7 +6,10 @@ venv/
 env/
 build/
 dist/
+build_*/
+dist_*/
 installer_output/
+installer/*-temp.iss
 *.spec
 *.db-shm
 *.db-wal

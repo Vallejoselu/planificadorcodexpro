@@ -2,7 +2,7 @@
 
 Planificador Delivery Pro es una aplicacion de escritorio para Windows creada con PySide6 y SQLite. Permite gestionar repartidores, restaurantes, turnos, calendarios semanales, exportaciones, estadisticas y un asistente local basado en reglas.
 
-Version actual: 2.1.0
+Version actual: 2.1.1
 
 ## Requisitos para desarrollo
 
@@ -166,7 +166,7 @@ Con Inno Setup 6 instalado, ejecuta:
 El instalador se genera en:
 
 ```text
-installer_output\PlanificadorDeliveryPro-Setup-2.1.0.exe
+installer_output\PlanificadorDeliveryPro-Setup-2.1.1.exe
 ```
 
 ## Limitaciones conocidas
