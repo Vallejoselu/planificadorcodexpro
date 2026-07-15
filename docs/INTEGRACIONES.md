@@ -104,3 +104,17 @@ Las sincronizaciones externas tienen un registro propio:
 El servicio calcula reintentos con espera incremental y marca como agotadas las
 sincronizaciones que superan su limite. Esta fase no obliga a hacer llamadas
 reales: deja preparado el seguimiento para webhooks y APIs futuras.
+
+## Fase 14.10E: visor de sincronizaciones
+
+La pantalla de configuracion muestra las sincronizaciones recientes:
+
+- proveedor y accion;
+- estado;
+- intentos y maximo configurado;
+- proximo intento;
+- ultimo error;
+- fecha de actualizacion.
+
+El visor solo consulta el registro ya guardado. No ejecuta llamadas externas ni
+lanza reintentos automaticos.
