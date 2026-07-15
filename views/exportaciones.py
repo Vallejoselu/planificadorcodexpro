@@ -17,6 +17,10 @@ from services.exportador import (
     exportar_pdf,
     normalizar_ruta
 )
+from services.email_resumen import (
+    enviar_resumen_email_configurado,
+    exportar_resumen_email_configurado
+)
 from services.fechas import normalizar_fecha_inicio_semana
 
 
@@ -49,6 +53,8 @@ class VistaExportaciones(QWidget):
         self.btn_pdf = QPushButton("PDF")
         self.btn_csv = QPushButton("CSV")
         self.btn_ics = QPushButton("ICS")
+        self.btn_email_eml = QPushButton("Email .eml")
+        self.btn_enviar_email = QPushButton("Enviar email")
 
         barra.addWidget(QLabel("Semana"))
         barra.addWidget(self.selector_semana)
@@ -56,6 +62,8 @@ class VistaExportaciones(QWidget):
         barra.addWidget(self.btn_pdf)
         barra.addWidget(self.btn_csv)
         barra.addWidget(self.btn_ics)
+        barra.addWidget(self.btn_email_eml)
+        barra.addWidget(self.btn_enviar_email)
         barra.addStretch()
 
         self.layout.addLayout(barra)
@@ -72,6 +80,8 @@ class VistaExportaciones(QWidget):
         self.btn_pdf.clicked.connect(self.exportar_pdf)
         self.btn_csv.clicked.connect(self.exportar_csv)
         self.btn_ics.clicked.connect(self.exportar_ics)
+        self.btn_email_eml.clicked.connect(self.exportar_email_eml)
+        self.btn_enviar_email.clicked.connect(self.enviar_email)
 
     # ======================================
 
@@ -115,6 +125,54 @@ class VistaExportaciones(QWidget):
             ".ics",
             "Calendario (*.ics)",
             exportar_ics
+        )
+
+    # ======================================
+
+    def exportar_email_eml(self):
+
+        self.exportar(
+            "Email",
+            ".eml",
+            "Email (*.eml)",
+            exportar_resumen_email_configurado
+        )
+
+    # ======================================
+
+    def enviar_email(self):
+
+        fecha_inicio_semana = normalizar_fecha_inicio_semana(
+            self.selector_semana.date().toPython()
+        )
+
+        confirmar = QMessageBox.question(
+            self,
+            "Enviar email",
+            f"Enviar resumen del cuadrante de la semana {fecha_inicio_semana}?"
+        )
+
+        if confirmar != QMessageBox.Yes:
+
+            return
+
+        try:
+
+            resultado = enviar_resumen_email_configurado(fecha_inicio_semana)
+
+        except Exception as error:
+
+            QMessageBox.critical(
+                self,
+                "Error",
+                str(error)
+            )
+            return
+
+        QMessageBox.information(
+            self,
+            "Email enviado",
+            f"Destinatarios: {', '.join(resultado['destinatarios'])}"
         )
 
     # ======================================
