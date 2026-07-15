@@ -290,6 +290,8 @@ class TestServiciosAplicacion(unittest.TestCase):
         servicio = CuadrantesService(
             calendario_repository=calendario,
             turnos_repository=turnos,
+            restaurantes_repository=FakeRestaurantesRepository(),
+            repartidores_repository=FakeRepartidoresRepository(),
             historial_repository=FakeHistorialRepository()
         )
 

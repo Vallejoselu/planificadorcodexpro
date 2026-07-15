@@ -4,6 +4,8 @@ from services.cuadrantes_service import CuadrantesService
 from tests.test_servicios_aplicacion import (
     FakeCalendarioRepository,
     FakeHistorialRepository,
+    FakeRepartidoresRepository,
+    FakeRestaurantesRepository,
     FakeTurnosRepository
 )
 
@@ -68,13 +70,25 @@ class FakePlantillasRepository:
 
 class TestCuadrantesServicePorCapa(unittest.TestCase):
 
+    def crear_servicio_aislado(self, **overrides):
+
+        dependencias = {
+            "calendario_repository": FakeCalendarioRepository(),
+            "historial_repository": FakeHistorialRepository(),
+            "repartidores_repository": FakeRepartidoresRepository(),
+            "restaurantes_repository": FakeRestaurantesRepository(),
+            "turnos_repository": FakeTurnosRepository()
+        }
+        dependencias.update(overrides)
+
+        return CuadrantesService(**dependencias)
+
     def test_guardar_cuadrante_normaliza_semana_y_delega_reemplazo(self):
 
         calendario = FakeCalendarioRepository()
         historial = FakeHistorialRepository()
-        servicio = CuadrantesService(
+        servicio = self.crear_servicio_aislado(
             calendario_repository=calendario,
-            turnos_repository=FakeTurnosRepository(),
             historial_repository=historial
         )
         asignaciones = {
@@ -96,7 +110,7 @@ class TestCuadrantesServicePorCapa(unittest.TestCase):
 
         calendario = FakeCalendarioRepository()
         historial = FakeHistorialRepository()
-        servicio = CuadrantesService(
+        servicio = self.crear_servicio_aislado(
             calendario_repository=calendario,
             historial_repository=historial
         )
@@ -131,7 +145,7 @@ class TestCuadrantesServicePorCapa(unittest.TestCase):
 
         calendario = FakeCalendarioRepository()
         historial = FakeHistorialRepository()
-        servicio = CuadrantesService(
+        servicio = self.crear_servicio_aislado(
             calendario_repository=calendario,
             historial_repository=historial
         )
@@ -179,7 +193,7 @@ class TestCuadrantesServicePorCapa(unittest.TestCase):
                 "2026-07-13"
             )
         ]
-        servicio = CuadrantesService(
+        servicio = self.crear_servicio_aislado(
             calendario_repository=calendario,
             historial_repository=historial
         )
@@ -204,7 +218,7 @@ class TestCuadrantesServicePorCapa(unittest.TestCase):
 
     def test_copiar_semana_rechaza_origen_vacio_y_misma_semana(self):
 
-        servicio = CuadrantesService(
+        servicio = self.crear_servicio_aislado(
             calendario_repository=FakeCalendarioRepository(),
             historial_repository=FakeHistorialRepository()
         )
@@ -235,7 +249,7 @@ class TestCuadrantesServicePorCapa(unittest.TestCase):
             "Ana",
             "2026-07-13"
         )]
-        servicio = CuadrantesService(
+        servicio = self.crear_servicio_aislado(
             calendario_repository=calendario,
             plantillas_repository=plantillas,
             historial_repository=FakeHistorialRepository()
@@ -276,7 +290,7 @@ class TestCuadrantesServicePorCapa(unittest.TestCase):
             "Ana",
             "2026-07-13"
         )]
-        servicio = CuadrantesService(
+        servicio = self.crear_servicio_aislado(
             calendario_repository=calendario,
             plantillas_repository=plantillas,
             historial_repository=FakeHistorialRepository()
@@ -301,7 +315,7 @@ class TestCuadrantesServicePorCapa(unittest.TestCase):
 
         calendario = FakeCalendarioRepository()
         plantillas = FakePlantillasRepository()
-        servicio = CuadrantesService(
+        servicio = self.crear_servicio_aislado(
             calendario_repository=calendario,
             plantillas_repository=plantillas,
             historial_repository=FakeHistorialRepository()
