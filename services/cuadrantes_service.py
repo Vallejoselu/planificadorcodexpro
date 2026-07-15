@@ -12,8 +12,15 @@ from repositories.turnos_repository import TurnosRepository
 from database.schema import DIAS_SEMANA
 from services.rules.ausencias import esta_ausente_por_tipo
 from services.rules.disponibilidad import parsear_fecha
+from services.rules.candidatos import motivo_no_puede_trabajar
 from services.fechas import normalizar_fecha_inicio_semana
 from services.planning_engine import PlanningEngine
+from services.scheduler import (
+    normalizar_repartidor,
+    normalizar_restaurantes,
+    preparar_estado_repartidor,
+    registrar_asignacion
+)
 
 
 class CuadrantesService:
@@ -594,6 +601,12 @@ class CuadrantesService:
                 turnos,
                 restaurantes,
                 repartidores
+            ),
+            "filas_repartidores": self.construir_filas_repartidores(
+                asignaciones,
+                turnos,
+                restaurantes,
+                repartidores
             )
         }
 
@@ -1050,6 +1063,7 @@ class CuadrantesService:
 
             dia, turno_id = clave
             turno = turnos_por_id.get(turno_id)
+            horario = self.texto_horario_turno(turno)
             textos = []
             detalle = []
             primer_restaurante = None
@@ -1084,6 +1098,10 @@ class CuadrantesService:
                 textos.append(f"{restaurante[1]}{etiqueta_repartidor}")
                 detalle.append(f"{restaurante[1]}{etiqueta_repartidor}")
 
+            if horario and textos:
+
+                textos.insert(0, horario)
+
             celdas[(dia, turno_id)] = {
                 "texto": "\n".join(textos),
                 "tooltip": self.tooltip_celda(
@@ -1116,6 +1134,11 @@ class CuadrantesService:
         partes = []
         nombre_turno = turno[2] if turno else "Turno"
         partes.append(f"{dia.capitalize()} - {nombre_turno}")
+        horario = self.texto_horario_turno(turno)
+
+        if horario:
+
+            partes.append(horario)
 
         if detalle:
 
@@ -1128,6 +1151,28 @@ class CuadrantesService:
             )
 
         return "\n".join(partes)
+
+    def texto_horario_turno(self, turno):
+
+        if not turno:
+
+            return ""
+
+        inicio = self.valor_campo(turno, "hora_inicio", 3)
+        fin = self.valor_campo(turno, "hora_fin", 4)
+        duracion = self.valor_campo(turno, "duracion", 6)
+
+        if not inicio or not fin:
+
+            return ""
+
+        texto = f"{inicio}-{fin}"
+
+        if duracion:
+
+            texto += f" ({float(duracion):g} h)"
+
+        return texto
 
     def construir_filas_locales(
         self,
@@ -1155,6 +1200,70 @@ class CuadrantesService:
             for restaurante in restaurantes
         ]
 
+    def construir_filas_repartidores(
+        self,
+        asignaciones,
+        turnos,
+        restaurantes,
+        repartidores
+    ):
+
+        return [
+            {
+                "repartidor_id": repartidor[0],
+                "nombre": repartidor[1],
+                "dias": {
+                    dia: self.texto_repartidor_dia(
+                        asignaciones,
+                        repartidor[0],
+                        dia,
+                        turnos,
+                        restaurantes
+                    )
+                    for dia in DIAS_SEMANA
+                }
+            }
+            for repartidor in repartidores
+        ]
+
+    def texto_repartidor_dia(
+        self,
+        asignaciones,
+        repartidor_id,
+        dia,
+        turnos,
+        restaurantes
+    ):
+
+        lineas = []
+        restaurantes_por_id = self.indexar_por_id(restaurantes)
+
+        for turno in turnos:
+
+            for asignacion in asignaciones.get((dia, turno[0]), []):
+
+                if asignacion.get("repartidor_id") != repartidor_id:
+
+                    continue
+
+                restaurante = restaurantes_por_id.get(
+                    asignacion["restaurante_id"]
+                )
+                texto = turno[2]
+                horario = self.texto_horario_turno(turno)
+
+                if horario:
+
+                    texto += f" {horario}"
+
+                if restaurante:
+
+                    texto += f" - {restaurante[1]}"
+
+                lineas.append(texto)
+
+        return "\n".join(lineas)
+
     def texto_local_dia(
         self,
         asignaciones,
@@ -1179,6 +1288,11 @@ class CuadrantesService:
                     asignacion.get("repartidor_id")
                 )
                 texto = turno[2]
+                horario = self.texto_horario_turno(turno)
+
+                if horario:
+
+                    texto += f" {horario}"
 
                 if repartidor:
 
@@ -1191,6 +1305,143 @@ class CuadrantesService:
                 lineas.append(texto)
 
         return "\n".join(lineas)
+
+    def validar_asignaciones_semana(
+        self,
+        asignaciones,
+        fecha_inicio,
+        turnos,
+        restaurantes,
+        repartidores
+    ):
+
+        turnos_por_id = {
+            self.valor_campo(turno, "id", 0): self.turno_para_reglas(turno)
+            for turno in turnos
+        }
+        restaurantes_normalizados = normalizar_restaurantes(restaurantes)
+        restaurantes_por_id = {
+            restaurante["id"]: restaurante
+            for restaurante in restaurantes_normalizados
+        }
+        repartidores_por_id = {
+            repartidor["id"]: repartidor
+            for repartidor in [
+                normalizar_repartidor(repartidor)
+                for repartidor in repartidores
+            ]
+        }
+
+        for repartidor in repartidores_por_id.values():
+
+            preparar_estado_repartidor(repartidor)
+
+        fechas = self.fechas_semana(fecha_inicio)
+
+        for (dia, turno_id), elementos in sorted(
+            (asignaciones or {}).items(),
+            key=lambda item: (DIAS_SEMANA.index(item[0][0]), item[0][1])
+        ):
+
+            turno = turnos_por_id.get(turno_id)
+
+            if not turno:
+
+                continue
+
+            for asignacion in elementos or []:
+
+                repartidor_id = asignacion.get("repartidor_id")
+
+                if repartidor_id is None:
+
+                    continue
+
+                repartidor = repartidores_por_id.get(repartidor_id)
+                restaurante = restaurantes_por_id.get(
+                    asignacion.get("restaurante_id")
+                )
+
+                if not repartidor or not restaurante:
+
+                    continue
+
+                motivo = motivo_no_puede_trabajar(
+                    repartidor,
+                    restaurante,
+                    dia,
+                    turno,
+                    fechas.get(dia)
+                )
+
+                if motivo:
+
+                    raise ValueError(
+                        self.texto_rechazo_asignacion(
+                            repartidor,
+                            restaurante,
+                            dia,
+                            turno,
+                            motivo
+                        )
+                    )
+
+                registrar_asignacion(
+                    repartidor,
+                    restaurante,
+                    turno,
+                    dia
+                )
+
+    def turno_para_reglas(self, turno):
+
+        if isinstance(turno, dict):
+
+            datos = dict(turno)
+
+        else:
+
+            datos = {
+                "id": turno[0],
+                "tipo": turno[1],
+                "nombre": turno[2],
+                "hora_inicio": turno[3],
+                "hora_fin": turno[4],
+                "color": turno[5],
+                "duracion": turno[6],
+                "activo": turno[7] if len(turno) > 7 else 1
+            }
+
+        datos["horas"] = float(
+            datos.get("duracion", datos.get("horas", 0)) or 0
+        )
+        datos.setdefault("cruza_medianoche", 0)
+
+        return datos
+
+    def texto_rechazo_asignacion(
+        self,
+        repartidor,
+        restaurante,
+        dia,
+        turno,
+        motivo
+    ):
+
+        horario = self.texto_horario_turno(turno)
+        turno_texto = turno.get("nombre", "Turno")
+
+        if horario:
+
+            turno_texto = f"{turno_texto} {horario}"
+
+        return (
+            f"No se puede asignar a {repartidor['nombre']}.\n\n"
+            f"Dia: {dia}\n"
+            f"Turno: {turno_texto}\n"
+            f"Restaurante: {restaurante['nombre']}\n"
+            f"Regla incumplida: {motivo}."
+        )
 
     def preparar_cambio_asignacion(
         self,

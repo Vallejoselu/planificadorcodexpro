@@ -242,6 +242,64 @@ class TestCuadrantesPlanningEngine(unittest.TestCase):
             ).text()
         )
 
+    def test_cuadrante_muestra_horario_real_del_turno(self):
+
+        restaurante_id = obtener_restaurantes()[0][0]
+        turno = obtener_turnos()[0]
+        guardar_turno_calendario(
+            "viernes",
+            turno[0],
+            restaurante_id,
+            None,
+            "2026-07-20"
+        )
+
+        vista = VistaCuadrantes()
+        vista.selector_semana.setDate(QDate(2026, 7, 20))
+        item = vista.tabla.item(
+            vista.fila_turno(turno[0]),
+            database.DIAS_SEMANA.index("viernes")
+        )
+        horario = f"{turno[3]}-{turno[4]}"
+
+        self.assertIn(horario, item.text())
+        self.assertIn(f"{float(turno[6]):g} h", item.text())
+        self.assertIn(horario, item.toolTip())
+
+    def test_asignacion_manual_respeta_dias_libres(self):
+
+        vista = VistaCuadrantes()
+        vista.selector_semana.setDate(QDate(2026, 7, 20))
+        restaurante_id = obtener_restaurantes()[0][0]
+        turno_id = obtener_turnos()[0][0]
+        ana_id = self._id_repartidor("Ana")
+        avisos = []
+        warning_original = cuadrantes_view.QMessageBox.warning
+        cuadrantes_view.QMessageBox.warning = (
+            lambda *args, **kwargs: avisos.append(
+                "\n".join(str(arg) for arg in args)
+            ) or None
+        )
+
+        try:
+
+            self._seleccionar_combo(vista.selector_restaurante, restaurante_id)
+            self._seleccionar_combo(vista.selector_turno, turno_id)
+            self._seleccionar_combo(vista.selector_repartidor, ana_id)
+            vista.tabla.setCurrentCell(
+                vista.fila_turno(turno_id),
+                database.DIAS_SEMANA.index("lunes")
+            )
+            vista.asignar_seleccion()
+
+        finally:
+
+            cuadrantes_view.QMessageBox.warning = warning_original
+
+        self.assertEqual(obtener_calendario_semanal("2026-07-20"), [])
+        self.assertTrue(avisos)
+        self.assertIn("descanso", avisos[0])
+
     def test_deshacer_y_rehacer_no_afectan_otras_semanas(self):
 
         vista = VistaCuadrantes()
@@ -557,6 +615,22 @@ class TestCuadrantesPlanningEngine(unittest.TestCase):
             for (dia, turno_id), asignaciones in vista.asignaciones.items()
             for asignacion in asignaciones
         )
+
+    def _seleccionar_combo(self, combo, valor):
+
+        indice = combo.findData(valor)
+        self.assertNotEqual(indice, -1)
+        combo.setCurrentIndex(indice)
+
+    def _id_repartidor(self, nombre):
+
+        for repartidor in database.obtener_repartidores():
+
+            if repartidor[1] == nombre:
+
+                return repartidor[0]
+
+        self.fail(f"No existe el repartidor {nombre}")
 
     def _crear_datos(self):
 
