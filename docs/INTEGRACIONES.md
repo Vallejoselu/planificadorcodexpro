@@ -75,3 +75,14 @@ Antes de conectar APIs reales, la app prepara una integracion generica:
 
 El webhook simulado genera la solicitud que se enviaria, pero no contacta ningun
 servicio externo.
+
+## Fase 14.10C2: configuracion de webhook generico
+
+La pantalla de configuracion permite preparar la integracion `api_generica`:
+
+- URL del webhook;
+- modo simulado o preparado para envio futuro;
+- referencia opcional de credenciales.
+
+La URL se valida para aceptar solo `http://` o `https://`. Las credenciales se
+guardan como referencia segura, nunca como valor directo.
