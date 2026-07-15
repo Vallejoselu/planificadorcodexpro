@@ -23,3 +23,18 @@ Para pruebas o instalaciones personalizadas puede usarse la variable
 Las fases siguientes pueden usar esta estructura para calendario/email,
 plataformas delivery y reintentos de sincronizacion sin introducir claves en el
 codigo fuente ni en los commits.
+
+## Fase 14.10B2: resumen por email
+
+El resumen por email se prepara desde los mismos datos de exportacion del
+cuadrante semanal.
+
+Esta fase permite:
+
+- generar el asunto y cuerpo del mensaje;
+- exportar un borrador `.eml`;
+- enviar por SMTP usando una referencia de credenciales ya validada.
+
+La configuracion visual queda para la fase 14.10B3. El envio no guarda claves en
+`delivery.db`: el campo `credenciales_referencia` debe apuntar a `env:VARIABLE`
+o `local://proveedor/nombre`.
