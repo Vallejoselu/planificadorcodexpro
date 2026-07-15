@@ -10,8 +10,12 @@ from repositories.restaurantes_repository import RestaurantesRepository
 from repositories.plantillas_repository import PlantillasRepository
 from repositories.turnos_repository import TurnosRepository
 from database.schema import DIAS_SEMANA
-from services.rules.ausencias import esta_ausente_por_tipo
-from services.rules.disponibilidad import parsear_fecha
+from services.rules.ausencias import esta_ausente, esta_ausente_por_tipo
+from services.rules.disponibilidad import (
+    categoria_turno,
+    esta_disponible,
+    parsear_fecha
+)
 from services.rules.candidatos import motivo_no_puede_trabajar
 from services.fechas import normalizar_fecha_inicio_semana
 from services.planning_engine import PlanningEngine
@@ -364,6 +368,13 @@ class CuadrantesService:
 
         asignaciones = self.resolver_turnos_asignaciones(asignaciones)
         fecha_inicio = normalizar_fecha_inicio_semana(fecha_inicio)
+        self.validar_asignaciones_semana(
+            asignaciones,
+            fecha_inicio,
+            self.turnos_repository.listar_activos(),
+            self.restaurantes_repository.listar_activos(),
+            self.repartidores_repository.listar_activos()
+        )
         total = sum(
             len(elementos)
             for elementos in (asignaciones or {}).values()
@@ -606,7 +617,8 @@ class CuadrantesService:
                 asignaciones,
                 turnos,
                 restaurantes,
-                repartidores
+                repartidores,
+                fecha_inicio
             )
         }
 
@@ -1205,26 +1217,263 @@ class CuadrantesService:
         asignaciones,
         turnos,
         restaurantes,
-        repartidores
+        repartidores,
+        fecha_inicio=None
     ):
 
         return [
-            {
-                "repartidor_id": repartidor[0],
-                "nombre": repartidor[1],
-                "dias": {
-                    dia: self.texto_repartidor_dia(
-                        asignaciones,
-                        repartidor[0],
-                        dia,
-                        turnos,
-                        restaurantes
-                    )
-                    for dia in DIAS_SEMANA
-                }
-            }
+            self.fila_repartidor_cuadrante(
+                repartidor,
+                asignaciones,
+                turnos,
+                restaurantes,
+                fecha_inicio
+            )
             for repartidor in repartidores
         ]
+
+    def fila_repartidor_cuadrante(
+        self,
+        repartidor,
+        asignaciones,
+        turnos,
+        restaurantes,
+        fecha_inicio=None
+    ):
+
+        repartidor_normalizado = self.repartidor_para_cuadrante(repartidor)
+        preparar_estado_repartidor(repartidor_normalizado)
+        fechas = self.fechas_semana(fecha_inicio)
+        celdas = {
+            dia: self.celda_repartidor_dia(
+                asignaciones,
+                repartidor_normalizado,
+                dia,
+                turnos,
+                restaurantes,
+                fechas.get(dia)
+            )
+            for dia in DIAS_SEMANA
+        }
+
+        return {
+            "repartidor_id": repartidor_normalizado["id"],
+            "nombre": repartidor_normalizado["nombre"],
+            "contrato": f"{repartidor_normalizado['horas_contratadas']}h",
+            "dias": {
+                dia: celdas[dia]["texto"]
+                for dia in DIAS_SEMANA
+            },
+            "celdas": celdas
+        }
+
+    def repartidor_para_cuadrante(self, repartidor):
+
+        if isinstance(repartidor, dict):
+
+            return normalizar_repartidor(repartidor)
+
+        if len(repartidor) >= 9:
+
+            return normalizar_repartidor(repartidor)
+
+        return normalizar_repartidor({
+            "id": self.valor_campo(repartidor, "id", 0),
+            "nombre": self.valor_campo(repartidor, "nombre", 1, ""),
+            "horas": self.valor_campo(repartidor, "horas", 2, 0),
+            "zona": self.valor_campo(repartidor, "zona", 3, None),
+            "doble_turno": self.valor_campo(
+                repartidor,
+                "doble_turno",
+                4,
+                1
+            ),
+            "puede_hasta_la_una": self.valor_campo(
+                repartidor,
+                "puede_hasta_la_una",
+                5,
+                1
+            ),
+            "prioridad_comida": self.valor_campo(
+                repartidor,
+                "prioridad_comida",
+                6,
+                50
+            ),
+            "prioridad_noche": self.valor_campo(
+                repartidor,
+                "prioridad_noche",
+                7,
+                50
+            ),
+            "prioridad_grela": self.valor_campo(
+                repartidor,
+                "prioridad_grela",
+                8,
+                50
+            ),
+            "disponibilidad": {}
+        })
+
+    def celda_repartidor_dia(
+        self,
+        asignaciones,
+        repartidor,
+        dia,
+        turnos,
+        restaurantes,
+        fecha=None
+    ):
+
+        asignaciones_dia = self.asignaciones_repartidor_dia(
+            asignaciones,
+            repartidor["id"],
+            dia,
+            turnos,
+            restaurantes
+        )
+
+        if not asignaciones_dia:
+
+            if self.repartidor_libre_dia(repartidor, dia, fecha):
+
+                return {
+                    "texto": "LIBRE",
+                    "estado": "libre",
+                    "tooltip": self.motivo_libre_dia(repartidor, dia, fecha)
+                }
+
+            return {
+                "texto": "-",
+                "estado": "disponible",
+                "tooltip": "Disponible sin turno asignado"
+            }
+
+        comidas = [
+            asignacion
+            for asignacion in asignaciones_dia
+            if categoria_turno(asignacion["turno"]) == "comida"
+        ]
+        cenas = [
+            asignacion
+            for asignacion in asignaciones_dia
+            if categoria_turno(asignacion["turno"]) == "noche"
+        ]
+
+        if comidas and cenas:
+
+            estado = "doble"
+            cabecera = "DOBLE"
+
+        elif comidas:
+
+            estado = "comida"
+            cabecera = "COMIDA"
+
+        elif cenas:
+
+            estado = "cena"
+            cabecera = "CENA"
+
+        else:
+
+            estado = "turno"
+            cabecera = "TURNO"
+
+        lineas = [cabecera]
+
+        for asignacion in asignaciones_dia:
+
+            horario = self.texto_horario_turno(asignacion["turno"])
+            restaurante = asignacion["restaurante"]
+            nombre_turno = self.nombre_turno(asignacion["turno"]).upper()
+            detalle = nombre_turno
+
+            if horario:
+
+                detalle += f" {horario}"
+
+            if restaurante:
+
+                detalle += f"\n{restaurante[1]}"
+
+            lineas.append(detalle)
+
+        texto = "\n".join(lineas)
+
+        return {
+            "texto": texto,
+            "estado": estado,
+            "tooltip": texto
+        }
+
+    def asignaciones_repartidor_dia(
+        self,
+        asignaciones,
+        repartidor_id,
+        dia,
+        turnos,
+        restaurantes
+    ):
+
+        resultado = []
+        turnos_por_id = self.indexar_por_id(turnos)
+        restaurantes_por_id = self.indexar_por_id(restaurantes)
+
+        for (dia_asignado, turno_id), elementos in asignaciones.items():
+
+            if dia_asignado != dia:
+
+                continue
+
+            turno = turnos_por_id.get(turno_id)
+
+            if not turno:
+
+                continue
+
+            for asignacion in elementos:
+
+                if asignacion.get("repartidor_id") != repartidor_id:
+
+                    continue
+
+                resultado.append({
+                    "turno": turno,
+                    "restaurante": restaurantes_por_id.get(
+                        asignacion["restaurante_id"]
+                    )
+                })
+
+        return resultado
+
+    def repartidor_libre_dia(self, repartidor, dia, fecha=None):
+
+        if dia in repartidor.get("descanso", []):
+
+            return True
+
+        if esta_ausente(repartidor, dia, fecha):
+
+            return True
+
+        return not esta_disponible(repartidor, dia, None)
+
+    def motivo_libre_dia(self, repartidor, dia, fecha=None):
+
+        if dia in repartidor.get("descanso", []):
+
+            return "Descanso"
+
+        if esta_ausente_por_tipo(repartidor, "vacaciones", fecha, dia):
+
+            return "Vacaciones"
+
+        if esta_ausente_por_tipo(repartidor, "bajas", fecha, dia):
+
+            return "Baja"
+
+        return "No disponible"
 
     def texto_repartidor_dia(
         self,
@@ -1617,6 +1866,22 @@ class CuadrantesService:
 
         fecha_inicio = normalizar_fecha_inicio_semana(fecha_inicio)
         asignaciones = asignaciones or []
+
+        if asignaciones:
+
+            propuestas = self.agrupar_calendario(
+                self.cargar_semana(fecha_inicio)
+            )
+            propuestas[(dia, turno_id)] = self.clonar_asignaciones_turno(
+                asignaciones
+            )
+            self.validar_asignaciones_semana(
+                propuestas,
+                fecha_inicio,
+                self.turnos_repository.listar_activos(),
+                self.restaurantes_repository.listar_activos(),
+                self.repartidores_repository.listar_activos()
+            )
 
         self.calendario_repository.eliminar_turno(
             dia,

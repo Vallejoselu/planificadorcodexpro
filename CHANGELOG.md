@@ -1,5 +1,27 @@
 # CHANGELOG
 
+## 2.1.3 - Hotfix de cuadrantes por empleado
+
+### Corregido
+
+- El guardado de cuadrantes bloquea asignaciones en dias libres,
+  descansos, vacaciones, bajas o dias sin disponibilidad.
+- La validacion se aplica al generar, asignar manualmente, copiar semanas
+  y aplicar plantillas antes de escribir en `calendario_semanal`.
+- Las asignaciones manuales invalidas muestran aviso y no se guardan.
+
+### Aniadido
+
+- Nueva vista `Por empleado` en Cuadrantes con filas por repartidor,
+  contrato semanal y columnas de lunes a domingo.
+- Cada celda muestra `LIBRE`, `COMIDA`, `CENA`, `DOBLE` o `-` con los
+  horarios reales y colores diferenciados.
+
+### Validacion
+
+- Se anadieron pruebas para dias no disponibles, bloqueo de asignacion
+  manual, copia de semanas, plantillas y vista por empleado.
+
 ## 2.1.2 - Correccion de interfaz en cuadrantes
 
 ### Corregido
