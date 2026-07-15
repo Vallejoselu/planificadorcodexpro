@@ -13,6 +13,7 @@ from services.rules.horas import (
     horas_por_repartidor,
     repartidores_activos
 )
+from services.reglas_runtime import obtener_reglas_motor
 
 
 def puede_trabajar(repartidor, restaurante, dia, turno, fecha):
@@ -400,6 +401,20 @@ def excede_dias_consecutivos(repartidor, dia):
 
 def prioridad_repartidor(repartidor, restaurante, turno):
 
+    reglas_motor = obtener_reglas_motor()
+    peso_prioridad_zona = float(
+        repartidor.get(
+            "peso_prioridad_zona",
+            reglas_motor.get("peso_prioridad_zona", 10)
+        ) or 0
+    )
+    peso_restaurante_fijo = float(
+        repartidor.get(
+            "peso_restaurante_fijo",
+            reglas_motor.get("peso_restaurante_fijo", 20)
+        ) or 0
+    )
+
     if turno["nombre"] == "comida":
 
         prioridad = repartidor.get("prioridad_comida", 50)
@@ -414,11 +429,11 @@ def prioridad_repartidor(repartidor, restaurante, turno):
 
     if repartidor.get("zona") == restaurante.get("zona"):
 
-        prioridad += 10
+        prioridad += peso_prioridad_zona
 
     if repartidor.get("restaurante_fijo"):
 
-        prioridad += 20
+        prioridad += peso_restaurante_fijo
 
     return prioridad
 

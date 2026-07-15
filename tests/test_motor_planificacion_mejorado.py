@@ -5,6 +5,7 @@ from services.planning_models import PuntuacionConfig
 from services.planning_preparation import preparar_datos_planificacion
 from services.planning_scoring import puntuacion_solucion
 from services.planning_validation import validar_planificacion
+from services.rules.candidatos import puntuacion_preferencia
 from services.scheduler import construir_planificacion
 
 
@@ -129,6 +130,62 @@ class TestMotorPlanificacionMejorado(unittest.TestCase):
         self.assertEqual(baja.detalle["desplazamiento"], 3)
         self.assertEqual(alta.detalle["desplazamiento"], 3)
         self.assertGreater(alta.valores[9], baja.valores[9])
+
+    def test_puntuacion_aplica_peso_prioridad_zona_configurado(self):
+
+        repartidor = self.repartidor(1)
+        repartidor["zona"] = "Centro"
+        repartidor["preferencias"] = []
+        repartidor["restaurante_fijo"] = None
+        repartidor["peso_prioridad_zona"] = 30
+        restaurante = self.restaurante()
+
+        self.assertEqual(
+            puntuacion_preferencia(repartidor, restaurante, self.turno()),
+            80
+        )
+
+    def test_puntuacion_aplica_peso_restaurante_fijo_configurado(self):
+
+        repartidor = self.repartidor(1)
+        repartidor["zona"] = "Norte"
+        repartidor["preferencias"] = []
+        repartidor["restaurante_fijo"] = 1
+        repartidor["peso_restaurante_fijo"] = 40
+        restaurante = self.restaurante()
+
+        self.assertEqual(
+            puntuacion_preferencia(repartidor, restaurante, self.turno()),
+            90
+        )
+
+    def test_puntuacion_aplica_peso_balance_comidas_cenas_configurado(self):
+
+        repartidor = self.repartidor(1)
+        restaurante = self.restaurante()
+        turno = self.turno()
+        repartidor["turnos_comida"] = 3
+        repartidor["turnos_noche"] = 0
+
+        repartidor["peso_balance_comidas_cenas"] = 1
+        bajo = puntuacion_solucion(
+            repartidor,
+            restaurante,
+            "lunes",
+            turno,
+            devolver_detalle=True
+        )
+        repartidor["peso_balance_comidas_cenas"] = 5
+        alto = puntuacion_solucion(
+            repartidor,
+            restaurante,
+            "lunes",
+            turno,
+            devolver_detalle=True
+        )
+
+        self.assertEqual(bajo.detalle["diferencia_turnos"], 4)
+        self.assertGreater(alto.valores[10], bajo.valores[10])
 
     def test_incidencia_explica_motivos_agregados(self):
 

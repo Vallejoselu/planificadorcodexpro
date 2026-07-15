@@ -4,7 +4,10 @@ from services.constraints import MAX_HORAS_SEMANALES
 REGLAS_MOTOR_DEFECTO = {
     "max_horas_semanales": float(MAX_HORAS_SEMANALES),
     "horas_complementarias": "segun repartidor",
-    "penalizacion_desplazamiento": 1.0
+    "penalizacion_desplazamiento": 1.0,
+    "peso_prioridad_zona": 10.0,
+    "peso_restaurante_fijo": 20.0,
+    "peso_balance_comidas_cenas": 1.0
 }
 
 _reglas_motor = dict(REGLAS_MOTOR_DEFECTO)

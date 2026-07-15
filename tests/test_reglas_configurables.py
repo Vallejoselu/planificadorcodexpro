@@ -47,9 +47,9 @@ class TestReglasConfigurables(unittest.TestCase):
 
         self.assertGreaterEqual(len(reglas), 8)
         self.assertEqual(resumen["modo"], "preparacion")
-        self.assertEqual(resumen["editables"], 5)
+        self.assertEqual(resumen["editables"], 8)
         self.assertEqual(resumen["configuradas"], 0)
-        self.assertEqual(resumen["aplicadas_motor"], 3)
+        self.assertEqual(resumen["aplicadas_motor"], 6)
         self.assertTrue(
             any(regla["clave"] == "descanso_consecutivo" for regla in reglas)
         )
@@ -131,7 +131,10 @@ class TestReglasConfigurables(unittest.TestCase):
         servicio.guardar_configuracion({
             "max_horas_semanales": "35",
             "horas_complementarias": "permitir",
-            "penalizacion_desplazamiento": "3"
+            "penalizacion_desplazamiento": "3",
+            "peso_prioridad_zona": "12",
+            "peso_restaurante_fijo": "25",
+            "peso_balance_comidas_cenas": "4"
         })
 
         configuracion = servicio.configuracion_motor()
@@ -139,6 +142,9 @@ class TestReglasConfigurables(unittest.TestCase):
         self.assertEqual(configuracion["max_horas_semanales"], 35)
         self.assertEqual(configuracion["horas_complementarias"], "permitir")
         self.assertEqual(configuracion["penalizacion_desplazamiento"], 3)
+        self.assertEqual(configuracion["peso_prioridad_zona"], 12)
+        self.assertEqual(configuracion["peso_restaurante_fijo"], 25)
+        self.assertEqual(configuracion["peso_balance_comidas_cenas"], 4)
 
     def test_servicio_valida_reglas_editables(self):
 
@@ -166,6 +172,14 @@ class TestReglasConfigurables(unittest.TestCase):
 
         with self.assertRaises(ValueError):
 
+            servicio.guardar_configuracion({"peso_prioridad_zona": "120"})
+
+        with self.assertRaises(ValueError):
+
+            servicio.guardar_configuracion({"peso_balance_comidas_cenas": "20"})
+
+        with self.assertRaises(ValueError):
+
             servicio.guardar_configuracion({"max_dias_consecutivos": "texto"})
 
     def test_servicio_restaura_valores_preparados(self):
@@ -175,14 +189,14 @@ class TestReglasConfigurables(unittest.TestCase):
 
         resultado = servicio.restaurar_valores()
 
-        self.assertEqual(resultado["restauradas"], 5)
+        self.assertEqual(resultado["restauradas"], 8)
         self.assertEqual(servicio.resumen()["configuradas"], 0)
 
     def test_vista_muestra_catalogo_con_edicion_controlada(self):
 
         vista = VistaReglas()
 
-        self.assertEqual(vista.tabla.rowCount(), 12)
+        self.assertEqual(vista.tabla.rowCount(), 15)
         self.assertEqual(vista.tabla.columnCount(), 6)
         self.assertIn("Modo preparacion", vista.resumen.text())
         self.assertTrue(
@@ -219,7 +233,7 @@ class TestReglasConfigurables(unittest.TestCase):
 
             vista.tabla.item(fila, 2).setText("8")
             vista.guardar_configuracion()
-            self.assertIn("5 configuradas", vista.resumen.text())
+            self.assertIn("8 configuradas", vista.resumen.text())
             vista.restaurar_valores()
             self.assertIn("0 configuradas", vista.resumen.text())
 
