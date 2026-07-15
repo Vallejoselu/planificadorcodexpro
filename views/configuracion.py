@@ -23,6 +23,7 @@ from repositories.ciudades_repository import CiudadesRepository
 from repositories.demandas_ciudad_repository import DemandasCiudadRepository
 from repositories.demandas_zona_repository import DemandasZonaRepository
 from repositories.integraciones_repository import IntegracionesRepository
+from services.sincronizacion import ServicioSincronizacion
 from repositories.turnos_repository import TurnosRepository
 from services.actualizaciones import ServicioActualizaciones
 from services.email_resumen import normalizar_destinatarios
@@ -35,6 +36,7 @@ ciudades_repository = CiudadesRepository()
 demandas_ciudad_repository = DemandasCiudadRepository()
 demandas_zona_repository = DemandasZonaRepository()
 integraciones_repository = IntegracionesRepository()
+sincronizacion_service = ServicioSincronizacion()
 turnos_repository = TurnosRepository()
 
 
@@ -105,11 +107,15 @@ class VistaConfiguracion(QWidget):
 
         self.tabla_integraciones = QTableWidget()
         self.tabla_eventos = QTableWidget()
+        self.tabla_sincronizaciones = QTableWidget()
         configure_table(self.tabla_integraciones)
         configure_table(self.tabla_eventos)
+        configure_table(self.tabla_sincronizaciones)
 
         self.layout.addWidget(QLabel("Integraciones preparadas"))
         self.layout.addWidget(self.tabla_integraciones)
+        self.layout.addWidget(QLabel("Sincronizaciones recientes"))
+        self.layout.addWidget(self.tabla_sincronizaciones)
         self.layout.addWidget(QLabel("Eventos de integracion"))
         self.layout.addWidget(self.tabla_eventos)
 
@@ -386,6 +392,7 @@ class VistaConfiguracion(QWidget):
         self.cargar_demanda_zona()
         self.cargar_demanda_ciudad()
         self.cargar_integraciones()
+        self.cargar_sincronizaciones()
         self.cargar_eventos()
 
     # ======================================
@@ -1029,6 +1036,42 @@ class VistaConfiguracion(QWidget):
             self.pintar_fila(self.tabla_eventos, fila, evento)
 
         self.tabla_eventos.resizeColumnsToContents()
+
+    # ======================================
+
+    def cargar_sincronizaciones(self):
+
+        datos = sincronizacion_service.listar(limite=50)
+
+        self.tabla_sincronizaciones.setColumnCount(8)
+        self.tabla_sincronizaciones.setHorizontalHeaderLabels([
+            "Proveedor",
+            "Accion",
+            "Estado",
+            "Intentos",
+            "Max",
+            "Proximo intento",
+            "Error",
+            "Actualizado"
+        ])
+        self.tabla_sincronizaciones.setRowCount(len(datos))
+
+        for fila, sincronizacion in enumerate(datos):
+
+            valores = [
+                sincronizacion[1],
+                sincronizacion[2],
+                sincronizacion[3],
+                sincronizacion[7],
+                sincronizacion[8],
+                sincronizacion[9] or "",
+                sincronizacion[6] or "",
+                sincronizacion[11] or ""
+            ]
+
+            self.pintar_fila(self.tabla_sincronizaciones, fila, valores)
+
+        self.tabla_sincronizaciones.resizeColumnsToContents()
 
     # ======================================
 
