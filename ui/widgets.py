@@ -1,8 +1,11 @@
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
+    QApplication,
     QFrame,
     QLabel,
     QPushButton,
+    QScrollArea,
+    QSizePolicy,
     QTableWidget,
     QVBoxLayout,
     QWidget
@@ -90,3 +93,46 @@ def configure_table(table):
         table.verticalHeader().setDefaultSectionSize(38)
         table.verticalHeader().setVisible(False)
         table.setShowGrid(True)
+
+
+def create_scroll_area(widget):
+
+    scroll = QScrollArea()
+    scroll.setWidgetResizable(True)
+    scroll.setFrameShape(QFrame.NoFrame)
+    scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+    scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+    scroll.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+    scroll.setMinimumHeight(0)
+    scroll.setWidget(widget)
+    return scroll
+
+
+def fit_dialog_to_screen(
+    dialog,
+    preferred_width,
+    preferred_height,
+    min_width=360,
+    min_height=280,
+    margin=80
+):
+
+    screen = dialog.screen() or QApplication.primaryScreen()
+
+    if screen:
+
+        available = screen.availableGeometry()
+        max_width = max(min_width, available.width() - margin)
+        max_height = max(min_height, available.height() - margin)
+        dialog.setMaximumSize(max_width, max_height)
+        dialog.resize(
+            min(preferred_width, max_width),
+            min(preferred_height, max_height)
+        )
+
+    else:
+
+        dialog.resize(preferred_width, preferred_height)
+
+    dialog.setMinimumSize(min_width, min_height)
+    dialog.setSizeGripEnabled(True)

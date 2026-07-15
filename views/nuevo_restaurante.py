@@ -15,7 +15,8 @@ from PySide6.QtWidgets import (
     QAbstractItemView,
     QTableWidget,
     QTableWidgetItem,
-    QSpinBox
+    QSpinBox,
+    QWidget
 )
 
 from PySide6.QtCore import Qt
@@ -23,6 +24,7 @@ from PySide6.QtCore import Qt
 from repositories.ciudades_repository import CiudadesRepository
 from repositories.repartidores_repository import RepartidoresRepository
 from repositories.restaurantes_repository import RestaurantesRepository
+from ui.widgets import create_scroll_area, fit_dialog_to_screen
 
 
 ciudades_repository = CiudadesRepository()
@@ -45,11 +47,10 @@ class NuevoRestaurante(QDialog):
             if self.restaurante
             else "Nuevo restaurante"
         )
-        self.resize(520, 620)
-
         layout = QVBoxLayout(self)
 
-        formulario = QFormLayout()
+        contenedor_formulario = QWidget()
+        formulario = QFormLayout(contenedor_formulario)
 
         self.nombre = QLineEdit()
         self.direccion = QLineEdit()
@@ -80,10 +81,12 @@ class NuevoRestaurante(QDialog):
         self.repartidores.setSelectionMode(
             QAbstractItemView.MultiSelection
         )
+        self.repartidores.setMaximumHeight(100)
 
         self.cargar_repartidores()
 
         self.obs = QTextEdit()
+        self.obs.setMaximumHeight(90)
 
         self.turno_nombre = QLineEdit()
         self.turno_inicio = QLineEdit()
@@ -104,6 +107,7 @@ class NuevoRestaurante(QDialog):
             "Cruza medianoche",
             "Horas"
         ])
+        self.tabla_turnos.setMinimumHeight(120)
 
         self.demanda_turno = QComboBox()
         self.demanda_dia = QComboBox()
@@ -132,6 +136,7 @@ class NuevoRestaurante(QDialog):
             "Fecha",
             "Repartidores"
         ])
+        self.tabla_demanda.setMinimumHeight(120)
 
         formulario.addRow("Nombre", self.nombre)
         formulario.addRow("Ciudad", self.ciudad)
@@ -158,7 +163,7 @@ class NuevoRestaurante(QDialog):
         formulario.addRow("Demandas", self.tabla_demanda)
         formulario.addRow("Observaciones", self.obs)
 
-        layout.addLayout(formulario)
+        layout.addWidget(create_scroll_area(contenedor_formulario), 1)
 
         self.boton = QPushButton("Guardar")
         self.boton.setProperty("variant", "primary")
@@ -174,6 +179,8 @@ class NuevoRestaurante(QDialog):
 
             self.cargar_restaurante()
             self.cargar_turnos_demanda()
+
+        fit_dialog_to_screen(self, 640, 640, min_width=520, min_height=420)
 
     def cargar_ciudades(self):
 
