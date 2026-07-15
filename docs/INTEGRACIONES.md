@@ -53,3 +53,13 @@ La pantalla de configuracion permite preparar la integracion de email:
 La pantalla guarda la configuracion en `integraciones_api` y mantiene las claves
 fuera de la base de datos. El envio directo y pruebas de conexion avanzadas
 quedan para fases posteriores.
+
+## Fase 14.10B4: acciones desde exportaciones
+
+La pantalla de exportaciones permite:
+
+- exportar un borrador `.eml` con el resumen semanal;
+- enviar el resumen por email usando la configuracion guardada.
+
+El envio pide confirmacion antes de usar SMTP. Si faltan servidor, remitente,
+destinatarios o referencia de credenciales, la app muestra un error y no envia.

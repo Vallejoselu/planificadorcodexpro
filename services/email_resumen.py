@@ -1,10 +1,50 @@
+import json
 import smtplib
 from email.message import EmailMessage
 from pathlib import Path
 
+from repositories.integraciones_repository import IntegracionesRepository
 from services.credenciales import GestorCredencialesIntegracion
 from services.exportador import preparar_datos_exportacion
 from services.fechas import normalizar_fecha_inicio_semana
+
+
+def cargar_configuracion_email(integraciones_repository=None):
+
+    repositorio = integraciones_repository or IntegracionesRepository()
+    datos = repositorio.obtener_configuracion("email")
+
+    if not datos:
+
+        raise ValueError("La configuracion de email no existe.")
+
+    opciones = decodificar_opciones(datos[5])
+    configuracion = {
+        "activo": bool(datos[2]),
+        "host": opciones.get("smtp_host") or datos[3] or "",
+        "puerto": int(opciones.get("smtp_puerto") or 587),
+        "tls": bool(opciones.get("smtp_tls", True)),
+        "remitente": opciones.get("remitente", ""),
+        "destinatarios": opciones.get("destinatarios", ""),
+        "credenciales_referencia": datos[4] or ""
+    }
+
+    return configuracion
+
+
+def decodificar_opciones(opciones):
+
+    if not opciones:
+
+        return {}
+
+    try:
+
+        return json.loads(opciones)
+
+    except json.JSONDecodeError:
+
+        return {}
 
 
 def preparar_resumen_email(fecha_inicio_semana=None, datos=None):
@@ -94,6 +134,25 @@ def exportar_resumen_email(
     return str(ruta)
 
 
+def exportar_resumen_email_configurado(
+    ruta,
+    fecha_inicio_semana=None,
+    integraciones_repository=None,
+    datos=None
+):
+
+    configuracion = cargar_configuracion_email(integraciones_repository)
+    validar_configuracion_email(configuracion, requiere_credenciales=False)
+
+    return exportar_resumen_email(
+        ruta,
+        configuracion["destinatarios"],
+        configuracion["remitente"],
+        fecha_inicio_semana,
+        datos
+    )
+
+
 def enviar_resumen_email(
     destinatarios,
     configuracion_smtp,
@@ -156,6 +215,52 @@ def enviar_resumen_email(
         "destinatarios": normalizar_destinatarios(destinatarios),
         "asunto": mensaje["Subject"]
     }
+
+
+def enviar_resumen_email_configurado(
+    fecha_inicio_semana=None,
+    integraciones_repository=None,
+    datos=None,
+    gestor_credenciales=None,
+    smtp_factory=None
+):
+
+    configuracion = cargar_configuracion_email(integraciones_repository)
+    validar_configuracion_email(configuracion, requiere_credenciales=True)
+
+    return enviar_resumen_email(
+        configuracion["destinatarios"],
+        {
+            "host": configuracion["host"],
+            "puerto": configuracion["puerto"],
+            "tls": configuracion["tls"],
+            "remitente": configuracion["remitente"]
+        },
+        configuracion["credenciales_referencia"],
+        fecha_inicio_semana,
+        datos,
+        gestor_credenciales,
+        smtp_factory
+    )
+
+
+def validar_configuracion_email(configuracion, requiere_credenciales=True):
+
+    if not configuracion.get("remitente"):
+
+        raise ValueError("Configura un remitente de email.")
+
+    normalizar_destinatarios(configuracion.get("destinatarios", ""))
+
+    if requiere_credenciales:
+
+        if not configuracion.get("host"):
+
+            raise ValueError("Configura el servidor SMTP.")
+
+        if not configuracion.get("credenciales_referencia"):
+
+            raise ValueError("Configura la referencia de credenciales.")
 
 
 def normalizar_destinatarios(destinatarios):

@@ -4,9 +4,12 @@ from pathlib import Path
 
 from services.credenciales import GestorCredencialesIntegracion
 from services.email_resumen import (
+    cargar_configuracion_email,
     crear_mensaje_resumen,
     enviar_resumen_email,
+    enviar_resumen_email_configurado,
     exportar_resumen_email,
+    exportar_resumen_email_configurado,
     normalizar_destinatarios,
     preparar_resumen_email
 )
@@ -67,6 +70,21 @@ class FakeSMTP:
     def send_message(self, mensaje):
 
         self.mensaje = mensaje
+
+
+class FakeIntegracionesRepository:
+
+    def __init__(self, fila):
+
+        self.fila = fila
+
+    def obtener_configuracion(self, proveedor):
+
+        if proveedor == "email":
+
+            return self.fila
+
+        return None
 
 
 class TestEmailResumen(unittest.TestCase):
@@ -151,6 +169,98 @@ class TestEmailResumen(unittest.TestCase):
             ("planificador@example.test", "valor-local")
         )
         self.assertEqual(smtp.mensaje["To"], "ana@example.test")
+
+    def test_carga_configuracion_email_desde_integracion(self):
+
+        repositorio = FakeIntegracionesRepository((
+            "email",
+            "Email",
+            1,
+            "smtp.example.test",
+            "local://email/principal",
+            (
+                '{"smtp_host":"smtp.example.test","smtp_puerto":2525,'
+                '"smtp_tls":false,"remitente":"planificador@example.test",'
+                '"destinatarios":"ana@example.test"}'
+            ),
+            "2026-07-15"
+        ))
+
+        configuracion = cargar_configuracion_email(repositorio)
+
+        self.assertEqual(configuracion["host"], "smtp.example.test")
+        self.assertEqual(configuracion["puerto"], 2525)
+        self.assertFalse(configuracion["tls"])
+        self.assertEqual(configuracion["destinatarios"], "ana@example.test")
+
+    def test_exporta_resumen_email_con_configuracion_guardada(self):
+
+        repositorio = FakeIntegracionesRepository((
+            "email",
+            "Email",
+            1,
+            "",
+            "",
+            (
+                '{"remitente":"planificador@example.test",'
+                '"destinatarios":"ana@example.test"}'
+            ),
+            "2026-07-15"
+        ))
+
+        with tempfile.TemporaryDirectory() as temporal:
+
+            ruta = Path(temporal) / "resumen.eml"
+            exportar_resumen_email_configurado(
+                ruta,
+                "2026-07-13",
+                repositorio,
+                DATOS_EXPORTACION
+            )
+
+            self.assertIn(
+                "To: ana@example.test",
+                ruta.read_text(encoding="utf-8")
+            )
+
+    def test_envia_resumen_email_con_configuracion_guardada(self):
+
+        FakeSMTP.instancias = []
+        repositorio = FakeIntegracionesRepository((
+            "email",
+            "Email",
+            1,
+            "smtp.example.test",
+            "local://email/principal",
+            (
+                '{"smtp_host":"smtp.example.test","smtp_puerto":2525,'
+                '"smtp_tls":true,"remitente":"planificador@example.test",'
+                '"destinatarios":"ana@example.test"}'
+            ),
+            "2026-07-15"
+        ))
+
+        with tempfile.TemporaryDirectory() as temporal:
+
+            gestor = GestorCredencialesIntegracion(temporal)
+            gestor.guardar_local(
+                "email",
+                "principal",
+                {
+                    "usuario": "planificador@example.test",
+                    "clave": "valor-local"
+                }
+            )
+            resultado = enviar_resumen_email_configurado(
+                "2026-07-13",
+                repositorio,
+                DATOS_EXPORTACION,
+                gestor,
+                FakeSMTP
+            )
+
+        self.assertTrue(resultado["enviado"])
+        self.assertEqual(FakeSMTP.instancias[0].host, "smtp.example.test")
 
     def test_valida_destinatarios(self):
 
