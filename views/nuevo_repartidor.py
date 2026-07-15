@@ -12,7 +12,8 @@ from PySide6.QtWidgets import (
     QLabel,
     QListWidget,
     QListWidgetItem,
-    QAbstractItemView
+    QAbstractItemView,
+    QWidget
 )
 
 from PySide6.QtCore import Qt
@@ -27,6 +28,7 @@ from repositories.ciudades_repository import CiudadesRepository
 from repositories.repartidores_repository import RepartidoresRepository
 from repositories.restaurantes_repository import RestaurantesRepository
 from services.repartidores_service import RepartidoresService
+from ui.widgets import create_scroll_area, fit_dialog_to_screen
 
 
 DESCANSO_NO_NECESARIO_TEXTO = "No necesario por disponibilidad semanal"
@@ -47,11 +49,10 @@ class NuevoRepartidor(QDialog):
             if self.repartidor
             else "Nuevo repartidor"
         )
-        self.resize(450, 500)
-
         layout = QVBoxLayout(self)
 
-        formulario = QFormLayout()
+        contenedor_formulario = QWidget()
+        formulario = QFormLayout(contenedor_formulario)
 
         self.nombre = QLineEdit()
 
@@ -68,10 +69,12 @@ class NuevoRepartidor(QDialog):
         self.ciudades_autorizadas.setSelectionMode(
             QAbstractItemView.MultiSelection
         )
+        self.ciudades_autorizadas.setMaximumHeight(90)
         self.restaurantes_autorizados = QListWidget()
         self.restaurantes_autorizados.setSelectionMode(
             QAbstractItemView.MultiSelection
         )
+        self.restaurantes_autorizados.setMaximumHeight(90)
         self.cargar_ubicaciones()
 
         self.zona = QComboBox()
@@ -140,6 +143,7 @@ class NuevoRepartidor(QDialog):
         self.prio_grela.setValue(50)
 
         self.obs = QTextEdit()
+        self.obs.setMaximumHeight(90)
 
         formulario.addRow("Nombre", self.nombre)
         formulario.addRow("Horas", self.horas)
@@ -178,9 +182,13 @@ class NuevoRepartidor(QDialog):
         formulario.addRow("Prioridad Grela", self.prio_grela)
         formulario.addRow("Observaciones", self.obs)
 
-        layout.addLayout(formulario)
+        layout.addWidget(create_scroll_area(contenedor_formulario), 1)
 
-        self.boton = QPushButton("Guardar")
+        self.boton = QPushButton(
+            "Guardar"
+            if self.repartidor
+            else "Crear"
+        )
         self.boton.setProperty("variant", "primary")
 
         layout.addWidget(self.boton)
@@ -203,6 +211,8 @@ class NuevoRepartidor(QDialog):
         else:
 
             self.actualizar_estado_descanso()
+
+        fit_dialog_to_screen(self, 650, 620, min_width=520, min_height=420)
 
     def cargar_ubicaciones(self):
 
