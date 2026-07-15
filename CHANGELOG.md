@@ -1,5 +1,20 @@
 # CHANGELOG
 
+## 2.1.4 - Hotfix de generacion de cuadrantes
+
+### Corregido
+
+- El generador vuelve a crear cuadrantes aunque una base nueva no tenga turnos
+  globales configurados todavia.
+- Si no existen turnos ni turnos propios, se crean automaticamente los turnos
+  base `Comida` y `Cena` antes de generar.
+- Se evita que la vista de Cuadrantes quede vacia por falta de filas de turno.
+
+### Validacion
+
+- Se anadio una prueba funcional para generar y guardar un cuadrante desde una
+  base con repartidor y restaurante, pero sin turnos previos.
+
 ## 2.1.3 - Hotfix de cuadrantes por empleado
 
 ### Corregido
