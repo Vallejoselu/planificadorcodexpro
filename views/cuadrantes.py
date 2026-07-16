@@ -65,6 +65,22 @@ class VistaCuadrantes(QWidget):
 
         self.layout.addWidget(titulo)
 
+        self.guia_operativa = QLabel(
+            "Para generar bien: configura repartidores activos, restaurantes, "
+            "turnos y demanda. Las celdas con 'Sin repartidor' son plazas "
+            "pendientes de cubrir, no errores de guardado."
+        )
+        self.guia_operativa.setWordWrap(True)
+        self.guia_operativa.setObjectName("guia_operativa")
+        self.guia_operativa.setStyleSheet("""
+            padding:10px 12px;
+            border:1px solid #334155;
+            border-radius:6px;
+            background:#0F172A;
+            color:#E2E8F0;
+        """)
+        self.layout.addWidget(self.guia_operativa)
+
         self.selector_restaurante = QComboBox()
         self.selector_turno = QComboBox()
         self.selector_repartidor = QComboBox()
@@ -89,8 +105,12 @@ class VistaCuadrantes(QWidget):
         self.btn_copiar_semana = QPushButton("Copiar semana")
         self.btn_guardar_plantilla = QPushButton("Guardar plantilla")
         self.btn_aplicar_plantilla = QPushButton("Aplicar plantilla")
-        self.btn_eliminar = QPushButton("Eliminar")
+        self.btn_eliminar = QPushButton("Quitar asignacion")
         self.btn_eliminar.setProperty("variant", "danger")
+        self.btn_eliminar.setToolTip(
+            "Quita la asignacion seleccionada del cuadrante. "
+            "No elimina restaurantes ni repartidores."
+        )
         self.btn_deshacer = QPushButton("Deshacer")
         self.btn_rehacer = QPushButton("Rehacer")
         self.btn_actualizar = QPushButton("Actualizar")
@@ -1209,6 +1229,15 @@ class VistaCuadrantes(QWidget):
 
         if not clave:
 
+            QMessageBox.warning(
+                self,
+                "Quitar asignacion",
+                (
+                    "Selecciona una celda del cuadrante para quitar su "
+                    "asignacion.\n\n"
+                    "Este boton no elimina restaurantes ni repartidores."
+                )
+            )
             return
 
         fila = self.tabla.currentRow()
