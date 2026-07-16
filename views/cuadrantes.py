@@ -96,6 +96,7 @@ class VistaCuadrantes(QWidget):
         self.estado_semana.setMinimumWidth(170)
         self.estado_semana.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
 
+        self.btn_comprobar = QPushButton("Comprobar configuracion")
         self.btn_generar = QPushButton("Generar cuadrante")
         self.btn_generar.setProperty("variant", "primary")
         self.btn_asignar = QPushButton("Asignar")
@@ -118,6 +119,7 @@ class VistaCuadrantes(QWidget):
         self.selector_vista.addItem("Semana", "semana")
         self.selector_vista.addItem("Por local", "local")
         self.selector_vista.addItem("Por empleado", "empleado")
+        self.selector_vista.setCurrentIndex(2)
 
         self.btn_copiar.setShortcut("Ctrl+C")
         self.btn_pegar.setShortcut("Ctrl+V")
@@ -214,6 +216,7 @@ class VistaCuadrantes(QWidget):
         self.btn_actualizar.clicked.connect(self.cargar_datos)
         self.selector_semana.dateChanged.connect(self.cambiar_semana)
         self.selector_vista.currentIndexChanged.connect(self.cambiar_vista)
+        self.btn_comprobar.clicked.connect(self.comprobar_configuracion)
         self.btn_generar.clicked.connect(self.generar_cuadrante)
         self.btn_asignar.clicked.connect(self.asignar_seleccion)
         self.btn_copiar.clicked.connect(self.copiar)
@@ -246,6 +249,7 @@ class VistaCuadrantes(QWidget):
             selector.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
 
         for boton in (
+            self.btn_comprobar,
             self.btn_generar,
             self.btn_asignar,
             self.btn_copiar,
@@ -277,6 +281,7 @@ class VistaCuadrantes(QWidget):
         barra_filtros.addWidget(QLabel("Vista"))
         barra_filtros.addWidget(self.selector_vista)
         barra_filtros.addWidget(self.estado_semana)
+        barra_filtros.addWidget(self.btn_comprobar)
         barra_filtros.addWidget(self.btn_generar)
 
         self.barra_acciones_widget = QWidget()
@@ -356,6 +361,20 @@ class VistaCuadrantes(QWidget):
 
     def generar_cuadrante(self):
 
+        precomprobacion = cuadrantes_service.precomprobar_generacion(
+            self.contexto_cuadrante(),
+            self.fecha_inicio_semana()
+        )
+
+        if not precomprobacion["puede_generar"]:
+
+            QMessageBox.warning(
+                self,
+                "No se puede generar el cuadrante",
+                precomprobacion["texto"]
+            )
+            return
+
         try:
 
             generacion = cuadrantes_service.generar_cuadrante(
@@ -368,11 +387,7 @@ class VistaCuadrantes(QWidget):
             QMessageBox.warning(
                 self,
                 "No se puede generar el cuadrante",
-                (
-                    f"{error}\n\n"
-                    "Revisa que existan repartidores, restaurantes, "
-                    "turnos y demanda configurada para esta semana."
-                )
+                str(error)
             )
             return
 
@@ -405,6 +420,26 @@ class VistaCuadrantes(QWidget):
                 "Cuadrante guardado correctamente para la semana "
                 f"{self.texto_fecha_inicio_semana()}."
             )
+        )
+
+    # ======================================
+
+    def comprobar_configuracion(self):
+
+        precomprobacion = cuadrantes_service.precomprobar_generacion(
+            self.contexto_cuadrante(),
+            self.fecha_inicio_semana()
+        )
+        titulo = (
+            "Configuracion lista"
+            if precomprobacion["puede_generar"]
+            else "Configuracion incompleta"
+        )
+
+        QMessageBox.information(
+            self,
+            titulo,
+            precomprobacion["texto"]
         )
 
     # ======================================
@@ -1348,7 +1383,7 @@ class DialogoResumenGeneracion(QDialog):
     def __init__(self, parent, texto):
         super().__init__(parent)
 
-        self.setWindowTitle("Revisar cuadrante generado")
+        self.setWindowTitle("Vista previa del cuadrante")
         self.resize(640, 520)
 
         layout = QVBoxLayout(self)
@@ -1359,7 +1394,7 @@ class DialogoResumenGeneracion(QDialog):
 
         botones = QDialogButtonBox()
         guardar = botones.addButton(
-            "Guardar cuadrante",
+            "Confirmar y guardar",
             QDialogButtonBox.AcceptRole
         )
         cancelar = botones.addButton(
