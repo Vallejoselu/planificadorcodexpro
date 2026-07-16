@@ -1,6 +1,7 @@
 from PySide6.QtWidgets import (
     QGridLayout,
     QHBoxLayout,
+    QLabel,
     QVBoxLayout,
     QWidget
 )
@@ -35,6 +36,21 @@ class VistaInicio(QWidget):
                 "Resumen operativo de Planificador Delivery Pro"
             )
         )
+
+        self.guia_operativa = QLabel(
+            "Orden recomendado: 1) Repartidores, 2) Restaurantes, "
+            "3) Turnos, 4) Demanda, 5) Generar cuadrante."
+        )
+        self.guia_operativa.setWordWrap(True)
+        self.guia_operativa.setObjectName("guia_operativa")
+        self.guia_operativa.setStyleSheet("""
+            padding:10px 12px;
+            border:1px solid #CBD5E1;
+            border-radius:6px;
+            background:#F8FAFC;
+            color:#1E293B;
+        """)
+        self.layout.addWidget(self.guia_operativa)
 
         self.grid = QGridLayout()
         self.grid.setSpacing(14)
@@ -118,6 +134,7 @@ class VistaInicio(QWidget):
             for asignacion in calendario
         )
         alertas = 0
+        pendientes = []
 
         if sin_cubrir:
 
@@ -126,6 +143,15 @@ class VistaInicio(QWidget):
         if not repartidores:
 
             alertas += 1
+            pendientes.append("crear repartidores")
+
+        if not restaurantes:
+
+            pendientes.append("crear restaurantes")
+
+        if not turnos:
+
+            pendientes.append("crear turnos")
 
         self.cards["repartidores"].set_value(len(repartidores))
         self.cards["restaurantes"].set_value(len(restaurantes))
@@ -133,6 +159,22 @@ class VistaInicio(QWidget):
         self.cards["sin_cubrir"].set_value(sin_cubrir)
         self.cards["horas"].set_value(horas)
         self.cards["alertas"].set_value(alertas if alertas else "Sin datos")
+
+        if pendientes:
+
+            self.guia_operativa.setText(
+                "Antes de generar un cuadrante falta: "
+                + ", ".join(pendientes)
+                + ". Orden recomendado: Repartidores, Restaurantes, "
+                "Turnos, Demanda y Generar cuadrante."
+            )
+
+        else:
+
+            self.guia_operativa.setText(
+                "Base preparada. Revisa la demanda de cada restaurante "
+                "antes de generar el cuadrante."
+            )
 
     # ======================================
 

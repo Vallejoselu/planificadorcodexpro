@@ -47,8 +47,12 @@ class VistaRestaurantes(QWidget):
         self.btn_nuevo.setProperty("variant", "primary")
         self.btn_importar = QPushButton("Importar")
         self.btn_editar = QPushButton("Editar")
-        self.btn_eliminar = QPushButton("Eliminar")
+        self.btn_eliminar = QPushButton("Desactivar")
         self.btn_eliminar.setProperty("variant", "danger")
+        self.btn_eliminar.setToolTip(
+            "Desactiva el restaurante para nuevas planificaciones. "
+            "No borra cuadrantes anteriores."
+        )
         self.btn_actualizar = QPushButton("Actualizar")
 
         barra.addWidget(self.btn_nuevo)

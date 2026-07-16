@@ -45,8 +45,12 @@ class VistaTurnos(QWidget):
         self.btn_nuevo = QPushButton("Nuevo turno")
         self.btn_nuevo.setProperty("variant", "primary")
         self.btn_editar = QPushButton("Editar")
-        self.btn_eliminar = QPushButton("Eliminar")
+        self.btn_eliminar = QPushButton("Desactivar")
         self.btn_eliminar.setProperty("variant", "danger")
+        self.btn_eliminar.setToolTip(
+            "Desactiva el turno para nuevas planificaciones. "
+            "No borra cuadrantes anteriores."
+        )
         self.btn_actualizar = QPushButton("Actualizar")
 
         barra.addWidget(self.btn_nuevo)
