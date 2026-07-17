@@ -95,10 +95,16 @@ class VistaCuadrantes(QWidget):
         self.estado_semana = QLabel("")
         self.estado_semana.setMinimumWidth(170)
         self.estado_semana.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        self.detalle_seleccion = QLabel(
+            "Selecciona una celda para ver que se va a editar."
+        )
+        self.detalle_seleccion.setWordWrap(True)
+        self.detalle_seleccion.setObjectName("detalle_seleccion")
 
         self.btn_comprobar = QPushButton("Comprobar configuracion")
         self.btn_generar = QPushButton("Generar cuadrante")
         self.btn_generar.setProperty("variant", "primary")
+        self.btn_editar = QPushButton("Editar celda")
         self.btn_asignar = QPushButton("Asignar")
         self.btn_asignar.setProperty("variant", "primary")
         self.btn_copiar = QPushButton("Copiar")
@@ -146,6 +152,10 @@ class VistaCuadrantes(QWidget):
         self.tabla.setDragEnabled(True)
         self.tabla.setAcceptDrops(True)
         self.tabla.setDropIndicatorShown(True)
+        self.tabla.itemSelectionChanged.connect(
+            self.actualizar_detalle_seleccion
+        )
+        self.tabla.cellDoubleClicked.connect(self.editar_celda)
 
         self.layout.addWidget(self.tabla)
 
@@ -218,6 +228,7 @@ class VistaCuadrantes(QWidget):
         self.selector_vista.currentIndexChanged.connect(self.cambiar_vista)
         self.btn_comprobar.clicked.connect(self.comprobar_configuracion)
         self.btn_generar.clicked.connect(self.generar_cuadrante)
+        self.btn_editar.clicked.connect(self.editar_celda_actual)
         self.btn_asignar.clicked.connect(self.asignar_seleccion)
         self.btn_copiar.clicked.connect(self.copiar)
         self.btn_pegar.clicked.connect(self.pegar)
@@ -251,6 +262,7 @@ class VistaCuadrantes(QWidget):
         for boton in (
             self.btn_comprobar,
             self.btn_generar,
+            self.btn_editar,
             self.btn_asignar,
             self.btn_copiar,
             self.btn_pegar,
@@ -292,6 +304,7 @@ class VistaCuadrantes(QWidget):
         barra_acciones.addWidget(self.selector_restaurante)
         barra_acciones.addWidget(self.selector_turno)
         barra_acciones.addWidget(self.selector_repartidor)
+        barra_acciones.addWidget(self.btn_editar)
         barra_acciones.addWidget(self.btn_asignar)
         barra_acciones.addWidget(self.btn_copiar)
         barra_acciones.addWidget(self.btn_pegar)
@@ -312,6 +325,7 @@ class VistaCuadrantes(QWidget):
 
         self.layout.addWidget(self.barra_filtros_scroll)
         self.layout.addWidget(self.barra_acciones_scroll)
+        self.layout.addWidget(self.detalle_seleccion)
 
     # ======================================
 
@@ -633,6 +647,7 @@ class VistaCuadrantes(QWidget):
         self.pintar_tabla_empleados()
         self.actualizar_panel_alertas(self.alertas)
         self.cambiar_vista()
+        self.actualizar_detalle_seleccion()
 
     # ======================================
 
@@ -667,7 +682,274 @@ class VistaCuadrantes(QWidget):
                         QBrush(QColor(celda["color_texto"]))
                     )
 
+                item.setData(
+                    Qt.UserRole,
+                    {
+                        "dia": dia,
+                        "turno_id": turno[0]
+                    }
+                )
                 self.tabla.setItem(fila, columna, item)
+
+    # ======================================
+
+    def actualizar_detalle_seleccion(self):
+
+        detalle = self.detalle_celda_actual()
+        self.detalle_seleccion.setText(detalle["texto"])
+        self.detalle_seleccion.setToolTip(detalle["tooltip"])
+        self.sincronizar_selectores_con_celda(detalle)
+
+    # ======================================
+
+    def detalle_celda_actual(self):
+
+        clave = self.clave_actual()
+
+        if not clave:
+
+            return {
+                "texto": (
+                    "Selecciona una celda para ver que se va a editar."
+                ),
+                "tooltip": ""
+            }
+
+        dia, turno_id = clave
+        turno = self.turno_por_id(turno_id)
+        asignaciones = self.asignaciones.get(clave, [])
+        nombre_turno = turno[2] if turno else "Turno"
+        horario = cuadrantes_service.texto_horario_turno(turno)
+        partes = [
+            f"Seleccion: {dia.capitalize()} | {nombre_turno}"
+        ]
+
+        if horario:
+
+            partes.append(horario)
+
+        if asignaciones:
+
+            partes.append(
+                f"{len(asignaciones)} asignacion(es) en esta celda."
+            )
+            for asignacion in asignaciones:
+
+                partes.append(
+                    "- "
+                    + self.texto_asignacion_resumen(asignacion)
+                )
+
+        else:
+
+            partes.append(
+                "Sin asignacion. Puedes asignar desde los controles o "
+                "hacer doble clic para editar."
+            )
+
+        texto = "\n".join(partes)
+
+        return {
+            "texto": texto,
+            "tooltip": texto,
+            "dia": dia,
+            "turno_id": turno_id,
+            "turno": turno,
+            "asignaciones": asignaciones
+        }
+
+    # ======================================
+
+    def texto_asignacion_resumen(self, asignacion):
+
+        restaurante = self.restaurante_por_id(
+            asignacion.get("restaurante_id")
+        )
+        repartidor = self.repartidor_por_id(
+            asignacion.get("repartidor_id")
+        )
+        return (
+            f"{restaurante[1] if restaurante else 'Restaurante desconocido'}"
+            " - "
+            f"{repartidor[1] if repartidor else 'Sin repartidor'}"
+        )
+
+    # ======================================
+
+    def sincronizar_selectores_con_celda(self, detalle):
+
+        if not detalle.get("turno_id"):
+
+            return
+
+        self.seleccionar_combo(self.selector_turno, detalle["turno_id"])
+        asignaciones = detalle.get("asignaciones") or []
+
+        if len(asignaciones) != 1:
+
+            return
+
+        asignacion = asignaciones[0]
+        self.seleccionar_combo(
+            self.selector_restaurante,
+            asignacion.get("restaurante_id")
+        )
+        self.seleccionar_combo(
+            self.selector_repartidor,
+            asignacion.get("repartidor_id")
+        )
+
+    # ======================================
+
+    def seleccionar_combo(self, combo, valor):
+
+        indice = combo.findData(valor)
+
+        if indice >= 0:
+
+            combo.setCurrentIndex(indice)
+
+    # ======================================
+
+    def editar_celda(self, fila, columna):
+
+        clave = self.clave_celda(fila, columna)
+
+        if not clave:
+
+            return
+
+        dia, turno_id = clave
+        turno = self.turno_por_id(turno_id)
+        asignaciones = self.asignaciones.get(clave, [])
+        asignacion = asignaciones[0] if asignaciones else {}
+        dialogo = DialogoEditarAsignacion(
+            self,
+            dia,
+            turno,
+            self.restaurantes,
+            self.repartidores,
+            asignacion
+        )
+
+        if dialogo.exec() != QDialog.Accepted:
+
+            return
+
+        if dialogo.vaciar():
+
+            self.aplicar_comando(
+                dia,
+                turno_id,
+                None,
+                None,
+                fila,
+                columna,
+                limpiar=True
+            )
+            return
+
+        self.aplicar_edicion_celda(
+            dia,
+            turno_id,
+            dialogo.restaurante_id(),
+            dialogo.repartidor_id(),
+            fila,
+            columna
+        )
+
+    # ======================================
+
+    def editar_celda_actual(self):
+
+        fila = self.tabla.currentRow()
+        columna = self.tabla.currentColumn()
+
+        if fila < 0 or columna < 0:
+
+            QMessageBox.warning(
+                self,
+                "Editar celda",
+                "Selecciona una celda del cuadrante antes de editar."
+            )
+            return
+
+        self.editar_celda(fila, columna)
+
+    # ======================================
+
+    def aplicar_edicion_celda(
+        self,
+        dia,
+        turno_id,
+        restaurante_id,
+        repartidor_id,
+        fila,
+        columna
+    ):
+
+        anterior = cuadrantes_service.clonar_asignaciones_turno(
+            self.asignaciones.get((dia, turno_id), [])
+        )
+        nuevo = cuadrantes_service.agregar_asignacion(
+            [],
+            restaurante_id,
+            repartidor_id
+        )
+        propuestas = self.asignaciones_con_cambio(dia, turno_id, nuevo)
+
+        if not self.validar_asignaciones_propuestas(propuestas):
+
+            return
+
+        self.undo_stack.push(
+            CambioCalendario(
+                self,
+                self.fecha_inicio_semana(),
+                dia,
+                turno_id,
+                anterior,
+                nuevo,
+                fila,
+                columna
+            )
+        )
+
+    # ======================================
+
+    def turno_por_id(self, turno_id):
+
+        for turno in self.turnos:
+
+            if turno[0] == turno_id:
+
+                return turno
+
+        return None
+
+    # ======================================
+
+    def restaurante_por_id(self, restaurante_id):
+
+        for restaurante in self.restaurantes:
+
+            if restaurante[0] == restaurante_id:
+
+                return restaurante
+
+        return None
+
+    # ======================================
+
+    def repartidor_por_id(self, repartidor_id):
+
+        for repartidor in self.repartidores:
+
+            if repartidor[0] == repartidor_id:
+
+                return repartidor
+
+        return None
 
     # ======================================
 
@@ -1377,6 +1659,106 @@ class VistaCuadrantes(QWidget):
         return None
 
     # ======================================
+
+class DialogoEditarAsignacion(QDialog):
+
+    def __init__(
+        self,
+        parent,
+        dia,
+        turno,
+        restaurantes,
+        repartidores,
+        asignacion=None
+    ):
+        super().__init__(parent)
+
+        self._vaciar = False
+        self.setWindowTitle("Editar asignacion")
+        self.setMinimumWidth(420)
+        asignacion = asignacion or {}
+
+        layout = QVBoxLayout(self)
+        nombre_turno = turno[2] if turno else "Turno"
+        horario = cuadrantes_service.texto_horario_turno(turno)
+        resumen = QLabel(
+            f"{dia.capitalize()} | {nombre_turno}"
+            + (f"\n{horario}" if horario else "")
+        )
+        resumen.setWordWrap(True)
+        resumen.setStyleSheet("font-weight:bold;")
+        layout.addWidget(resumen)
+
+        layout.addWidget(QLabel("Restaurante"))
+        self.selector_restaurante = QComboBox()
+
+        for restaurante in restaurantes:
+
+            self.selector_restaurante.addItem(restaurante[1], restaurante[0])
+
+        layout.addWidget(self.selector_restaurante)
+
+        layout.addWidget(QLabel("Repartidor"))
+        self.selector_repartidor = QComboBox()
+        self.selector_repartidor.addItem("Sin repartidor", None)
+
+        for repartidor in repartidores:
+
+            self.selector_repartidor.addItem(repartidor[1], repartidor[0])
+
+        layout.addWidget(self.selector_repartidor)
+        self.seleccionar_valor(
+            self.selector_restaurante,
+            asignacion.get("restaurante_id")
+        )
+        self.seleccionar_valor(
+            self.selector_repartidor,
+            asignacion.get("repartidor_id")
+        )
+
+        botones = QDialogButtonBox()
+        guardar = botones.addButton(
+            "Guardar cambios",
+            QDialogButtonBox.AcceptRole
+        )
+        vaciar = botones.addButton(
+            "Vaciar celda",
+            QDialogButtonBox.DestructiveRole
+        )
+        cancelar = botones.addButton(
+            "Cancelar",
+            QDialogButtonBox.RejectRole
+        )
+        guardar.clicked.connect(self.accept)
+        vaciar.clicked.connect(self.aceptar_vacio)
+        cancelar.clicked.connect(self.reject)
+        layout.addWidget(botones)
+
+    def seleccionar_valor(self, combo, valor):
+
+        indice = combo.findData(valor)
+
+        if indice >= 0:
+
+            combo.setCurrentIndex(indice)
+
+    def aceptar_vacio(self):
+
+        self._vaciar = True
+        self.accept()
+
+    def vaciar(self):
+
+        return self._vaciar
+
+    def restaurante_id(self):
+
+        return self.selector_restaurante.currentData()
+
+    def repartidor_id(self):
+
+        return self.selector_repartidor.currentData()
+
 
 class DialogoResumenGeneracion(QDialog):
 

@@ -23,6 +23,7 @@ class PageHeader(QWidget):
 
         self.title = QLabel(title)
         self.title.setObjectName("pageTitle")
+        self.title.setWordWrap(True)
 
         layout.addWidget(self.title)
 
@@ -30,6 +31,7 @@ class PageHeader(QWidget):
 
             self.subtitle = QLabel(subtitle)
             self.subtitle.setObjectName("pageSubtitle")
+            self.subtitle.setWordWrap(True)
             layout.addWidget(self.subtitle)
 
 
@@ -90,6 +92,7 @@ def configure_table(table):
 
         table.setAlternatingRowColors(True)
         table.setEditTriggers(QTableWidget.NoEditTriggers)
+        table.setWordWrap(True)
         table.verticalHeader().setDefaultSectionSize(38)
         table.verticalHeader().setVisible(False)
         table.setShowGrid(True)

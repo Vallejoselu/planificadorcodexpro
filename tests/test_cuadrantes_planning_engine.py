@@ -70,6 +70,7 @@ class TestCuadrantesPlanningEngine(unittest.TestCase):
             vista.btn_aplicar_plantilla.text(),
             "Aplicar plantilla"
         )
+        self.assertEqual(vista.btn_editar.text(), "Editar celda")
 
     def test_barras_superiores_no_comprimen_controles(self):
 
@@ -385,6 +386,136 @@ class TestCuadrantesPlanningEngine(unittest.TestCase):
         finally:
 
             cuadrantes_view.QMessageBox.warning = warning_original
+
+        self.assertEqual(obtener_calendario_semanal("2026-07-20"), [])
+        self.assertTrue(avisos)
+        self.assertIn("disponibilidad", avisos[0])
+
+    def test_panel_detalle_muestra_celda_seleccionada(self):
+
+        restaurante_id = obtener_restaurantes()[0][0]
+        luis_id = self._id_repartidor("Luis")
+        turno_id = self._turno_por_nombre("Comida")[0]
+        guardar_turno_calendario(
+            "lunes",
+            turno_id,
+            restaurante_id,
+            luis_id,
+            "2026-07-20"
+        )
+        vista = VistaCuadrantes()
+        vista.selector_semana.setDate(QDate(2026, 7, 20))
+        vista.tabla.setCurrentCell(
+            vista.fila_turno(turno_id),
+            database.DIAS_SEMANA.index("lunes")
+        )
+        vista.actualizar_detalle_seleccion()
+
+        self.assertIn("Lunes", vista.detalle_seleccion.text())
+        self.assertIn("Comida", vista.detalle_seleccion.text())
+        self.assertIn("Ronda Centro", vista.detalle_seleccion.text())
+        self.assertIn("Luis", vista.detalle_seleccion.text())
+
+    def test_doble_click_edita_asignacion_con_dialogo(self):
+
+        restaurante_id = obtener_restaurantes()[0][0]
+        luis_id = self._id_repartidor("Luis")
+        turno_id = self._turno_por_nombre("Comida")[0]
+        dialogo_original = cuadrantes_view.DialogoEditarAsignacion
+
+        class DialogoFalso:
+
+            def __init__(self, *args, **kwargs):
+
+                pass
+
+            def exec(self):
+
+                return cuadrantes_view.QDialog.Accepted
+
+            def vaciar(self):
+
+                return False
+
+            def restaurante_id(self):
+
+                return restaurante_id
+
+            def repartidor_id(self):
+
+                return luis_id
+
+        cuadrantes_view.DialogoEditarAsignacion = DialogoFalso
+
+        try:
+
+            vista = VistaCuadrantes()
+            vista.selector_semana.setDate(QDate(2026, 7, 20))
+            vista.editar_celda(
+                vista.fila_turno(turno_id),
+                database.DIAS_SEMANA.index("lunes")
+            )
+
+        finally:
+
+            cuadrantes_view.DialogoEditarAsignacion = dialogo_original
+
+        self.assertEqual(
+            self._firma("2026-07-20"),
+            [("lunes", turno_id, restaurante_id, luis_id)]
+        )
+
+    def test_edicion_visual_bloquea_dia_no_disponible(self):
+
+        pedro_id = self._crear_pedro_martes_no_disponible()
+        restaurante_id = obtener_restaurantes()[0][0]
+        turno_id = self._turno_por_nombre("Comida")[0]
+        avisos = []
+        warning_original = cuadrantes_view.QMessageBox.warning
+        dialogo_original = cuadrantes_view.DialogoEditarAsignacion
+
+        class DialogoFalso:
+
+            def __init__(self, *args, **kwargs):
+
+                pass
+
+            def exec(self):
+
+                return cuadrantes_view.QDialog.Accepted
+
+            def vaciar(self):
+
+                return False
+
+            def restaurante_id(self):
+
+                return restaurante_id
+
+            def repartidor_id(self):
+
+                return pedro_id
+
+        cuadrantes_view.QMessageBox.warning = (
+            lambda *args, **kwargs: avisos.append(
+                "\n".join(str(arg) for arg in args)
+            ) or None
+        )
+        cuadrantes_view.DialogoEditarAsignacion = DialogoFalso
+
+        try:
+
+            vista = VistaCuadrantes()
+            vista.selector_semana.setDate(QDate(2026, 7, 20))
+            vista.editar_celda(
+                vista.fila_turno(turno_id),
+                database.DIAS_SEMANA.index("martes")
+            )
+
+        finally:
+
+            cuadrantes_view.QMessageBox.warning = warning_original
+            cuadrantes_view.DialogoEditarAsignacion = dialogo_original
 
         self.assertEqual(obtener_calendario_semanal("2026-07-20"), [])
         self.assertTrue(avisos)
