@@ -172,6 +172,100 @@ def obtener_historial_acciones(limite=100, fecha_inicio_semana=None):
     return datos
 
 
+def obtener_publicacion_cuadrante(fecha_inicio_semana):
+
+    crear_base_datos()
+    fecha_inicio_semana = normalizar_fecha_inicio_semana(fecha_inicio_semana)
+    conexion = conectar()
+    cursor = conexion.cursor()
+    cursor.execute("""
+    SELECT
+        id,
+        fecha_inicio_semana,
+        estado,
+        resumen,
+        publicado_en,
+        actualizado_en
+    FROM cuadrante_publicaciones
+    WHERE fecha_inicio_semana=?
+    """,(fecha_inicio_semana,))
+    datos = cursor.fetchone()
+    conexion.close()
+
+    return datos
+
+
+def guardar_publicacion_cuadrante(
+    fecha_inicio_semana,
+    estado,
+    resumen=""
+):
+
+    crear_base_datos()
+    fecha_inicio_semana = normalizar_fecha_inicio_semana(fecha_inicio_semana)
+    estado = str(estado or "").strip().lower()
+
+    if estado not in ("borrador", "listo", "publicado"):
+
+        raise ValueError("Estado de publicacion no valido.")
+
+    publicado_sql = (
+        "CURRENT_TIMESTAMP"
+        if estado == "publicado"
+        else "NULL"
+    )
+    conexion = conectar()
+    cursor = conexion.cursor()
+    cursor.execute(f"""
+    INSERT INTO cuadrante_publicaciones(
+        fecha_inicio_semana,
+        estado,
+        resumen,
+        publicado_en,
+        actualizado_en
+    )
+    VALUES(?,?,?,{publicado_sql},CURRENT_TIMESTAMP)
+    ON CONFLICT(fecha_inicio_semana) DO UPDATE SET
+        estado=excluded.estado,
+        resumen=excluded.resumen,
+        publicado_en={publicado_sql},
+        actualizado_en=CURRENT_TIMESTAMP
+    """,(
+        fecha_inicio_semana,
+        estado,
+        str(resumen or "").strip() or None
+    ))
+    conexion.commit()
+    publicacion_id = cursor.lastrowid
+    conexion.close()
+
+    return publicacion_id
+
+
+def listar_publicaciones_cuadrante(limite=100):
+
+    crear_base_datos()
+    limite = int(limite or 100)
+    conexion = conectar()
+    cursor = conexion.cursor()
+    cursor.execute("""
+    SELECT
+        id,
+        fecha_inicio_semana,
+        estado,
+        resumen,
+        publicado_en,
+        actualizado_en
+    FROM cuadrante_publicaciones
+    ORDER BY fecha_inicio_semana DESC
+    LIMIT ?
+    """,(limite,))
+    datos = cursor.fetchall()
+    conexion.close()
+
+    return datos
+
+
 def obtener_reglas_configuracion():
 
     crear_base_datos()

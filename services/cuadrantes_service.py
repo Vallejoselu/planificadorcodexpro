@@ -8,6 +8,7 @@ from repositories.historial_repository import HistorialRepository
 from repositories.repartidores_repository import RepartidoresRepository
 from repositories.restaurantes_repository import RestaurantesRepository
 from repositories.plantillas_repository import PlantillasRepository
+from repositories.publicaciones_repository import PublicacionesRepository
 from repositories.turnos_repository import TurnosRepository
 from database.schema import DIAS_SEMANA
 from services.rules.ausencias import esta_ausente, esta_ausente_por_tipo
@@ -39,6 +40,7 @@ class CuadrantesService:
         demandas_zona_repository=None,
         historial_repository=None,
         plantillas_repository=None,
+        publicaciones_repository=None,
         turnos_repository=None,
         planning_engine=None
     ):
@@ -64,6 +66,9 @@ class CuadrantesService:
         )
         self.plantillas_repository = (
             plantillas_repository or PlantillasRepository()
+        )
+        self.publicaciones_repository = (
+            publicaciones_repository or PublicacionesRepository()
         )
         self.turnos_repository = turnos_repository or TurnosRepository()
         self.planning_engine = planning_engine or PlanningEngine()
@@ -373,6 +378,185 @@ class CuadrantesService:
             detalle,
             fecha_inicio_semana
         )
+
+    def revisar_publicacion(
+        self,
+        fecha_inicio,
+        turnos,
+        restaurantes,
+        repartidores,
+        demandas_restaurante=None,
+        demandas_zona=None,
+        demandas_ciudad=None,
+        restaurante_turnos=None
+    ):
+
+        estado = self.preparar_estado_semana(
+            fecha_inicio,
+            turnos,
+            restaurantes,
+            repartidores,
+            demandas_restaurante=demandas_restaurante,
+            demandas_zona=demandas_zona,
+            demandas_ciudad=demandas_ciudad,
+            restaurante_turnos=restaurante_turnos
+        )
+        diagnostico = estado["diagnostico"]
+        bloqueantes = []
+
+        if diagnostico["estado"] == "pendiente":
+
+            bloqueantes.append("No hay cuadrante guardado para publicar.")
+
+        if diagnostico["criticas"] > 0:
+
+            bloqueantes.append(
+                f"Hay {diagnostico['criticas']} alerta(s) critica(s)."
+            )
+
+        return {
+            "puede_publicar": not bloqueantes,
+            "bloqueantes": bloqueantes,
+            "diagnostico": diagnostico,
+            "estado": estado,
+            "resumen": self.resumen_publicacion(diagnostico, bloqueantes)
+        }
+
+    def marcar_cuadrante_listo(
+        self,
+        fecha_inicio,
+        turnos,
+        restaurantes,
+        repartidores,
+        demandas_restaurante=None,
+        demandas_zona=None,
+        demandas_ciudad=None,
+        restaurante_turnos=None
+    ):
+
+        revision = self.revisar_publicacion(
+            fecha_inicio,
+            turnos,
+            restaurantes,
+            repartidores,
+            demandas_restaurante=demandas_restaurante,
+            demandas_zona=demandas_zona,
+            demandas_ciudad=demandas_ciudad,
+            restaurante_turnos=restaurante_turnos
+        )
+
+        if not revision["puede_publicar"]:
+
+            raise ValueError(revision["resumen"])
+
+        fecha_inicio = normalizar_fecha_inicio_semana(fecha_inicio)
+        self.publicaciones_repository.guardar(
+            fecha_inicio,
+            "listo",
+            revision["resumen"]
+        )
+        self.registrar_historial(
+            "Marcar cuadrante listo",
+            "cuadrante",
+            revision["resumen"],
+            fecha_inicio
+        )
+        return revision
+
+    def publicar_cuadrante(
+        self,
+        fecha_inicio,
+        turnos,
+        restaurantes,
+        repartidores,
+        demandas_restaurante=None,
+        demandas_zona=None,
+        demandas_ciudad=None,
+        restaurante_turnos=None
+    ):
+
+        revision = self.revisar_publicacion(
+            fecha_inicio,
+            turnos,
+            restaurantes,
+            repartidores,
+            demandas_restaurante=demandas_restaurante,
+            demandas_zona=demandas_zona,
+            demandas_ciudad=demandas_ciudad,
+            restaurante_turnos=restaurante_turnos
+        )
+
+        if not revision["puede_publicar"]:
+
+            raise ValueError(revision["resumen"])
+
+        fecha_inicio = normalizar_fecha_inicio_semana(fecha_inicio)
+        self.publicaciones_repository.guardar(
+            fecha_inicio,
+            "publicado",
+            revision["resumen"]
+        )
+        self.registrar_historial(
+            "Publicar cuadrante",
+            "cuadrante",
+            revision["resumen"],
+            fecha_inicio
+        )
+        return revision
+
+    def marcar_cuadrante_borrador(self, fecha_inicio, motivo=""):
+
+        fecha_inicio = normalizar_fecha_inicio_semana(fecha_inicio)
+        resumen = motivo or "Cuadrante marcado como borrador."
+        self.publicaciones_repository.guardar(
+            fecha_inicio,
+            "borrador",
+            resumen
+        )
+        self.registrar_historial(
+            "Marcar cuadrante borrador",
+            "cuadrante",
+            resumen,
+            fecha_inicio
+        )
+
+    def resumen_publicacion(self, diagnostico, bloqueantes=None):
+
+        bloqueantes = bloqueantes or []
+        resumen = [
+            diagnostico.get("resumen", ""),
+            (
+                f"Asignaciones: {diagnostico.get('asignaciones', 0)} | "
+                f"Cubiertas: {diagnostico.get('con_repartidor', 0)} | "
+                f"Pendientes: {diagnostico.get('sin_repartidor', 0)}"
+            )
+        ]
+
+        if bloqueantes:
+
+            resumen.append("Bloqueantes: " + " ".join(bloqueantes))
+
+        return "\n".join(parte for parte in resumen if parte)
+
+    def publicacion_para_vista(self, publicacion):
+
+        if not publicacion:
+
+            return {
+                "estado": "borrador",
+                "resumen": "",
+                "publicado_en": None,
+                "actualizado_en": None
+            }
+
+        return {
+            "id": publicacion[0],
+            "fecha_inicio_semana": publicacion[1],
+            "estado": publicacion[2],
+            "resumen": publicacion[3] or "",
+            "publicado_en": publicacion[4],
+            "actualizado_en": publicacion[5]
+        }
 
     def hay_demanda_multiciudad(self, demandas):
 
@@ -745,6 +929,7 @@ class CuadrantesService:
         restaurante_turnos=None
     ):
 
+        fecha_inicio = normalizar_fecha_inicio_semana(fecha_inicio)
         calendario = self.cargar_semana(fecha_inicio)
         asignaciones = self.agrupar_calendario(calendario)
         indicadores = self.indicadores_semana(asignaciones)
@@ -771,6 +956,7 @@ class CuadrantesService:
             restaurantes,
             repartidores
         )
+        publicacion = self.publicaciones_repository.obtener(fecha_inicio)
 
         return {
             "calendario": calendario,
@@ -786,6 +972,7 @@ class CuadrantesService:
             "indicadores": indicadores,
             "alertas": alertas,
             "diagnostico": diagnostico,
+            "publicacion": self.publicacion_para_vista(publicacion),
             "celdas_semana": self.construir_celdas_semana(
                 asignaciones,
                 turnos,

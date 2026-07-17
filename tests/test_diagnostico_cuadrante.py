@@ -96,7 +96,8 @@ class TestDiagnosticoCuadrante(unittest.TestCase):
         servicio = CuadrantesService(
             calendario_repository=FakeCalendarioRepository([
                 self.fila_calendario(dia="martes", repartidor_id=10)
-            ])
+            ]),
+            publicaciones_repository=FakePublicacionesRepository()
         )
         estado = servicio.preparar_estado_semana(
             "2026-07-13",
@@ -192,6 +193,13 @@ class FakeCalendarioRepository:
     def listar_semana(self, fecha_inicio_semana=None):
 
         return self.filas
+
+
+class FakePublicacionesRepository:
+
+    def obtener(self, fecha_inicio_semana):
+
+        return None
 
 
 if __name__ == "__main__":

@@ -5,6 +5,7 @@ from repositories.demandas_ciudad_repository import DemandasCiudadRepository
 from repositories.demandas_zona_repository import DemandasZonaRepository
 from repositories.historial_repository import HistorialRepository
 from repositories.integraciones_repository import IntegracionesRepository
+from repositories.publicaciones_repository import PublicacionesRepository
 from repositories.sincronizaciones_repository import SincronizacionesRepository
 from repositories.repartidores_repository import RepartidoresRepository
 from repositories.restaurantes_repository import RestaurantesRepository
@@ -18,6 +19,7 @@ __all__ = [
     "DemandasZonaRepository",
     "HistorialRepository",
     "IntegracionesRepository",
+    "PublicacionesRepository",
     "RepartidoresRepository",
     "RestaurantesRepository",
     "TurnosRepository"
