@@ -929,6 +929,7 @@ class CuadrantesService:
         restaurante_turnos=None
     ):
 
+        fecha_inicio = normalizar_fecha_inicio_semana(fecha_inicio)
         calendario = self.cargar_semana(fecha_inicio)
         asignaciones = self.agrupar_calendario(calendario)
         indicadores = self.indicadores_semana(asignaciones)

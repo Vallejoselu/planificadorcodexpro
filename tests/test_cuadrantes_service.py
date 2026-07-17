@@ -407,6 +407,40 @@ class TestCuadrantesServicePorCapa(unittest.TestCase):
             "Asignaciones: 1 | Todo cubierto"
         )
 
+    def test_preparar_estado_semana_normaliza_fecha_intermedia(self):
+
+        calendario = FakeCalendarioRepository()
+        calendario.semanas["2026-07-13"] = [(
+            1,
+            "lunes",
+            5,
+            "Comida",
+            "Comida",
+            "#2563EB",
+            2,
+            "BK Centro",
+            "Centro",
+            10,
+            "Ana",
+            "2026-07-13"
+        )]
+        publicaciones = FakePublicacionesRepository()
+        publicaciones.guardar("2026-07-13", "listo", "Semana revisada")
+        servicio = self.crear_servicio_aislado(
+            calendario_repository=calendario,
+            publicaciones_repository=publicaciones
+        )
+
+        estado = servicio.preparar_estado_semana(
+            "2026-07-15",
+            [(5, "Comida", "Comida", "13:00", "16:00", "#2563EB", 3, 1)],
+            [(2, "BK Centro", "", "Centro", "", 50, 1)],
+            [(10, "Ana")]
+        )
+
+        self.assertEqual(estado["indicadores"]["asignaciones"], 1)
+        self.assertEqual(estado["publicacion"]["estado"], "listo")
+
     def test_preparar_estado_semana_muestra_estado_vacio_accionable(self):
 
         servicio = CuadrantesService(
