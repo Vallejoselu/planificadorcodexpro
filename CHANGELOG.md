@@ -1,5 +1,28 @@
 # CHANGELOG
 
+## 2.2.0 - Datos locales y preparacion de release
+
+### Incluido
+
+- Base de datos local por usuario en `%LOCALAPPDATA%\PlanificadorDeliveryPro`.
+- Migracion automatica desde `delivery.db` antiguo del proyecto cuando existe
+  una instalacion previa.
+- Panel de configuracion para ver ruta de datos, crear backups, exportar,
+  importar y restaurar copias de seguridad.
+- Diagnostico de datos desde la interfaz con revision de integridad SQLite,
+  claves foraneas, migraciones, indices esperados y datos antiguos invalidos.
+- Reparacion conservadora de datos recuperables sin borrar historico ni
+  sobrescribir cuadrantes.
+- Checklist de release 2.2.0 para validar las funciones principales antes de
+  generar instalador.
+
+### Preparacion
+
+- Actualizacion de version a 2.2.0.
+- README, changelog e instalador preparados para
+  `PlanificadorDeliveryPro-Setup-2.2.0.exe`.
+- Sin cambios funcionales nuevos en el motor de planificacion.
+
 ## 2.1.4 - Hotfix de generacion de cuadrantes
 
 ### Corregido
