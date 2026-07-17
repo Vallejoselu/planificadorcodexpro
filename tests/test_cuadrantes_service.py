@@ -385,7 +385,9 @@ class TestCuadrantesServicePorCapa(unittest.TestCase):
             "Ana",
             "2026-07-13"
         )]
-        servicio = CuadrantesService(calendario_repository=calendario)
+        servicio = self.crear_servicio_aislado(
+            calendario_repository=calendario
+        )
 
         estado = servicio.preparar_estado_semana(
             "2026-07-13",
@@ -443,7 +445,7 @@ class TestCuadrantesServicePorCapa(unittest.TestCase):
 
     def test_preparar_estado_semana_muestra_estado_vacio_accionable(self):
 
-        servicio = CuadrantesService(
+        servicio = self.crear_servicio_aislado(
             calendario_repository=FakeCalendarioRepository()
         )
 
@@ -476,7 +478,9 @@ class TestCuadrantesServicePorCapa(unittest.TestCase):
             None,
             "2026-07-13"
         )]
-        servicio = CuadrantesService(calendario_repository=calendario)
+        servicio = self.crear_servicio_aislado(
+            calendario_repository=calendario
+        )
 
         estado = servicio.preparar_estado_semana(
             "2026-07-13",

@@ -108,6 +108,17 @@ class FakePlanningEngine:
         return self.resultado
 
 
+class FakePublicacionesRepository:
+
+    def obtener(self, fecha_inicio_semana):
+
+        return None
+
+    def guardar(self, fecha_inicio_semana, estado, resumen=""):
+
+        return 1
+
+
 class FakeRepartidoresRepository:
 
     def __init__(self):
@@ -405,7 +416,10 @@ class TestServiciosAplicacion(unittest.TestCase):
             "Ana",
             "2026-07-13"
         )]
-        servicio = CuadrantesService(calendario_repository=calendario)
+        servicio = CuadrantesService(
+            calendario_repository=calendario,
+            publicaciones_repository=FakePublicacionesRepository()
+        )
 
         estado = servicio.preparar_estado_semana(
             "2026-07-15",
