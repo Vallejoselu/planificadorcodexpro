@@ -69,6 +69,8 @@ Consulta tambien:
 
 ```text
 AGENTS.md
+docs\GUIA_USO.md
+docs\AUDITORIA_PRODUCTO.md
 docs\PLANTILLA_TAREA_CODEX.md
 docs\FLUJO_GIT_SEGURO.md
 ```
