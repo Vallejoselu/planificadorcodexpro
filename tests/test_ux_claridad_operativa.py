@@ -79,6 +79,23 @@ class TestUxClaridadOperativa(unittest.TestCase):
         titulo = vista.panel_datos_locales.findChild(QLabel).text().lower()
         self.assertIn("datos locales", titulo)
 
+    def test_configuracion_oculta_avanzado_por_defecto(self):
+
+        vista = VistaConfiguracion()
+
+        self.assertFalse(vista.selector_modo_avanzado.isChecked())
+        self.assertTrue(vista.panel_email.isHidden())
+        self.assertTrue(vista.panel_delivery_generico.isHidden())
+        self.assertTrue(vista.panel_demanda_zona.isHidden())
+        self.assertTrue(vista.tabla_integraciones.isHidden())
+
+        vista.selector_modo_avanzado.setChecked(True)
+
+        self.assertFalse(vista.panel_email.isHidden())
+        self.assertFalse(vista.panel_delivery_generico.isHidden())
+        self.assertFalse(vista.panel_demanda_zona.isHidden())
+        self.assertFalse(vista.tabla_integraciones.isHidden())
+
     def test_puesta_marcha_explica_reinicio_limpio(self):
 
         vista = VistaPuestaMarcha()
@@ -101,6 +118,21 @@ class TestUxClaridadOperativa(unittest.TestCase):
             vista.color_texto_celda_empleado("disponible"),
             "#475569"
         )
+
+    def test_cuadrantes_oculta_herramientas_avanzadas_por_defecto(self):
+
+        vista = VistaCuadrantes()
+
+        self.assertFalse(vista.selector_modo_avanzado.isChecked())
+        self.assertTrue(vista.barra_acciones_scroll.isHidden())
+        self.assertTrue(vista.detalle_seleccion.isHidden())
+        self.assertFalse(vista.aviso_modo_simple.isHidden())
+
+        vista.selector_modo_avanzado.setChecked(True)
+
+        self.assertFalse(vista.barra_acciones_scroll.isHidden())
+        self.assertFalse(vista.detalle_seleccion.isHidden())
+        self.assertTrue(vista.aviso_modo_simple.isHidden())
 
     def test_cuadrantes_avisa_si_quitar_sin_celda(self):
 

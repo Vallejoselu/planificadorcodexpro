@@ -97,6 +97,15 @@ class VistaCuadrantes(QWidget):
         """)
         self.layout.addWidget(self.leyenda_cuadrante)
 
+        self.aviso_modo_simple = QLabel(
+            "Modo simple activo: revisa la semana, comprueba configuracion, "
+            "genera y publica. Activa Modo avanzado solo para editar celdas, "
+            "copiar, pegar o usar plantillas."
+        )
+        self.aviso_modo_simple.setWordWrap(True)
+        self.aviso_modo_simple.setObjectName("guia_operativa")
+        self.layout.addWidget(self.aviso_modo_simple)
+
         self.selector_restaurante = QComboBox()
         self.selector_turno = QComboBox()
         self.selector_repartidor = QComboBox()
@@ -145,6 +154,11 @@ class VistaCuadrantes(QWidget):
         self.btn_deshacer = QPushButton("Deshacer")
         self.btn_rehacer = QPushButton("Rehacer")
         self.btn_actualizar = QPushButton("Actualizar")
+        self.selector_modo_avanzado = QCheckBox("Modo avanzado")
+        self.selector_modo_avanzado.setToolTip(
+            "Muestra herramientas manuales: editar, asignar, copiar, "
+            "plantillas, deshacer y rehacer."
+        )
 
         self.selector_vista.addItem("Semana", "semana")
         self.selector_vista.addItem("Por local", "local")
@@ -250,6 +264,9 @@ class VistaCuadrantes(QWidget):
         self.btn_actualizar.clicked.connect(self.cargar_datos)
         self.selector_semana.dateChanged.connect(self.cambiar_semana)
         self.selector_vista.currentIndexChanged.connect(self.cambiar_vista)
+        self.selector_modo_avanzado.toggled.connect(
+            self.actualizar_modo_visual
+        )
         self.btn_comprobar.clicked.connect(self.comprobar_configuracion)
         self.btn_generar.clicked.connect(self.generar_cuadrante)
         self.btn_marcar_listo.clicked.connect(self.marcar_cuadrante_listo)
@@ -266,6 +283,7 @@ class VistaCuadrantes(QWidget):
         self.btn_rehacer.clicked.connect(self.undo_stack.redo)
 
         self.cargar_datos()
+        self.actualizar_modo_visual()
 
     # ======================================
 
@@ -321,6 +339,7 @@ class VistaCuadrantes(QWidget):
         barra_filtros.addWidget(QLabel("Vista"))
         barra_filtros.addWidget(self.selector_vista)
         barra_filtros.addWidget(self.estado_semana)
+        barra_filtros.addWidget(self.selector_modo_avanzado)
         barra_filtros.addWidget(self.btn_comprobar)
         barra_filtros.addWidget(self.btn_generar)
         barra_filtros.addWidget(self.btn_marcar_listo)
@@ -358,6 +377,15 @@ class VistaCuadrantes(QWidget):
         self.layout.addWidget(self.detalle_seleccion)
         self.layout.addWidget(self.diagnostico_cuadrante)
         self.layout.addWidget(self.estado_publicacion)
+
+    # ======================================
+
+    def actualizar_modo_visual(self):
+
+        avanzado = self.selector_modo_avanzado.isChecked()
+        self.barra_acciones_scroll.setVisible(avanzado)
+        self.detalle_seleccion.setVisible(avanzado)
+        self.aviso_modo_simple.setVisible(not avanzado)
 
     # ======================================
 

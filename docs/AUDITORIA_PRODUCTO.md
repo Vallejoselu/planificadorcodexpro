@@ -36,7 +36,7 @@ funciones visibles al mismo tiempo y falta de una experiencia guiada.
 2. Mejorar los mensajes de Puesta en marcha para que indiquen exactamente que
    crear y en que pantalla.
 3. Revisar los colores de todas las tablas en tema oscuro.
-4. Hacer que Cuadrantes tenga un modo simple por defecto.
+4. Mantener Cuadrantes con modo simple por defecto y modo avanzado bajo demanda.
 5. Validar que la vista por empleado sea la vista principal para usuarios no
    tecnicos.
 6. Asegurar que "Eliminar" siempre sea "Desactivar" o "Quitar asignacion",
@@ -70,6 +70,7 @@ No significa borrar el codigo. Significa ocultarlo detras de un modo avanzado.
 
 - Guia de uso dentro de la app.
 - Modo simple en Cuadrantes.
+- Modo simple en Configuracion.
 - Mensajes claros de Puesta en marcha.
 - Colores consistentes.
 

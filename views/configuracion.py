@@ -112,6 +112,24 @@ class VistaConfiguracion(QWidget):
 
         self.contenido_layout.addWidget(self.panel_actualizaciones)
 
+        self.panel_modo = QFrame()
+        self.panel_modo.setObjectName("card")
+        modo_layout = QVBoxLayout(self.panel_modo)
+        modo_layout.setContentsMargins(16, 16, 16, 16)
+        modo_layout.setSpacing(8)
+        self.texto_modo_simple = QLabel(
+            "Modo simple: muestra tema, datos locales, backups y diagnostico. "
+            "Activa opciones avanzadas solo para email, webhooks, demanda por "
+            "zona/ciudad e integraciones tecnicas."
+        )
+        self.texto_modo_simple.setWordWrap(True)
+        self.selector_modo_avanzado = QCheckBox(
+            "Mostrar opciones avanzadas"
+        )
+        modo_layout.addWidget(self.texto_modo_simple)
+        modo_layout.addWidget(self.selector_modo_avanzado)
+        self.contenido_layout.addWidget(self.panel_modo)
+
         self.crear_panel_datos_locales()
         self.crear_panel_email()
         self.crear_panel_delivery_generico()
@@ -131,15 +149,22 @@ class VistaConfiguracion(QWidget):
         configure_table(self.tabla_eventos)
         configure_table(self.tabla_sincronizaciones)
 
-        self.contenido_layout.addWidget(QLabel("Integraciones preparadas"))
+        self.titulo_integraciones = QLabel("Integraciones preparadas")
+        self.titulo_sincronizaciones = QLabel("Sincronizaciones recientes")
+        self.titulo_eventos = QLabel("Eventos de integracion")
+
+        self.contenido_layout.addWidget(self.titulo_integraciones)
         self.contenido_layout.addWidget(self.tabla_integraciones)
-        self.contenido_layout.addWidget(QLabel("Sincronizaciones recientes"))
+        self.contenido_layout.addWidget(self.titulo_sincronizaciones)
         self.contenido_layout.addWidget(self.tabla_sincronizaciones)
-        self.contenido_layout.addWidget(QLabel("Eventos de integracion"))
+        self.contenido_layout.addWidget(self.titulo_eventos)
         self.contenido_layout.addWidget(self.tabla_eventos)
         self.contenido_layout.addStretch()
 
         self.btn_actualizar.clicked.connect(self.cargar_datos)
+        self.selector_modo_avanzado.toggled.connect(
+            self.actualizar_modo_visual
+        )
         self.selector_tema.currentIndexChanged.connect(self.cambiar_tema)
         self.btn_comprobar_actualizaciones.clicked.connect(
             self.comprobar_actualizaciones
@@ -175,6 +200,29 @@ class VistaConfiguracion(QWidget):
         )
 
         self.cargar_datos()
+        self.actualizar_modo_visual()
+
+    # ======================================
+
+    def actualizar_modo_visual(self):
+
+        avanzado = self.selector_modo_avanzado.isChecked()
+
+        for widget in (
+            self.panel_actualizaciones,
+            self.panel_email,
+            self.panel_delivery_generico,
+            self.panel_demanda_zona,
+            self.panel_demanda_ciudad,
+            self.titulo_integraciones,
+            self.tabla_integraciones,
+            self.titulo_sincronizaciones,
+            self.tabla_sincronizaciones,
+            self.titulo_eventos,
+            self.tabla_eventos
+        ):
+
+            widget.setVisible(avanzado)
 
     # ======================================
 
