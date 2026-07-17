@@ -13,7 +13,7 @@ from PySide6.QtWidgets import (
 )
 
 from services.reglas_configurables import ReglasConfigurablesService
-from ui.widgets import configure_table
+from ui.widgets import PageHeader, configure_table
 
 
 reglas_service = ReglasConfigurablesService()
@@ -26,14 +26,21 @@ class VistaReglas(QWidget):
 
         self.layout = QVBoxLayout(self)
 
-        titulo = QLabel("Reglas configurables")
-        titulo.setStyleSheet("""
-            font-size:28px;
-            font-weight:bold;
-        """)
-        self.layout.addWidget(titulo)
+        self.layout.setContentsMargins(24, 22, 24, 22)
+        self.layout.setSpacing(14)
+        self.layout.addWidget(
+            PageHeader(
+                "Reglas configurables",
+                (
+                    "Consulta y prepara las reglas que utiliza el motor "
+                    "de planificacion."
+                )
+            )
+        )
 
         self.resumen = QLabel("")
+        self.resumen.setWordWrap(True)
+        self.resumen.setObjectName("infoPanel")
         self.layout.addWidget(self.resumen)
 
         barra = QHBoxLayout()
@@ -56,9 +63,7 @@ class VistaReglas(QWidget):
             "Editable",
             "Fase"
         ])
-        self.tabla.horizontalHeader().setSectionResizeMode(
-            QHeaderView.Stretch
-        )
+        self.configurar_tabla()
         self.tabla.setSelectionBehavior(QTableWidget.SelectRows)
         self.tabla.setEditTriggers(
             QAbstractItemView.DoubleClicked
@@ -70,6 +75,39 @@ class VistaReglas(QWidget):
         self.btn_restaurar.clicked.connect(self.restaurar_valores)
 
         self.cargar_datos()
+
+    def configurar_tabla(self):
+
+        self.tabla.setWordWrap(True)
+        self.tabla.verticalHeader().setDefaultSectionSize(58)
+        self.tabla.verticalHeader().setMinimumSectionSize(44)
+        self.tabla.horizontalHeader().setStretchLastSection(False)
+        self.tabla.horizontalHeader().setSectionResizeMode(
+            0,
+            QHeaderView.Stretch
+        )
+        self.tabla.horizontalHeader().setSectionResizeMode(
+            1,
+            QHeaderView.ResizeToContents
+        )
+        self.tabla.horizontalHeader().setSectionResizeMode(
+            2,
+            QHeaderView.ResizeToContents
+        )
+        self.tabla.horizontalHeader().setSectionResizeMode(
+            3,
+            QHeaderView.Stretch
+        )
+        self.tabla.horizontalHeader().setSectionResizeMode(
+            4,
+            QHeaderView.ResizeToContents
+        )
+        self.tabla.horizontalHeader().setSectionResizeMode(
+            5,
+            QHeaderView.ResizeToContents
+        )
+        self.tabla.setColumnWidth(0, 260)
+        self.tabla.setColumnWidth(3, 260)
 
     def cargar_datos(self):
 
@@ -87,17 +125,16 @@ class VistaReglas(QWidget):
 
             item_nombre = QTableWidgetItem(regla["nombre"])
             item_nombre.setData(Qt.UserRole, regla["clave"])
+            item_nombre.setToolTip(regla["nombre"])
+            item_nombre.setFlags(item_nombre.flags() & ~Qt.ItemIsEditable)
             self.tabla.setItem(
                 fila,
                 0,
                 item_nombre
             )
-            self.tabla.setItem(
-                fila,
-                1,
-                QTableWidgetItem(regla["valor"])
-            )
+            self.set_item(fila, 1, regla["valor"])
             item_preparado = QTableWidgetItem(regla["valor_configurado"])
+            item_preparado.setToolTip(regla["valor_configurado"])
 
             if regla["editable"]:
 
@@ -118,21 +155,19 @@ class VistaReglas(QWidget):
                 2,
                 item_preparado
             )
-            self.tabla.setItem(
-                fila,
-                3,
-                QTableWidgetItem(regla["origen"])
-            )
-            self.tabla.setItem(
-                fila,
-                4,
-                QTableWidgetItem("Si" if regla["editable"] else "No")
-            )
-            self.tabla.setItem(
-                fila,
-                5,
-                QTableWidgetItem("14.9B")
-            )
+            self.set_item(fila, 3, regla["origen"])
+            self.set_item(fila, 4, "Si" if regla["editable"] else "No")
+            self.set_item(fila, 5, "14.9B")
+
+        self.tabla.resizeRowsToContents()
+
+    def set_item(self, fila, columna, valor):
+
+        item = QTableWidgetItem(str(valor))
+        item.setToolTip(str(valor))
+        item.setTextAlignment(Qt.AlignVCenter | Qt.AlignLeft)
+        item.setFlags(item.flags() & ~Qt.ItemIsEditable)
+        self.tabla.setItem(fila, columna, item)
 
     def guardar_configuracion(self):
 

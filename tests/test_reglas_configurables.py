@@ -199,6 +199,12 @@ class TestReglasConfigurables(unittest.TestCase):
         self.assertEqual(vista.tabla.rowCount(), 15)
         self.assertEqual(vista.tabla.columnCount(), 6)
         self.assertIn("Modo preparacion", vista.resumen.text())
+        self.assertTrue(vista.resumen.wordWrap())
+        self.assertTrue(vista.tabla.wordWrap())
+        self.assertGreaterEqual(
+            vista.tabla.verticalHeader().defaultSectionSize(),
+            58
+        )
         self.assertTrue(
             bool(
                 vista.tabla.item(
@@ -211,11 +217,29 @@ class TestReglasConfigurables(unittest.TestCase):
         self.assertFalse(
             bool(
                 vista.tabla.item(
+                    self.fila_por_clave(vista, "max_horas_diarias"),
+                    0
+                ).flags()
+                & Qt.ItemIsEditable
+            )
+        )
+        self.assertFalse(
+            bool(
+                vista.tabla.item(
                     self.fila_por_clave(vista, "descanso_consecutivo"),
                     2
                 ).flags()
                 & Qt.ItemIsEditable
             )
+        )
+        fila = self.fila_por_clave(vista, "horas_complementarias")
+        self.assertEqual(
+            vista.tabla.item(fila, 0).toolTip(),
+            vista.tabla.item(fila, 0).text()
+        )
+        self.assertEqual(
+            vista.tabla.item(fila, 3).toolTip(),
+            vista.tabla.item(fila, 3).text()
         )
 
     def test_vista_guarda_y_restaura_configuracion(self):

@@ -66,6 +66,15 @@ QLabel#pageSubtitle {
     background: transparent;
 }
 
+QLabel#infoPanel,
+QLabel#detalle_seleccion {
+    background: #0F172A;
+    color: #E2E8F0;
+    border: 1px solid #334155;
+    border-radius: 6px;
+    padding: 10px 12px;
+}
+
 QFrame#card {
     background: #1F2937;
     border: 1px solid #344054;
