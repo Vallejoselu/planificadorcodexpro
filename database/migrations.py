@@ -520,6 +520,7 @@ def crear_esquema_inicial(cursor):
     crear_tabla_integraciones_sincronizaciones(cursor)
     crear_tabla_historial_acciones(cursor)
     crear_tabla_reglas_configuracion(cursor)
+    crear_tabla_cuadrante_publicaciones(cursor)
 
 
 def crear_tabla_integraciones_sincronizaciones(cursor):
@@ -590,11 +591,32 @@ def crear_tabla_reglas_configuracion(cursor):
     """)
 
 
+def crear_tabla_cuadrante_publicaciones(cursor):
+
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS cuadrante_publicaciones(
+
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+        fecha_inicio_semana TEXT NOT NULL UNIQUE,
+
+        estado TEXT NOT NULL DEFAULT 'borrador',
+
+        resumen TEXT,
+
+        publicado_en TEXT,
+
+        actualizado_en TEXT DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+
+
 def aplicar_migraciones(cursor):
 
     crear_tabla_integraciones_sincronizaciones(cursor)
     crear_tabla_historial_acciones(cursor)
     crear_tabla_reglas_configuracion(cursor)
+    crear_tabla_cuadrante_publicaciones(cursor)
 
     for columna, definicion in (
         ("ciudad_principal_id", "INTEGER"),
@@ -983,6 +1005,12 @@ def crear_indices_consulta(cursor):
             "idx_integraciones_sincronizaciones_estado "
             "ON integraciones_sincronizaciones("
             "estado, proximo_intento, proveedor)"
+        ),
+        (
+            "idx_cuadrante_publicaciones_semana",
+            "CREATE INDEX IF NOT EXISTS "
+            "idx_cuadrante_publicaciones_semana "
+            "ON cuadrante_publicaciones(fecha_inicio_semana, estado)"
         )
     ):
 

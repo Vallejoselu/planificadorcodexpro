@@ -68,6 +68,32 @@ class FakePlantillasRepository:
         return self.asignaciones.get(plantilla_id, {})
 
 
+class FakePublicacionesRepository:
+
+    def __init__(self):
+
+        self.publicaciones = {}
+        self.guardadas = []
+
+    def obtener(self, fecha_inicio_semana):
+
+        return self.publicaciones.get(fecha_inicio_semana)
+
+    def guardar(self, fecha_inicio_semana, estado, resumen=""):
+
+        self.guardadas.append((fecha_inicio_semana, estado, resumen))
+        publicacion = (
+            len(self.guardadas),
+            fecha_inicio_semana,
+            estado,
+            resumen,
+            "2026-07-13 10:00:00" if estado == "publicado" else None,
+            "2026-07-13 10:00:00"
+        )
+        self.publicaciones[fecha_inicio_semana] = publicacion
+        return publicacion[0]
+
+
 class TestCuadrantesServicePorCapa(unittest.TestCase):
 
     def crear_servicio_aislado(self, **overrides):
@@ -75,6 +101,7 @@ class TestCuadrantesServicePorCapa(unittest.TestCase):
         dependencias = {
             "calendario_repository": FakeCalendarioRepository(),
             "historial_repository": FakeHistorialRepository(),
+            "publicaciones_repository": FakePublicacionesRepository(),
             "repartidores_repository": FakeRepartidoresRepository(),
             "restaurantes_repository": FakeRestaurantesRepository(),
             "turnos_repository": FakeTurnosRepository()
@@ -441,6 +468,118 @@ class TestCuadrantesServicePorCapa(unittest.TestCase):
             "Asignaciones sin repartidor",
             {alerta["tipo"] for alerta in estado["alertas"]}
         )
+
+    def test_revisar_publicacion_bloquea_semana_sin_cuadrante(self):
+
+        servicio = self.crear_servicio_aislado()
+
+        revision = servicio.revisar_publicacion(
+            "2026-07-13",
+            [],
+            [],
+            []
+        )
+
+        self.assertFalse(revision["puede_publicar"])
+        self.assertIn("No hay cuadrante guardado", revision["resumen"])
+
+    def test_publicar_cuadrante_bloquea_alertas_criticas(self):
+
+        calendario = FakeCalendarioRepository()
+        calendario.semanas["2026-07-13"] = [(
+            1,
+            "lunes",
+            5,
+            "Comida",
+            "Comida",
+            "#2563EB",
+            2,
+            "BK Centro",
+            "Centro",
+            None,
+            None,
+            "2026-07-13"
+        )]
+        servicio = self.crear_servicio_aislado(
+            calendario_repository=calendario
+        )
+
+        with self.assertRaises(ValueError):
+
+            servicio.publicar_cuadrante(
+                "2026-07-13",
+                [(5, "Comida", "Comida", "13:00", "16:00", "#2563EB", 3, 1)],
+                [(2, "BK Centro", "", "Centro", "", 50, 1)],
+                [(10, "Ana")]
+            )
+
+    def test_publicar_cuadrante_guarda_estado_e_historial(self):
+
+        calendario = FakeCalendarioRepository()
+        calendario.semanas["2026-07-13"] = [(
+            1,
+            "lunes",
+            5,
+            "Comida",
+            "Comida",
+            "#2563EB",
+            2,
+            "BK Centro",
+            "Centro",
+            10,
+            "Ana",
+            "2026-07-13"
+        )]
+        historial = FakeHistorialRepository()
+        publicaciones = FakePublicacionesRepository()
+        servicio = self.crear_servicio_aislado(
+            calendario_repository=calendario,
+            historial_repository=historial,
+            publicaciones_repository=publicaciones
+        )
+
+        revision = servicio.publicar_cuadrante(
+            "2026-07-13",
+            [(5, "Comida", "Comida", "13:00", "16:00", "#2563EB", 3, 1)],
+            [(2, "BK Centro", "", "Centro", "", 50, 1)],
+            [(10, "Ana")]
+        )
+
+        self.assertTrue(revision["puede_publicar"])
+        self.assertEqual(publicaciones.guardadas[0][1], "publicado")
+        self.assertEqual(historial.registros[0][0], "Publicar cuadrante")
+
+    def test_marcar_cuadrante_listo_guarda_estado(self):
+
+        calendario = FakeCalendarioRepository()
+        calendario.semanas["2026-07-13"] = [(
+            1,
+            "lunes",
+            5,
+            "Comida",
+            "Comida",
+            "#2563EB",
+            2,
+            "BK Centro",
+            "Centro",
+            10,
+            "Ana",
+            "2026-07-13"
+        )]
+        publicaciones = FakePublicacionesRepository()
+        servicio = self.crear_servicio_aislado(
+            calendario_repository=calendario,
+            publicaciones_repository=publicaciones
+        )
+
+        servicio.marcar_cuadrante_listo(
+            "2026-07-13",
+            [(5, "Comida", "Comida", "13:00", "16:00", "#2563EB", 3, 1)],
+            [(2, "BK Centro", "", "Centro", "", 50, 1)],
+            [(10, "Ana")]
+        )
+
+        self.assertEqual(publicaciones.guardadas[0][1], "listo")
 
     def test_alertas_estado_semana_cubren_panel_de_problemas(self):
 

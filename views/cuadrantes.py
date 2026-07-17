@@ -103,10 +103,15 @@ class VistaCuadrantes(QWidget):
         self.diagnostico_cuadrante = QLabel("")
         self.diagnostico_cuadrante.setWordWrap(True)
         self.diagnostico_cuadrante.setObjectName("guia_operativa")
+        self.estado_publicacion = QLabel("Estado: borrador")
+        self.estado_publicacion.setWordWrap(True)
 
         self.btn_comprobar = QPushButton("Comprobar configuracion")
         self.btn_generar = QPushButton("Generar cuadrante")
         self.btn_generar.setProperty("variant", "primary")
+        self.btn_marcar_listo = QPushButton("Marcar listo")
+        self.btn_publicar = QPushButton("Publicar")
+        self.btn_publicar.setProperty("variant", "primary")
         self.btn_editar = QPushButton("Editar celda")
         self.btn_asignar = QPushButton("Asignar")
         self.btn_asignar.setProperty("variant", "primary")
@@ -231,6 +236,8 @@ class VistaCuadrantes(QWidget):
         self.selector_vista.currentIndexChanged.connect(self.cambiar_vista)
         self.btn_comprobar.clicked.connect(self.comprobar_configuracion)
         self.btn_generar.clicked.connect(self.generar_cuadrante)
+        self.btn_marcar_listo.clicked.connect(self.marcar_cuadrante_listo)
+        self.btn_publicar.clicked.connect(self.publicar_cuadrante)
         self.btn_editar.clicked.connect(self.editar_celda_actual)
         self.btn_asignar.clicked.connect(self.asignar_seleccion)
         self.btn_copiar.clicked.connect(self.copiar)
@@ -265,6 +272,8 @@ class VistaCuadrantes(QWidget):
         for boton in (
             self.btn_comprobar,
             self.btn_generar,
+            self.btn_marcar_listo,
+            self.btn_publicar,
             self.btn_editar,
             self.btn_asignar,
             self.btn_copiar,
@@ -298,6 +307,8 @@ class VistaCuadrantes(QWidget):
         barra_filtros.addWidget(self.estado_semana)
         barra_filtros.addWidget(self.btn_comprobar)
         barra_filtros.addWidget(self.btn_generar)
+        barra_filtros.addWidget(self.btn_marcar_listo)
+        barra_filtros.addWidget(self.btn_publicar)
 
         self.barra_acciones_widget = QWidget()
         barra_acciones = QHBoxLayout(self.barra_acciones_widget)
@@ -330,6 +341,7 @@ class VistaCuadrantes(QWidget):
         self.layout.addWidget(self.barra_acciones_scroll)
         self.layout.addWidget(self.detalle_seleccion)
         self.layout.addWidget(self.diagnostico_cuadrante)
+        self.layout.addWidget(self.estado_publicacion)
 
     # ======================================
 
@@ -646,6 +658,7 @@ class VistaCuadrantes(QWidget):
         self.estado_semana.setText(estado["estado_texto"])
         self.estado_semana.setToolTip(estado["estado_texto"])
         self.actualizar_diagnostico(estado["diagnostico"])
+        self.actualizar_publicacion(estado["publicacion"])
 
         self.pintar_tabla()
         self.pintar_tabla_locales()
@@ -1073,6 +1086,86 @@ class VistaCuadrantes(QWidget):
         self.diagnostico_cuadrante.setText(diagnostico.get("texto", ""))
         self.diagnostico_cuadrante.setToolTip(
             diagnostico.get("resumen", "")
+        )
+
+    # ======================================
+
+    def actualizar_publicacion(self, publicacion):
+
+        estado = publicacion.get("estado", "borrador")
+        texto = f"Estado de publicacion: {estado}"
+
+        if publicacion.get("publicado_en"):
+
+            texto += f" | Publicado: {publicacion['publicado_en']}"
+
+        self.estado_publicacion.setText(texto)
+        self.estado_publicacion.setToolTip(publicacion.get("resumen", ""))
+
+    # ======================================
+
+    def marcar_cuadrante_listo(self):
+
+        try:
+
+            revision = cuadrantes_service.marcar_cuadrante_listo(
+                self.fecha_inicio_semana(),
+                self.turnos,
+                self.restaurantes,
+                self.repartidores,
+                demandas_restaurante=self.demandas_restaurante,
+                demandas_zona=self.demandas_zona,
+                demandas_ciudad=self.demandas_ciudad,
+                restaurante_turnos=self.restaurante_turnos
+            )
+
+        except ValueError as error:
+
+            QMessageBox.warning(
+                self,
+                "No se puede marcar listo",
+                str(error)
+            )
+            return
+
+        self.cargar_datos()
+        QMessageBox.information(
+            self,
+            "Cuadrante listo",
+            revision["resumen"]
+        )
+
+    # ======================================
+
+    def publicar_cuadrante(self):
+
+        try:
+
+            revision = cuadrantes_service.publicar_cuadrante(
+                self.fecha_inicio_semana(),
+                self.turnos,
+                self.restaurantes,
+                self.repartidores,
+                demandas_restaurante=self.demandas_restaurante,
+                demandas_zona=self.demandas_zona,
+                demandas_ciudad=self.demandas_ciudad,
+                restaurante_turnos=self.restaurante_turnos
+            )
+
+        except ValueError as error:
+
+            QMessageBox.warning(
+                self,
+                "No se puede publicar",
+                str(error)
+            )
+            return
+
+        self.cargar_datos()
+        QMessageBox.information(
+            self,
+            "Cuadrante publicado",
+            revision["resumen"]
         )
 
     # ======================================
