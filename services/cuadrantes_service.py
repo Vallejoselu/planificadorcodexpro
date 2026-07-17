@@ -1176,13 +1176,9 @@ class CuadrantesService:
             restaurante["id"]: restaurante
             for restaurante in normalizar_restaurantes(restaurantes)
         }
-        repartidores_por_id = {
-            repartidor["id"]: repartidor
-            for repartidor in [
-                normalizar_repartidor(repartidor)
-                for repartidor in repartidores
-            ]
-        }
+        repartidores_por_id = self.repartidores_normalizados_para_reglas(
+            repartidores
+        )
 
         for repartidor in repartidores_por_id.values():
 
@@ -1253,6 +1249,24 @@ class CuadrantesService:
                 )
 
         return problemas
+
+    def repartidores_normalizados_para_reglas(self, repartidores):
+
+        normalizados = {}
+
+        for repartidor in repartidores or []:
+
+            try:
+
+                datos = normalizar_repartidor(repartidor)
+
+            except (IndexError, KeyError, TypeError, ValueError):
+
+                continue
+
+            normalizados[datos["id"]] = datos
+
+        return normalizados
 
     def diagnosticar_semana(
         self,
