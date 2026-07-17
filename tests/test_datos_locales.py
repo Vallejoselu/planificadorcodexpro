@@ -7,11 +7,16 @@ from unittest.mock import patch
 
 from services.datos_locales import (
     crear_backup,
+    diagnosticar_datos,
     exportar_base,
     importar_base,
     informacion_almacenamiento,
+    listar_backups,
+    reparar_datos,
     restaurar_backup,
-    validar_base_sqlite
+    resumen_diagnostico,
+    validar_base_sqlite,
+    validar_restauracion
 )
 from utils.paths import (
     DATA_DIR_ENV,
@@ -69,6 +74,83 @@ class TestDatosLocales(unittest.TestCase):
 
             self.assertEqual(self.leer_valor(ruta), "restaurada")
             self.assertTrue(resultado["respaldo"].exists())
+            self.assertIn("validacion", resultado)
+
+    def test_listar_backups_recientes(self):
+
+        with tempfile.TemporaryDirectory() as temporal:
+
+            ruta = Path(temporal) / "delivery.db"
+            self.crear_base_minima(ruta, valor="actual")
+            crear_backup(ruta_bd=ruta)
+            crear_backup(ruta_bd=ruta)
+
+            backups = listar_backups(ruta_bd=ruta)
+
+            self.assertEqual(len(backups), 2)
+            self.assertTrue(backups[0]["ruta"].exists())
+            self.assertGreaterEqual(
+                backups[0]["modificado"],
+                backups[1]["modificado"]
+            )
+
+    def test_validar_restauracion_migra_copia_sin_tocar_origen(self):
+
+        with tempfile.TemporaryDirectory() as temporal:
+
+            origen = Path(temporal) / "origen.db"
+            self.crear_base_minima(origen, valor="actual")
+
+            validacion = validar_restauracion(origen)
+
+            self.assertIn("resumen", validacion)
+            conexion = sqlite3.connect(origen)
+            tablas = {
+                fila[0]
+                for fila in conexion.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table'"
+                )
+            }
+            conexion.close()
+            self.assertEqual(tablas, {"prueba"})
+
+    def test_diagnosticar_y_reparar_datos_crea_backup(self):
+
+        with tempfile.TemporaryDirectory() as temporal:
+
+            ruta = Path(temporal) / "delivery.db"
+            self.crear_base_minima(ruta, valor="actual")
+
+            diagnostico = diagnosticar_datos(ruta)
+            reparacion = reparar_datos(ruta)
+
+            self.assertIn("resumen", diagnostico)
+            self.assertIn("resumen", reparacion)
+            self.assertTrue(reparacion["respaldo"].exists())
+
+    def test_resumen_diagnostico_prioriza_errores(self):
+
+        self.assertEqual(
+            resumen_diagnostico({
+                "errores": [],
+                "advertencias": []
+            }),
+            "Base de datos correcta."
+        )
+        self.assertIn(
+            "Revisar",
+            resumen_diagnostico({
+                "errores": [],
+                "advertencias": ["algo"]
+            })
+        )
+        self.assertIn(
+            "Critico",
+            resumen_diagnostico({
+                "errores": ["algo"],
+                "advertencias": []
+            })
+        )
 
     def test_importar_rechaza_archivo_no_sqlite(self):
 

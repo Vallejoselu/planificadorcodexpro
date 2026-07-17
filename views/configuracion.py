@@ -29,9 +29,13 @@ from repositories.turnos_repository import TurnosRepository
 from services.actualizaciones import ServicioActualizaciones
 from services.datos_locales import (
     crear_backup,
+    diagnosticar_datos,
     exportar_base,
     importar_base,
-    informacion_almacenamiento
+    informacion_almacenamiento,
+    listar_backups,
+    reparar_datos,
+    validar_restauracion
 )
 from services.email_resumen import normalizar_destinatarios
 from services.integraciones.registro import guardar_configuracion as guardar_integracion
@@ -134,6 +138,8 @@ class VistaConfiguracion(QWidget):
         )
         self.btn_backup_datos.clicked.connect(self.crear_backup_datos)
         self.btn_exportar_datos.clicked.connect(self.exportar_datos)
+        self.btn_diagnosticar_datos.clicked.connect(self.diagnosticar_datos)
+        self.btn_reparar_datos.clicked.connect(self.reparar_datos)
         self.btn_importar_datos.clicked.connect(self.importar_datos)
         self.btn_guardar_email.clicked.connect(
             self.guardar_configuracion_email
@@ -181,13 +187,32 @@ class VistaConfiguracion(QWidget):
         acciones = QHBoxLayout()
         self.btn_backup_datos = make_button("Crear backup", "secondary")
         self.btn_exportar_datos = make_button("Exportar datos", "secondary")
+        self.btn_diagnosticar_datos = make_button("Diagnosticar", "secondary")
+        self.btn_reparar_datos = make_button("Reparar", "secondary")
         self.btn_importar_datos = make_button("Importar o restaurar", "danger")
 
         acciones.addWidget(self.btn_backup_datos)
         acciones.addWidget(self.btn_exportar_datos)
+        acciones.addWidget(self.btn_diagnosticar_datos)
+        acciones.addWidget(self.btn_reparar_datos)
         acciones.addWidget(self.btn_importar_datos)
         acciones.addStretch()
         layout.addLayout(acciones)
+
+        self.estado_diagnostico_datos = QLabel("Diagnostico pendiente.")
+        self.estado_diagnostico_datos.setWordWrap(True)
+        layout.addWidget(self.estado_diagnostico_datos)
+
+        layout.addWidget(QLabel("Backups recientes"))
+        self.tabla_backups = QTableWidget()
+        configure_table(self.tabla_backups)
+        self.tabla_backups.setColumnCount(3)
+        self.tabla_backups.setHorizontalHeaderLabels([
+            "Archivo",
+            "Fecha",
+            "Tamano"
+        ])
+        layout.addWidget(self.tabla_backups)
 
         self.layout.addWidget(self.panel_datos_locales)
 
@@ -449,6 +474,113 @@ class VistaConfiguracion(QWidget):
             f"({tamano_mb:.2f} MB)"
         )
         self.estado_datos_locales.setText(texto)
+        self.cargar_backups_recientes()
+
+    # ======================================
+
+    def cargar_backups_recientes(self):
+
+        backups = listar_backups(limite=5)
+        self.tabla_backups.setRowCount(len(backups))
+
+        for fila, backup in enumerate(backups):
+
+            valores = [
+                backup["nombre"],
+                backup["modificado"].strftime("%Y-%m-%d %H:%M"),
+                f"{backup['tamano_bytes'] / (1024 * 1024):.2f} MB"
+            ]
+
+            for columna, valor in enumerate(valores):
+
+                item = QTableWidgetItem(str(valor))
+                item.setToolTip(str(backup["ruta"]))
+                self.tabla_backups.setItem(fila, columna, item)
+
+        self.tabla_backups.resizeColumnsToContents()
+
+    # ======================================
+
+    def diagnosticar_datos(self):
+
+        try:
+
+            diagnostico = diagnosticar_datos()
+
+        except ValueError as error:
+
+            QMessageBox.warning(self, "Diagnostico de datos", str(error))
+            return
+
+        self.estado_diagnostico_datos.setText(
+            self.texto_diagnostico_datos(diagnostico)
+        )
+        QMessageBox.information(
+            self,
+            "Diagnostico de datos",
+            self.texto_diagnostico_datos(diagnostico)
+        )
+
+    # ======================================
+
+    def reparar_datos(self):
+
+        respuesta = QMessageBox.question(
+            self,
+            "Reparar datos",
+            "Se creara un backup automatico y se aplicaran reparaciones "
+            "seguras sobre la base local. Quieres continuar?"
+        )
+
+        if respuesta != QMessageBox.Yes:
+
+            return
+
+        try:
+
+            diagnostico = reparar_datos()
+
+        except ValueError as error:
+
+            QMessageBox.warning(self, "Reparar datos", str(error))
+            return
+
+        self.cargar_datos()
+        mensaje = self.texto_diagnostico_datos(diagnostico)
+
+        if diagnostico.get("respaldo"):
+
+            mensaje += f"\n\nBackup previo:\n{diagnostico['respaldo']}"
+
+        QMessageBox.information(self, "Reparar datos", mensaje)
+
+    # ======================================
+
+    def texto_diagnostico_datos(self, diagnostico):
+
+        secciones = [diagnostico.get("resumen", "Diagnostico completado.")]
+
+        if diagnostico.get("errores"):
+
+            secciones.append("Errores:\n- " + "\n- ".join(diagnostico["errores"]))
+
+        if diagnostico.get("advertencias"):
+
+            secciones.append(
+                "Advertencias:\n- " + "\n- ".join(diagnostico["advertencias"])
+            )
+
+        if diagnostico.get("acciones"):
+
+            secciones.append(
+                "Acciones:\n- " + "\n- ".join(diagnostico["acciones"])
+            )
+
+        if diagnostico.get("info"):
+
+            secciones.append("Info:\n- " + "\n- ".join(diagnostico["info"]))
+
+        return "\n\n".join(secciones)
 
     # ======================================
 
@@ -469,6 +601,7 @@ class VistaConfiguracion(QWidget):
             "Backup",
             f"Copia creada correctamente:\n{ruta}"
         )
+        self.cargar_backups_recientes()
 
     # ======================================
 
@@ -515,11 +648,21 @@ class VistaConfiguracion(QWidget):
 
             return
 
+        try:
+
+            validacion = validar_restauracion(ruta)
+
+        except ValueError as error:
+
+            QMessageBox.warning(self, "Importar o restaurar", str(error))
+            return
+
         respuesta = QMessageBox.question(
             self,
             "Importar o restaurar",
             "Se reemplazara la base de datos local actual. "
             "Antes se creara una copia de seguridad automatica. "
+            f"Validacion: {validacion['resumen']} "
             "Quieres continuar?"
         )
 
