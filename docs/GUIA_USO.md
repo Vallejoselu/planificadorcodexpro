@@ -122,6 +122,11 @@ La pantalla **Cuadrantes** tiene varias vistas:
 La vista por empleado es la mas facil para revisar una semana como si fuera una
 hoja de Excel.
 
+Por defecto, Cuadrantes abre en **modo simple**. En ese modo se muestran las
+acciones principales: comprobar configuracion, generar y publicar. Si necesitas
+editar celdas, copiar, pegar, usar plantillas o deshacer cambios, activa
+**Modo avanzado**.
+
 ## 9. Significado De Colores Y Textos
 
 - **LIBRE**: el repartidor no trabaja ese dia.
@@ -167,6 +172,10 @@ la base esta en:
 
 Antes de restaurar o empezar de cero, crea copia de seguridad.
 
+Configuracion tambien abre en **modo simple**. Muestra tema, datos locales,
+backups y diagnostico. Las opciones de email, webhooks, demanda por zona/ciudad
+e integraciones se muestran solo al activar **Mostrar opciones avanzadas**.
+
 ## 13. Flujo Diario Recomendado
 
 1. Abrir la app.
@@ -176,4 +185,3 @@ Antes de restaurar o empezar de cero, crea copia de seguridad.
 5. Revisar alertas.
 6. Corregir datos de base, no solo pintar encima.
 7. Publicar o exportar.
-
