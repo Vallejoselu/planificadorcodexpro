@@ -21,6 +21,7 @@ from views.cuadrantes import VistaCuadrantes
 from views.estadisticas import VistaEstadisticas
 from views.exportaciones import VistaExportaciones
 from views.inicio import VistaInicio
+from views.puesta_marcha import VistaPuestaMarcha
 from views.repartidores import VistaRepartidores
 from views.reglas import VistaReglas
 from views.restaurantes import VistaRestaurantes
@@ -81,6 +82,7 @@ class VentanaPrincipal(QMainWindow):
     def crear_paginas(self):
 
         self.registrar_pagina("inicio", VistaInicio(self))
+        self.registrar_pagina("puesta_marcha", VistaPuestaMarcha(self))
         self.registrar_pagina("repartidores", VistaRepartidores())
         self.registrar_pagina("ciudades", VistaCiudades())
         self.registrar_pagina("restaurantes", VistaRestaurantes())
@@ -108,6 +110,11 @@ class VentanaPrincipal(QMainWindow):
             "inicio",
             "Inicio",
             QStyle.SP_ComputerIcon
+        )
+        self.agregar_boton(
+            "puesta_marcha",
+            "Puesta en marcha",
+            QStyle.SP_DialogApplyButton
         )
 
         self.agregar_seccion("GESTION")
