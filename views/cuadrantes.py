@@ -66,9 +66,9 @@ class VistaCuadrantes(QWidget):
         self.layout.addWidget(titulo)
 
         self.guia_operativa = QLabel(
-            "Para generar bien: configura repartidores activos, restaurantes, "
-            "turnos y demanda. Las celdas con 'Sin repartidor' son plazas "
-            "pendientes de cubrir, no errores de guardado."
+            "Para generar bien: crea repartidores activos, restaurantes, "
+            "turnos y demanda. 'Sin repartidor' significa plaza pendiente "
+            "de cubrir; no es una persona asignada."
         )
         self.guia_operativa.setWordWrap(True)
         self.guia_operativa.setObjectName("guia_operativa")
@@ -80,6 +80,22 @@ class VistaCuadrantes(QWidget):
             color:#E2E8F0;
         """)
         self.layout.addWidget(self.guia_operativa)
+
+        self.leyenda_cuadrante = QLabel(
+            "Leyenda: LIBRE = no trabaja | COMIDA = turno de comida | "
+            "CENA = turno de cena | DOBLE = comida y cena | - = disponible "
+            "sin turno | Sin repartidor = plaza pendiente"
+        )
+        self.leyenda_cuadrante.setWordWrap(True)
+        self.leyenda_cuadrante.setObjectName("guia_operativa")
+        self.leyenda_cuadrante.setStyleSheet("""
+            padding:8px 12px;
+            border:1px solid #CBD5E1;
+            border-radius:6px;
+            background:#F8FAFC;
+            color:#1E293B;
+        """)
+        self.layout.addWidget(self.leyenda_cuadrante)
 
         self.selector_restaurante = QComboBox()
         self.selector_turno = QComboBox()
@@ -1023,6 +1039,11 @@ class VistaCuadrantes(QWidget):
                         self.color_celda_empleado(celda.get("estado"))
                     ))
                 )
+                item.setForeground(
+                    QBrush(QColor(
+                        self.color_texto_celda_empleado(celda.get("estado"))
+                    ))
+                )
                 self.tabla_empleados.setItem(fila, columna, item)
 
         self.tabla_empleados.resizeRowsToContents()
@@ -1032,15 +1053,30 @@ class VistaCuadrantes(QWidget):
     def color_celda_empleado(self, estado):
 
         colores = {
-            "libre": "#F8D7DA",
-            "doble": "#FFF3CD",
-            "comida": "#D9EAF7",
-            "cena": "#E3E0F3",
-            "disponible": "#FFFFFF",
-            "turno": "#E2F0D9"
+            "libre": "#FEE2E2",
+            "doble": "#FEF3C7",
+            "comida": "#DBEAFE",
+            "cena": "#EDE9FE",
+            "disponible": "#F8FAFC",
+            "turno": "#DCFCE7"
         }
 
-        return colores.get(estado, "#FFFFFF")
+        return colores.get(estado, "#F8FAFC")
+
+    # ======================================
+
+    def color_texto_celda_empleado(self, estado):
+
+        colores = {
+            "libre": "#7F1D1D",
+            "doble": "#78350F",
+            "comida": "#1E3A8A",
+            "cena": "#312E81",
+            "disponible": "#475569",
+            "turno": "#14532D"
+        }
+
+        return colores.get(estado, "#334155")
 
     # ======================================
 
@@ -1056,9 +1092,9 @@ class VistaCuadrantes(QWidget):
         self.tabla_alertas.setRowCount(len(filas))
 
         colores = {
-            "alta": "#FCE4E4",
-            "media": "#FFF2CC",
-            "ok": "#EAF4EA"
+            "alta": ("#FEE2E2", "#7F1D1D"),
+            "media": ("#FEF3C7", "#78350F"),
+            "ok": ("#DCFCE7", "#14532D")
         }
 
         for fila, alerta in enumerate(filas):
@@ -1068,13 +1104,17 @@ class VistaCuadrantes(QWidget):
                 alerta.get("detalle", ""),
                 alerta.get("severidad", "")
             ]
-            fondo = colores.get(alerta.get("severidad"), "#FFFFFF")
+            fondo, texto = colores.get(
+                alerta.get("severidad"),
+                ("#F8FAFC", "#334155")
+            )
 
             for columna, valor in enumerate(valores):
 
                 item = QTableWidgetItem(str(valor))
                 item.setTextAlignment(Qt.AlignTop | Qt.AlignLeft)
                 item.setBackground(QBrush(QColor(fondo)))
+                item.setForeground(QBrush(QColor(texto)))
                 self.tabla_alertas.setItem(fila, columna, item)
 
         self.tabla_alertas.resizeColumnsToContents()

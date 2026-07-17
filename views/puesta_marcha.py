@@ -2,6 +2,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor, QBrush
 from PySide6.QtWidgets import (
     QHBoxLayout,
+    QHeaderView,
     QLabel,
     QMessageBox,
     QPushButton,
@@ -34,9 +35,18 @@ class VistaPuestaMarcha(QWidget):
         self.layout.addWidget(
             PageHeader(
                 "Puesta en marcha",
-                "Comprueba si la empresa esta lista para generar cuadrantes."
+                "Prepara la empresa paso a paso antes de generar cuadrantes."
             )
         )
+
+        self.guia = QLabel(
+            "Usa esta pantalla como checklist. Si quieres probar sin datos "
+            "anteriores, usa 'Empezar de cero': crea una copia de seguridad y "
+            "deja la aplicacion sin repartidores, restaurantes ni cuadrantes."
+        )
+        self.guia.setWordWrap(True)
+        self.guia.setObjectName("guia_operativa")
+        self.layout.addWidget(self.guia)
 
         self.resumen = QLabel("")
         self.resumen.setWordWrap(True)
@@ -60,6 +70,18 @@ class VistaPuestaMarcha(QWidget):
             "Pantalla"
         ])
         self.tabla.horizontalHeader().setStretchLastSection(True)
+        self.tabla.horizontalHeader().setSectionResizeMode(
+            0,
+            QHeaderView.ResizeToContents
+        )
+        self.tabla.horizontalHeader().setSectionResizeMode(
+            1,
+            QHeaderView.ResizeToContents
+        )
+        self.tabla.horizontalHeader().setSectionResizeMode(
+            2,
+            QHeaderView.Stretch
+        )
         self.tabla.setSelectionBehavior(QTableWidget.SelectRows)
         self.tabla.setSelectionMode(QTableWidget.SingleSelection)
         self.tabla.doubleClicked.connect(self.abrir_pantalla_recomendada)
@@ -72,15 +94,19 @@ class VistaPuestaMarcha(QWidget):
         self.btn_abrir = QPushButton("Abrir pantalla recomendada")
         self.btn_cargar_demo = QPushButton("Cargar ejemplo")
         self.btn_limpiar_demo = QPushButton("Limpiar ejemplo")
+        self.btn_empezar_cero = QPushButton("Empezar de cero")
+        self.btn_empezar_cero.setProperty("variant", "danger")
         self.btn_actualizar.clicked.connect(self.cargar_datos)
         self.btn_abrir.clicked.connect(self.abrir_pantalla_recomendada)
         self.btn_cargar_demo.clicked.connect(self.cargar_datos_demo)
         self.btn_limpiar_demo.clicked.connect(self.limpiar_datos_demo)
+        self.btn_empezar_cero.clicked.connect(self.empezar_de_cero)
 
         acciones.addWidget(self.btn_actualizar)
         acciones.addWidget(self.btn_abrir)
         acciones.addWidget(self.btn_cargar_demo)
         acciones.addWidget(self.btn_limpiar_demo)
+        acciones.addWidget(self.btn_empezar_cero)
         acciones.addStretch()
         self.layout.addLayout(acciones)
 
@@ -105,9 +131,14 @@ class VistaPuestaMarcha(QWidget):
         self.tabla.setRowCount(len(self.pasos))
 
         colores = {
-            "ok": "#EAF4EA",
-            "aviso": "#FFF2CC",
-            "pendiente": "#FCE4E4"
+            "ok": "#DCFCE7",
+            "aviso": "#FEF3C7",
+            "pendiente": "#FEE2E2"
+        }
+        textos = {
+            "ok": "#14532D",
+            "aviso": "#78350F",
+            "pendiente": "#7F1D1D"
         }
         textos_estado = {
             "ok": "Correcto",
@@ -124,15 +155,17 @@ class VistaPuestaMarcha(QWidget):
                 paso["pagina"]
             ]
             fondo = QBrush(QColor(colores.get(paso["estado"], "#FFFFFF")))
+            texto = QBrush(QColor(textos.get(paso["estado"], "#111827")))
 
             for columna, valor in enumerate(valores):
 
                 item = QTableWidgetItem(str(valor))
                 item.setTextAlignment(Qt.AlignTop | Qt.AlignLeft)
                 item.setBackground(fondo)
+                item.setForeground(texto)
                 self.tabla.setItem(fila, columna, item)
 
-        self.tabla.resizeColumnsToContents()
+        self.tabla.resizeRowsToContents()
 
     def abrir_pantalla_recomendada(self):
 
@@ -208,5 +241,40 @@ class VistaPuestaMarcha(QWidget):
                 f"{resumen['ciudades']} ciudades, "
                 f"{resumen['restaurantes']} restaurantes y "
                 f"{resumen['repartidores']} repartidores."
+            )
+        )
+
+    def empezar_de_cero(self):
+
+        respuesta = QMessageBox.question(
+            self,
+            "Empezar de cero",
+            (
+                "Se creara un backup automatico y se desactivaran los datos "
+                "operativos actuales: repartidores, restaurantes, ciudades, "
+                "turnos, demandas y cuadrantes.\n\n"
+                "La estructura de la base de datos se conserva. Quieres "
+                "continuar?"
+            )
+        )
+
+        if respuesta != QMessageBox.Yes:
+
+            return
+
+        resumen = datos_demo_service.empezar_de_cero()
+        self.cargar_datos()
+        QMessageBox.information(
+            self,
+            "Empezar de cero",
+            (
+                "Aplicacion lista para empezar limpia.\n\n"
+                f"Backup creado:\n{resumen['respaldo']}\n\n"
+                f"Repartidores desactivados: {resumen['repartidores']}\n"
+                f"Restaurantes desactivados: {resumen['restaurantes']}\n"
+                f"Ciudades desactivadas: {resumen['ciudades']}\n"
+                f"Turnos desactivados: {resumen['turnos']}\n"
+                f"Asignaciones de cuadrante eliminadas: "
+                f"{resumen['cuadrantes']}"
             )
         )
