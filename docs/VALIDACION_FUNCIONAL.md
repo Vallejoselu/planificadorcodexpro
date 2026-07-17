@@ -2,6 +2,28 @@
 
 Fase 10 de preparacion de Planificador Delivery Pro 2.0.
 
+## Release 2.2.0
+
+La release 2.2.0 consolida las mejoras de datos locales, backups, diagnostico
+y recuperacion. Esta fase no anade funciones nuevas al generador; deja la
+version preparada para empaquetar y probar una entrega estable.
+
+### Checklist 2.2.0
+
+| Paso | Estado | Evidencia |
+| --- | --- | --- |
+| Version de aplicacion | OK | `app_info.VERSION` actualizado a `2.2.0`. |
+| Instalador | OK | `installer/PlanificadorDeliveryPro.iss` apunta a `2.2.0`. |
+| README | OK | Documenta la version actual y el instalador `PlanificadorDeliveryPro-Setup-2.2.0.exe`. |
+| CHANGELOG | OK | Incluye las mejoras de base local, backups, diagnostico y recuperacion. |
+| Datos locales | Pendiente manual | Instalar y confirmar que usa `%LOCALAPPDATA%\PlanificadorDeliveryPro\delivery.db`. |
+| Backup | Pendiente manual | Crear backup desde Configuracion y comprobar que aparece en el listado. |
+| Restauracion | Pendiente manual | Restaurar una copia valida sobre una instalacion de prueba. |
+| Diagnostico | Pendiente manual | Ejecutar diagnostico desde Configuracion y revisar mensajes. |
+| Reparacion | Pendiente manual | Probar reparacion en una copia con datos antiguos o duplicados controlados. |
+| Instalacion limpia | Pendiente manual | Instalar 2.2.0 en equipo/carpeta limpia y abrir la app. |
+| Actualizacion | Pendiente manual | Actualizar desde 2.1.x y comprobar que no se pierden datos. |
+
 ## Release 2.1.0
 
 La release 2.1.0 consolida el Bloque 14 de mejoras funcionales. No anade una
