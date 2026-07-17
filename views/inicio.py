@@ -83,6 +83,7 @@ class VistaInicio(QWidget):
         acciones.setSpacing(10)
 
         botones = [
+            ("Puesta en marcha", "puesta_marcha"),
             ("Nuevo repartidor", "repartidores"),
             ("Nuevo restaurante", "restaurantes"),
             ("Nuevo turno", "turnos"),
@@ -91,7 +92,14 @@ class VistaInicio(QWidget):
 
         for texto, pagina in botones:
 
-            boton = make_button(texto, "primary" if pagina == "cuadrantes" else "secondary")
+            boton = make_button(
+                texto,
+                (
+                    "primary"
+                    if pagina in ("puesta_marcha", "cuadrantes")
+                    else "secondary"
+                )
+            )
             boton.clicked.connect(
                 lambda checked=False, destino=pagina: self.ir_a(destino)
             )
