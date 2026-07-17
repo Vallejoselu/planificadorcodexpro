@@ -195,7 +195,14 @@ def construir_planificacion_multiciudad(datos):
     for dia in DIAS:
 
         fecha = fechas.get(dia)
-        slots = slots_demanda(restaurantes, turnos, demandas, dia, fecha)
+        slots = slots_demanda(
+            restaurantes,
+            turnos,
+            demandas,
+            dia,
+            fecha,
+            repartidores
+        )
         hay_demanda_requerida = hay_demanda_requerida or bool(slots)
 
         for slot in slots:
@@ -681,7 +688,14 @@ def minimo_repartidores(restaurante, turno):
     return 1
 
 
-def slots_demanda(restaurantes, turnos, demandas, dia, fecha):
+def slots_demanda(
+    restaurantes,
+    turnos,
+    demandas,
+    dia,
+    fecha,
+    repartidores=None
+):
 
     slots = []
     restaurantes_por_id = {
@@ -723,14 +737,25 @@ def slots_demanda(restaurantes, turnos, demandas, dia, fecha):
             "demanda": demanda
         })
 
+    return ordenar_slots_demanda(slots, repartidores or [], dia, fecha)
+
+
+def ordenar_slots_demanda(slots, repartidores, dia, fecha):
+
     return sorted(
         slots,
-        key=lambda slot: contar_candidatos(
-            [],
-            slot["restaurante"],
-            dia,
-            slot["turno"],
-            fecha
+        key=lambda slot: (
+            contar_candidatos(
+                repartidores,
+                slot["restaurante"],
+                dia,
+                slot["turno"],
+                fecha
+            ),
+            -slot["necesarios"],
+            str(slot["turno"].get("hora_inicio", "")),
+            str(slot["restaurante"].get("nombre", "")),
+            str(slot["turno"].get("nombre", ""))
         )
     )
 
@@ -868,6 +893,7 @@ def crear_incidencia_demanda(repartidores, slot, dia, fecha, cubiertos):
         fecha
     )
     motivo = explicacion["principal"]
+    detalle = texto_detalle_reglas(explicacion["detalle"])
 
     return {
         "ciudad_id": restaurante.get("ciudad_id"),
@@ -887,10 +913,12 @@ def crear_incidencia_demanda(repartidores, slot, dia, fecha, cubiertos):
         "motivo": (
             f"Faltan {faltan} repartidores. "
             f"Regla incumplida: {motivo}."
+            f"{detalle}"
         ),
         "advertencia": True,
         "regla": "cobertura requerida por demanda",
-        "detalle_reglas": explicacion["detalle"]
+        "detalle_reglas": explicacion["detalle"],
+        "resumen_reglas": detalle.strip()
     }
 
 
@@ -920,11 +948,29 @@ def crear_incidencia_cobertura(
             "No se cumple el minimo de repartidores por turno "
             f"({cubiertos}/{minimo}). "
             f"Regla incumplida: {explicacion['principal']}."
+            f"{texto_detalle_reglas(explicacion['detalle'])}"
         ),
         "advertencia": True,
         "regla": "minimo de repartidores por turno",
-        "detalle_reglas": explicacion["detalle"]
+        "detalle_reglas": explicacion["detalle"],
+        "resumen_reglas": texto_detalle_reglas(
+            explicacion["detalle"]
+        ).strip()
     }
+
+
+def texto_detalle_reglas(detalle):
+
+    if not detalle:
+
+        return ""
+
+    partes = [
+        f"{item['cantidad']} por {item['motivo']}"
+        for item in detalle[:3]
+    ]
+
+    return " Detalle: " + "; ".join(partes) + "."
 
 
 def regla_incumplida_principal(repartidores, restaurante, dia, turno, fecha):
