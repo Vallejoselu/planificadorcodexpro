@@ -15,6 +15,7 @@ INDICES_ESPERADOS = {
     "idx_calendario_semana_lookup",
     "idx_calendario_semana_unico",
     "idx_bajas_repartidor_activa",
+    "idx_cuadrante_publicaciones_semana",
     "idx_demanda_ciudad_dia_unico",
     "idx_demanda_ciudad_fecha_unica",
     "idx_demanda_ciudad_lookup",
