@@ -40,13 +40,21 @@ from models import (
 )
 from services.descansos import descanso_es_valido, siguiente_descanso_valido
 from services.fechas import normalizar_fecha_inicio_semana
-from utils.paths import database_path
+from utils.paths import database_path, migrate_legacy_database_if_needed
 
 RUTA_BD = database_path()
 
 
+def asegurar_ubicacion_base_datos():
+
+    if RUTA_BD == database_path():
+
+        migrate_legacy_database_if_needed(RUTA_BD)
+
+
 def conectar():
 
+    asegurar_ubicacion_base_datos()
     return conectar_con_pragmas(RUTA_BD)
 
 
@@ -67,6 +75,7 @@ def columnas_tabla(cursor, tabla):
 
 def crear_base_datos():
 
+    asegurar_ubicacion_base_datos()
     ejecutar_migraciones(RUTA_BD)
 
 

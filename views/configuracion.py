@@ -3,6 +3,7 @@ import json
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QComboBox,
+    QFileDialog,
     QFormLayout,
     QFrame,
     QHBoxLayout,
@@ -26,6 +27,12 @@ from repositories.integraciones_repository import IntegracionesRepository
 from services.sincronizacion import ServicioSincronizacion
 from repositories.turnos_repository import TurnosRepository
 from services.actualizaciones import ServicioActualizaciones
+from services.datos_locales import (
+    crear_backup,
+    exportar_base,
+    importar_base,
+    informacion_almacenamiento
+)
 from services.email_resumen import normalizar_destinatarios
 from services.integraciones.registro import guardar_configuracion as guardar_integracion
 from ui.theme_manager import ThemeManager
@@ -94,6 +101,7 @@ class VistaConfiguracion(QWidget):
 
         self.layout.addWidget(self.panel_actualizaciones)
 
+        self.crear_panel_datos_locales()
         self.crear_panel_email()
         self.crear_panel_delivery_generico()
         self.crear_panel_demanda_zona()
@@ -124,6 +132,9 @@ class VistaConfiguracion(QWidget):
         self.btn_comprobar_actualizaciones.clicked.connect(
             self.comprobar_actualizaciones
         )
+        self.btn_backup_datos.clicked.connect(self.crear_backup_datos)
+        self.btn_exportar_datos.clicked.connect(self.exportar_datos)
+        self.btn_importar_datos.clicked.connect(self.importar_datos)
         self.btn_guardar_email.clicked.connect(
             self.guardar_configuracion_email
         )
@@ -150,6 +161,35 @@ class VistaConfiguracion(QWidget):
         )
 
         self.cargar_datos()
+
+    # ======================================
+
+    def crear_panel_datos_locales(self):
+
+        self.panel_datos_locales = QFrame()
+        self.panel_datos_locales.setObjectName("card")
+        layout = QVBoxLayout(self.panel_datos_locales)
+        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSpacing(10)
+
+        layout.addWidget(QLabel("Datos locales y copias de seguridad"))
+
+        self.estado_datos_locales = QLabel()
+        self.estado_datos_locales.setWordWrap(True)
+        layout.addWidget(self.estado_datos_locales)
+
+        acciones = QHBoxLayout()
+        self.btn_backup_datos = make_button("Crear backup", "secondary")
+        self.btn_exportar_datos = make_button("Exportar datos", "secondary")
+        self.btn_importar_datos = make_button("Importar o restaurar", "danger")
+
+        acciones.addWidget(self.btn_backup_datos)
+        acciones.addWidget(self.btn_exportar_datos)
+        acciones.addWidget(self.btn_importar_datos)
+        acciones.addStretch()
+        layout.addLayout(acciones)
+
+        self.layout.addWidget(self.panel_datos_locales)
 
     # ======================================
 
@@ -387,6 +427,7 @@ class VistaConfiguracion(QWidget):
 
     def cargar_datos(self):
 
+        self.cargar_estado_datos_locales()
         self.cargar_configuracion_email()
         self.cargar_configuracion_delivery_generico()
         self.cargar_demanda_zona()
@@ -394,6 +435,118 @@ class VistaConfiguracion(QWidget):
         self.cargar_integraciones()
         self.cargar_sincronizaciones()
         self.cargar_eventos()
+
+    # ======================================
+
+    def cargar_estado_datos_locales(self):
+
+        info = informacion_almacenamiento()
+        tamano_mb = info["tamano_bytes"] / (1024 * 1024)
+        texto = (
+            f"Base de datos: {info['ruta_bd']}\n"
+            f"Carpeta de backups: {info['carpeta_backups']}\n"
+            f"Estado: {'existe' if info['existe'] else 'pendiente de crear'} "
+            f"({tamano_mb:.2f} MB)"
+        )
+        self.estado_datos_locales.setText(texto)
+
+    # ======================================
+
+    def crear_backup_datos(self):
+
+        try:
+
+            ruta = crear_backup()
+
+        except ValueError as error:
+
+            QMessageBox.warning(self, "Backup", str(error))
+            return
+
+        self.cargar_estado_datos_locales()
+        QMessageBox.information(
+            self,
+            "Backup",
+            f"Copia creada correctamente:\n{ruta}"
+        )
+
+    # ======================================
+
+    def exportar_datos(self):
+
+        ruta, _ = QFileDialog.getSaveFileName(
+            self,
+            "Exportar datos",
+            "delivery-export.db",
+            "Base SQLite (*.db);;Todos los archivos (*)"
+        )
+
+        if not ruta:
+
+            return
+
+        try:
+
+            destino = exportar_base(ruta)
+
+        except ValueError as error:
+
+            QMessageBox.warning(self, "Exportar datos", str(error))
+            return
+
+        QMessageBox.information(
+            self,
+            "Exportar datos",
+            f"Datos exportados correctamente:\n{destino}"
+        )
+
+    # ======================================
+
+    def importar_datos(self):
+
+        ruta, _ = QFileDialog.getOpenFileName(
+            self,
+            "Importar o restaurar datos",
+            "",
+            "Base SQLite (*.db);;Todos los archivos (*)"
+        )
+
+        if not ruta:
+
+            return
+
+        respuesta = QMessageBox.question(
+            self,
+            "Importar o restaurar",
+            "Se reemplazara la base de datos local actual. "
+            "Antes se creara una copia de seguridad automatica. "
+            "Quieres continuar?"
+        )
+
+        if respuesta != QMessageBox.Yes:
+
+            return
+
+        try:
+
+            resultado = importar_base(ruta)
+
+        except ValueError as error:
+
+            QMessageBox.warning(self, "Importar o restaurar", str(error))
+            return
+
+        self.cargar_datos()
+        mensaje = (
+            f"Datos restaurados desde:\n{resultado['origen']}\n\n"
+            f"Base activa:\n{resultado['ruta_bd']}"
+        )
+
+        if resultado.get("respaldo"):
+
+            mensaje += f"\n\nBackup previo:\n{resultado['respaldo']}"
+
+        QMessageBox.information(self, "Importar o restaurar", mensaje)
 
     # ======================================
 

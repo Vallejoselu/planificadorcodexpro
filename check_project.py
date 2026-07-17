@@ -13,6 +13,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 REAL_DB = ROOT / "delivery.db"
+DATA_DIR_ENV = "PLANIFICADOR_DELIVERY_DATA_DIR"
 EXCLUDED_DIRS = {
     ".git",
     ".venv",
@@ -30,36 +31,40 @@ def main():
 
     sys.dont_write_bytecode = True
     os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
-    checks = [
-        ("Sintaxis con compileall", check_compileall),
-        ("Pruebas automatizadas", check_tests),
-        ("Imports principales", check_imports),
-        ("Arranque sin ventana bloqueada", check_app_smoke),
-        ("Archivos no deseados", check_unwanted_files),
-        ("Secretos evidentes", check_secrets),
-        ("delivery.db sin cambios", check_delivery_db_unchanged),
-        ("Pruebas con base temporal", check_tests_use_temp_db),
-        ("Diagnostico de base temporal", check_database_diagnostics),
-        ("Reglas criticas", check_business_rules)
-    ]
-    failures = []
 
-    for title, func in checks:
+    with tempfile.TemporaryDirectory() as data_dir:
 
-        print(f"\n== {title} ==")
+        os.environ.setdefault(DATA_DIR_ENV, data_dir)
+        checks = [
+            ("Sintaxis con compileall", check_compileall),
+            ("Pruebas automatizadas", check_tests),
+            ("Imports principales", check_imports),
+            ("Arranque sin ventana bloqueada", check_app_smoke),
+            ("Archivos no deseados", check_unwanted_files),
+            ("Secretos evidentes", check_secrets),
+            ("delivery.db sin cambios", check_delivery_db_unchanged),
+            ("Pruebas con base temporal", check_tests_use_temp_db),
+            ("Diagnostico de base temporal", check_database_diagnostics),
+            ("Reglas criticas", check_business_rules)
+        ]
+        failures = []
 
-        try:
+        for title, func in checks:
 
-            func()
+            print(f"\n== {title} ==")
 
-        except Exception as error:
+            try:
 
-            failures.append((title, str(error)))
-            print(f"[ERROR] {error}")
+                func()
 
-        else:
+            except Exception as error:
 
-            print("[OK]")
+                failures.append((title, str(error)))
+                print(f"[ERROR] {error}")
+
+            else:
+
+                print("[OK]")
 
     if failures:
 
@@ -108,6 +113,7 @@ def check_tests():
     env = os.environ.copy()
     env["PYTHONDONTWRITEBYTECODE"] = "1"
     env.setdefault("QT_QPA_PLATFORM", "offscreen")
+    env.setdefault(DATA_DIR_ENV, tempfile.mkdtemp())
     result = subprocess.run(
         [sys.executable, "-m", "unittest", "discover", "-s", "tests"],
         cwd=ROOT,
