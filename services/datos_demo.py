@@ -120,6 +120,60 @@ class DatosDemoService:
         conexion.close()
         return resultado
 
+    def empezar_de_cero(self):
+
+        from services.datos_locales import crear_backup
+
+        db.crear_base_datos()
+        respaldo = crear_backup(ruta_bd=db.RUTA_BD)
+        conexion = db.conectar()
+        cursor = conexion.cursor()
+
+        resumen = {
+            "respaldo": str(respaldo),
+            "ciudades": self._contar_activos(cursor, "ciudades"),
+            "restaurantes": self._contar_activos(cursor, "restaurantes"),
+            "turnos": self._contar_activos(cursor, "turnos"),
+            "repartidores": self._contar_activos(cursor, "repartidores"),
+            "cuadrantes": self._contar_filas(cursor, "calendario_semanal")
+        }
+
+        for tabla in (
+            "repartidores",
+            "restaurantes",
+            "ciudades",
+            "turnos",
+            "restaurante_turnos",
+            "demanda_restaurante",
+            "demanda_zona",
+            "demanda_ciudad",
+            "restaurante_repartidores",
+            "repartidor_ciudades",
+            "repartidor_restaurantes_autorizados",
+            "descansos",
+            "vacaciones",
+            "bajas",
+            "plantillas_semana",
+            "integraciones_api"
+        ):
+
+            self._desactivar_tabla(cursor, tabla)
+
+        for tabla in (
+            "calendario_semanal",
+            "plantilla_semana_asignaciones",
+            "cuadrante_publicaciones",
+            "integraciones_sincronizaciones",
+            "integraciones_eventos"
+        ):
+
+            self._vaciar_tabla(cursor, tabla)
+
+        conexion.commit()
+        conexion.close()
+
+        return resumen
+
     def _crear_ciudades(self):
 
         existentes = self._filas_por_nombre("ciudades")
@@ -396,6 +450,65 @@ class DatosDemoService:
             f"UPDATE {tabla} SET activo=0 WHERE {columna} IN ({marcadores})",
             ids
         )
+
+    def _tabla_existe(self, cursor, tabla):
+
+        cursor.execute("""
+        SELECT 1
+        FROM sqlite_master
+        WHERE type='table'
+        AND name=?
+        """, (tabla,))
+        return cursor.fetchone() is not None
+
+    def _columnas(self, cursor, tabla):
+
+        if not self._tabla_existe(cursor, tabla):
+
+            return set()
+
+        cursor.execute(f"PRAGMA table_info({tabla})")
+        return {
+            fila[1]
+            for fila in cursor.fetchall()
+        }
+
+    def _contar_filas(self, cursor, tabla):
+
+        if not self._tabla_existe(cursor, tabla):
+
+            return 0
+
+        cursor.execute(f"SELECT COUNT(*) FROM {tabla}")
+        return cursor.fetchone()[0]
+
+    def _contar_activos(self, cursor, tabla):
+
+        columnas = self._columnas(cursor, tabla)
+
+        if not columnas:
+
+            return 0
+
+        condicion = " WHERE activo=1" if "activo" in columnas else ""
+        cursor.execute(f"SELECT COUNT(*) FROM {tabla}{condicion}")
+        return cursor.fetchone()[0]
+
+    def _desactivar_tabla(self, cursor, tabla):
+
+        if "activo" not in self._columnas(cursor, tabla):
+
+            return
+
+        cursor.execute(f"UPDATE {tabla} SET activo=0")
+
+    def _vaciar_tabla(self, cursor, tabla):
+
+        if not self._tabla_existe(cursor, tabla):
+
+            return
+
+        cursor.execute(f"DELETE FROM {tabla}")
 
     def _filas_por_nombre(self, tabla):
 

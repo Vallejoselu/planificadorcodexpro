@@ -5,13 +5,15 @@ from pathlib import Path
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QLabel, QScrollArea
 
 import database.database as database
 import views.cuadrantes as cuadrantes_view
 from database.database import crear_base_datos
 from views.cuadrantes import VistaCuadrantes
+from views.configuracion import VistaConfiguracion
 from views.inicio import VistaInicio
+from views.puesta_marcha import VistaPuestaMarcha
 from views.restaurantes import VistaRestaurantes
 from views.turnos import VistaTurnos
 
@@ -55,6 +57,8 @@ class TestUxClaridadOperativa(unittest.TestCase):
             "Comprobar configuracion"
         )
         self.assertEqual(cuadrantes.selector_vista.currentData(), "empleado")
+        self.assertIn("Sin repartidor", cuadrantes.leyenda_cuadrante.text())
+        self.assertIn("plaza pendiente", cuadrantes.leyenda_cuadrante.text())
 
     def test_inicio_muestra_guia_operativa(self):
 
@@ -63,6 +67,40 @@ class TestUxClaridadOperativa(unittest.TestCase):
         self.assertTrue(hasattr(vista, "guia_operativa"))
         self.assertIn("Antes de generar", vista.guia_operativa.text())
         self.assertIn("crear repartidores", vista.guia_operativa.text())
+
+    def test_configuracion_usa_scroll_para_no_aplastar_paneles(self):
+
+        vista = VistaConfiguracion()
+        scrolls = vista.findChildren(QScrollArea)
+
+        self.assertTrue(scrolls)
+        self.assertTrue(hasattr(vista, "scroll"))
+        self.assertTrue(vista.scroll.widgetResizable())
+        titulo = vista.panel_datos_locales.findChild(QLabel).text().lower()
+        self.assertIn("datos locales", titulo)
+
+    def test_puesta_marcha_explica_reinicio_limpio(self):
+
+        vista = VistaPuestaMarcha()
+
+        self.assertIn("checklist", vista.guia.text().lower())
+        self.assertEqual(vista.btn_empezar_cero.text(), "Empezar de cero")
+        self.assertEqual(vista.btn_empezar_cero.property("variant"), "danger")
+
+    def test_colores_cuadrante_tienen_contraste_en_empleados_y_alertas(self):
+
+        vista = VistaCuadrantes()
+
+        self.assertEqual(vista.color_celda_empleado("libre"), "#FEE2E2")
+        self.assertEqual(
+            vista.color_texto_celda_empleado("libre"),
+            "#7F1D1D"
+        )
+        self.assertEqual(vista.color_celda_empleado("disponible"), "#F8FAFC")
+        self.assertEqual(
+            vista.color_texto_celda_empleado("disponible"),
+            "#475569"
+        )
 
     def test_cuadrantes_avisa_si_quitar_sin_celda(self):
 

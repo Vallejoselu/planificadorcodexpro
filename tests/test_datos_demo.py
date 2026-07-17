@@ -143,6 +143,48 @@ class TestDatosDemoService(unittest.TestCase):
         self.assertEqual(self.contar("calendario_semanal", True), 1)
         self.assertEqual(self.calendario_restante()[0], restaurante_real)
 
+    def test_empezar_de_cero_desactiva_datos_y_vacia_cuadrantes(self):
+
+        ciudad_id = database.insertar_ciudad("Ciudad real")
+        restaurante_id = database.insertar_restaurante(
+            "Restaurante real",
+            "",
+            "Centro",
+            "",
+            50,
+            ciudad_id=ciudad_id
+        )
+        repartidor_id = database.insertar_repartidor(
+            "Repartidor real",
+            30,
+            "Centro",
+            1,
+            1,
+            50,
+            50,
+            50
+        )
+        turno_id = database.insertar_turno(
+            "Comida",
+            "Comida real",
+            "13:00",
+            "16:00",
+            "#2563EB",
+            3
+        )
+        self.insertar_calendario(turno_id, restaurante_id, repartidor_id)
+
+        resumen = self.servicio.empezar_de_cero()
+
+        self.assertTrue(Path(resumen["respaldo"]).exists())
+        self.assertEqual(self.contar("ciudades"), 0)
+        self.assertEqual(self.contar("restaurantes"), 0)
+        self.assertEqual(self.contar("repartidores"), 0)
+        self.assertEqual(self.contar("turnos"), 0)
+        self.assertEqual(self.contar("calendario_semanal", True), 0)
+        self.assertEqual(resumen["repartidores"], 1)
+        self.assertEqual(resumen["cuadrantes"], 1)
+
     def resumen_tablas(self):
 
         return {

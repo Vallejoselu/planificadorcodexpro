@@ -40,7 +40,7 @@ from services.datos_locales import (
 from services.email_resumen import normalizar_destinatarios
 from services.integraciones.registro import guardar_configuracion as guardar_integracion
 from ui.theme_manager import ThemeManager
-from ui.widgets import PageHeader, configure_table, make_button
+from ui.widgets import PageHeader, configure_table, create_scroll_area, make_button
 
 
 ciudades_repository = CiudadesRepository()
@@ -68,9 +68,16 @@ class VistaConfiguracion(QWidget):
         self.layout.addWidget(
             PageHeader(
                 "Configuracion",
-                "Tema visual e integraciones preparadas"
+                "Ajustes de la aplicacion, datos locales e integraciones"
             )
         )
+
+        self.contenido = QWidget()
+        self.contenido_layout = QVBoxLayout(self.contenido)
+        self.contenido_layout.setContentsMargins(0, 0, 0, 0)
+        self.contenido_layout.setSpacing(14)
+        self.scroll = create_scroll_area(self.contenido)
+        self.layout.addWidget(self.scroll)
 
         self.panel_tema = QFrame()
         self.panel_tema.setObjectName("card")
@@ -85,7 +92,7 @@ class VistaConfiguracion(QWidget):
         )
         tema_layout.addRow("Tema", self.selector_tema)
 
-        self.layout.addWidget(self.panel_tema)
+        self.contenido_layout.addWidget(self.panel_tema)
 
         self.panel_actualizaciones = QFrame()
         self.panel_actualizaciones.setObjectName("card")
@@ -103,7 +110,7 @@ class VistaConfiguracion(QWidget):
         actualizaciones_layout.addWidget(self.estado_actualizaciones, 1)
         actualizaciones_layout.addWidget(self.btn_comprobar_actualizaciones)
 
-        self.layout.addWidget(self.panel_actualizaciones)
+        self.contenido_layout.addWidget(self.panel_actualizaciones)
 
         self.crear_panel_datos_locales()
         self.crear_panel_email()
@@ -115,7 +122,7 @@ class VistaConfiguracion(QWidget):
         self.btn_actualizar = make_button("Actualizar", "secondary")
         barra.addWidget(self.btn_actualizar)
         barra.addStretch()
-        self.layout.addLayout(barra)
+        self.contenido_layout.addLayout(barra)
 
         self.tabla_integraciones = QTableWidget()
         self.tabla_eventos = QTableWidget()
@@ -124,12 +131,13 @@ class VistaConfiguracion(QWidget):
         configure_table(self.tabla_eventos)
         configure_table(self.tabla_sincronizaciones)
 
-        self.layout.addWidget(QLabel("Integraciones preparadas"))
-        self.layout.addWidget(self.tabla_integraciones)
-        self.layout.addWidget(QLabel("Sincronizaciones recientes"))
-        self.layout.addWidget(self.tabla_sincronizaciones)
-        self.layout.addWidget(QLabel("Eventos de integracion"))
-        self.layout.addWidget(self.tabla_eventos)
+        self.contenido_layout.addWidget(QLabel("Integraciones preparadas"))
+        self.contenido_layout.addWidget(self.tabla_integraciones)
+        self.contenido_layout.addWidget(QLabel("Sincronizaciones recientes"))
+        self.contenido_layout.addWidget(self.tabla_sincronizaciones)
+        self.contenido_layout.addWidget(QLabel("Eventos de integracion"))
+        self.contenido_layout.addWidget(self.tabla_eventos)
+        self.contenido_layout.addStretch()
 
         self.btn_actualizar.clicked.connect(self.cargar_datos)
         self.selector_tema.currentIndexChanged.connect(self.cambiar_tema)
@@ -214,7 +222,7 @@ class VistaConfiguracion(QWidget):
         ])
         layout.addWidget(self.tabla_backups)
 
-        self.layout.addWidget(self.panel_datos_locales)
+        self.contenido_layout.addWidget(self.panel_datos_locales)
 
     # ======================================
 
@@ -265,7 +273,7 @@ class VistaConfiguracion(QWidget):
         acciones.addWidget(self.btn_guardar_email)
         layout.addLayout(acciones)
 
-        self.layout.addWidget(self.panel_email)
+        self.contenido_layout.addWidget(self.panel_email)
 
     # ======================================
 
@@ -306,7 +314,7 @@ class VistaConfiguracion(QWidget):
         acciones.addWidget(self.btn_guardar_delivery_generico)
         layout.addLayout(acciones)
 
-        self.layout.addWidget(self.panel_delivery_generico)
+        self.contenido_layout.addWidget(self.panel_delivery_generico)
 
     # ======================================
 
@@ -377,7 +385,7 @@ class VistaConfiguracion(QWidget):
         configure_table(self.tabla_demanda_zona)
         layout.addWidget(self.tabla_demanda_zona)
 
-        self.layout.addWidget(self.panel_demanda_zona)
+        self.contenido_layout.addWidget(self.panel_demanda_zona)
 
     # ======================================
 
@@ -446,7 +454,7 @@ class VistaConfiguracion(QWidget):
         configure_table(self.tabla_demanda_ciudad)
         layout.addWidget(self.tabla_demanda_ciudad)
 
-        self.layout.addWidget(self.panel_demanda_ciudad)
+        self.contenido_layout.addWidget(self.panel_demanda_ciudad)
 
     # ======================================
 
