@@ -1,6 +1,7 @@
 import unittest
 
 from services.planning_incidents import explicar_regla_incumplida
+from services.planning_engine import PlanningEngine
 from services.planning_models import PuntuacionConfig
 from services.planning_preparation import preparar_datos_planificacion
 from services.planning_scoring import puntuacion_solucion
@@ -260,10 +261,116 @@ class TestMotorPlanificacionMejorado(unittest.TestCase):
         )
 
         self.assertIn("detalle_reglas", incidencia)
+        self.assertIn("resumen_reglas", incidencia)
+        self.assertIn("Detalle:", incidencia["motivo"])
         self.assertEqual(
             incidencia["detalle_reglas"][0]["motivo"],
             "descanso consecutivo"
         )
+
+    def test_multiciudad_prioriza_turno_con_menos_candidatos(self):
+
+        ciudades = [{
+            "id": 1,
+            "nombre": "Ciudad A",
+            "activo": 1
+        }]
+        restaurantes = [
+            {
+                "id": 1,
+                "nombre": "Local facil",
+                "zona": "Centro",
+                "ciudad_id": 1,
+                "ciudad": "Ciudad A"
+            },
+            {
+                "id": 2,
+                "nombre": "Local dificil",
+                "zona": "Centro",
+                "ciudad_id": 1,
+                "ciudad": "Ciudad A"
+            }
+        ]
+        turnos = [
+            {
+                "id": 10,
+                "restaurante_id": 1,
+                "nombre": "Comida facil",
+                "hora_inicio": "12:00",
+                "hora_fin": "16:00",
+                "duracion": 4,
+                "activo": 1
+            },
+            {
+                "id": 20,
+                "restaurante_id": 2,
+                "nombre": "Comida dificil",
+                "hora_inicio": "12:00",
+                "hora_fin": "16:00",
+                "duracion": 4,
+                "activo": 1
+            }
+        ]
+        demandas = [
+            {
+                "restaurante_id": 1,
+                "turno_restaurante_id": 10,
+                "dia_semana": "lunes",
+                "repartidores_necesarios": 1,
+                "activo": 1
+            },
+            {
+                "restaurante_id": 2,
+                "turno_restaurante_id": 20,
+                "dia_semana": "lunes",
+                "repartidores_necesarios": 1,
+                "activo": 1
+            }
+        ]
+        repartidores = [
+            self.repartidor_multiciudad(1, [1, 2]),
+            self.repartidor_multiciudad(2, [1])
+        ]
+
+        resultado = PlanningEngine().generar_multiciudad(
+            repartidores,
+            ciudades,
+            restaurantes,
+            turnos,
+            demandas,
+            fecha_inicio="2026-07-13"
+        )
+        facil = resultado["horario"]["lunes"]["restaurante_1_turno_10"]
+        dificil = resultado["horario"]["lunes"]["restaurante_2_turno_20"]
+
+        self.assertEqual(dificil[0]["repartidor_id"], 1)
+        self.assertEqual(facil[0]["repartidor_id"], 2)
+        self.assertFalse([
+            incidencia
+            for incidencia in resultado["incidencias"]
+            if incidencia.get("regla") == "cobertura requerida por demanda"
+        ])
+
+    def repartidor_multiciudad(self, identificador, autorizados):
+
+        return {
+            "id": identificador,
+            "nombre": f"Rep {identificador}",
+            "horas": 40,
+            "zona": "Centro",
+            "doble_turno": 1,
+            "puede_hasta_la_una": 1,
+            "descanso": ["jueves", "viernes"],
+            "disponibilidad": {
+                "lunes": ["comida", "noche"]
+            },
+            "ciudad_principal_id": 1,
+            "restaurante_principal_id": 1,
+            "ciudades_autorizadas": [1],
+            "restaurantes_autorizados": autorizados,
+            "max_horas_diarias": 10,
+            "max_dias_consecutivos": 5
+        }
 
 
 if __name__ == "__main__":

@@ -237,6 +237,80 @@ class TestGeneradorMulticiudadDemanda(unittest.TestCase):
         self.assertEqual(incidencia["asignados"], 2)
         self.assertEqual(incidencia["faltan"], 2)
         self.assertIn("Regla incumplida", incidencia["motivo"])
+        self.assertIn("Detalle:", incidencia["motivo"])
+        self.assertIn("resumen_reglas", incidencia)
+
+    def test_motor_cubre_primero_turnos_con_menos_candidatos(self):
+
+        datos = self._datos_base()
+        datos["restaurantes"] = [
+            {
+                "id": 1,
+                "nombre": "Local facil",
+                "zona": "Centro",
+                "ciudad_id": 1,
+                "ciudad": "Ciudad A"
+            },
+            {
+                "id": 2,
+                "nombre": "Local dificil",
+                "zona": "Centro",
+                "ciudad_id": 1,
+                "ciudad": "Ciudad A"
+            }
+        ]
+        datos["turnos"] = [
+            {
+                "id": 10,
+                "restaurante_id": 1,
+                "nombre": "Comida facil",
+                "hora_inicio": "12:00",
+                "hora_fin": "16:00",
+                "duracion": 4,
+                "activo": 1
+            },
+            {
+                "id": 20,
+                "restaurante_id": 2,
+                "nombre": "Comida dificil",
+                "hora_inicio": "12:00",
+                "hora_fin": "16:00",
+                "duracion": 4,
+                "activo": 1
+            }
+        ]
+        datos["demandas"] = [
+            {
+                "restaurante_id": 1,
+                "turno_restaurante_id": 10,
+                "dia_semana": "lunes",
+                "repartidores_necesarios": 1,
+                "activo": 1
+            },
+            {
+                "restaurante_id": 2,
+                "turno_restaurante_id": 20,
+                "dia_semana": "lunes",
+                "repartidores_necesarios": 1,
+                "activo": 1
+            }
+        ]
+        datos["repartidores"] = [
+            self._repartidor(1, restaurante=1, ciudad=1, autorizados=[1, 2]),
+            self._repartidor(2, restaurante=1, ciudad=1, autorizados=[1])
+        ]
+
+        resultado = self._generar(datos)
+        facil = resultado["horario"]["lunes"]["restaurante_1_turno_10"]
+        dificil = resultado["horario"]["lunes"]["restaurante_2_turno_20"]
+
+        self.assertEqual(dificil[0]["repartidor_id"], 1)
+        self.assertEqual(facil[0]["repartidor_id"], 2)
+        self.assertFalse([
+            incidencia
+            for incidencia in resultado["incidencias"]
+            if incidencia.get("regla") == "cobertura requerida por demanda"
+        ])
 
     def test_no_asigna_restaurante_no_autorizado(self):
 
