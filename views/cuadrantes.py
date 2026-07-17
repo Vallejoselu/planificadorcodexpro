@@ -100,6 +100,9 @@ class VistaCuadrantes(QWidget):
         )
         self.detalle_seleccion.setWordWrap(True)
         self.detalle_seleccion.setObjectName("detalle_seleccion")
+        self.diagnostico_cuadrante = QLabel("")
+        self.diagnostico_cuadrante.setWordWrap(True)
+        self.diagnostico_cuadrante.setObjectName("guia_operativa")
 
         self.btn_comprobar = QPushButton("Comprobar configuracion")
         self.btn_generar = QPushButton("Generar cuadrante")
@@ -326,6 +329,7 @@ class VistaCuadrantes(QWidget):
         self.layout.addWidget(self.barra_filtros_scroll)
         self.layout.addWidget(self.barra_acciones_scroll)
         self.layout.addWidget(self.detalle_seleccion)
+        self.layout.addWidget(self.diagnostico_cuadrante)
 
     # ======================================
 
@@ -641,6 +645,7 @@ class VistaCuadrantes(QWidget):
         self.filas_repartidores = estado["filas_repartidores"]
         self.estado_semana.setText(estado["estado_texto"])
         self.estado_semana.setToolTip(estado["estado_texto"])
+        self.actualizar_diagnostico(estado["diagnostico"])
 
         self.pintar_tabla()
         self.pintar_tabla_locales()
@@ -1060,6 +1065,15 @@ class VistaCuadrantes(QWidget):
                 self.tabla_alertas.setItem(fila, columna, item)
 
         self.tabla_alertas.resizeColumnsToContents()
+
+    # ======================================
+
+    def actualizar_diagnostico(self, diagnostico):
+
+        self.diagnostico_cuadrante.setText(diagnostico.get("texto", ""))
+        self.diagnostico_cuadrante.setToolTip(
+            diagnostico.get("resumen", "")
+        )
 
     # ======================================
 

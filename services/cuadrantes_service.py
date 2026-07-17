@@ -761,6 +761,16 @@ class CuadrantesService:
             demandas_ciudad=demandas_ciudad,
             restaurante_turnos=restaurante_turnos
         )
+        diagnostico = self.diagnosticar_semana(
+            fecha_inicio,
+            calendario,
+            asignaciones,
+            indicadores,
+            alertas,
+            turnos,
+            restaurantes,
+            repartidores
+        )
 
         return {
             "calendario": calendario,
@@ -775,6 +785,7 @@ class CuadrantesService:
             ),
             "indicadores": indicadores,
             "alertas": alertas,
+            "diagnostico": diagnostico,
             "celdas_semana": self.construir_celdas_semana(
                 asignaciones,
                 turnos,
@@ -874,6 +885,15 @@ class CuadrantesService:
             self.alertas_conflictos_ausencias(
                 fecha_inicio,
                 calendario,
+                repartidores
+            )
+        )
+        alertas.extend(
+            self.alertas_reglas_asignaciones(
+                fecha_inicio,
+                asignaciones,
+                turnos,
+                restaurantes,
                 repartidores
             )
         )
@@ -1113,6 +1133,288 @@ class CuadrantesService:
 
         return alertas
 
+    def alertas_reglas_asignaciones(
+        self,
+        fecha_inicio,
+        asignaciones,
+        turnos,
+        restaurantes,
+        repartidores
+    ):
+
+        problemas = self.problemas_reglas_asignaciones(
+            fecha_inicio,
+            asignaciones,
+            turnos,
+            restaurantes,
+            repartidores
+        )
+
+        return [
+            self.crear_alerta(
+                "Reglas incumplidas",
+                problema["detalle"],
+                "alta"
+            )
+            for problema in problemas
+        ]
+
+    def problemas_reglas_asignaciones(
+        self,
+        fecha_inicio,
+        asignaciones,
+        turnos,
+        restaurantes,
+        repartidores
+    ):
+
+        turnos_por_id = {
+            self.valor_campo(turno, "id", 0): self.turno_para_reglas(turno)
+            for turno in turnos
+        }
+        restaurantes_por_id = {
+            restaurante["id"]: restaurante
+            for restaurante in normalizar_restaurantes(restaurantes)
+        }
+        repartidores_por_id = self.repartidores_normalizados_para_reglas(
+            repartidores
+        )
+
+        for repartidor in repartidores_por_id.values():
+
+            preparar_estado_repartidor(repartidor)
+
+        fechas = self.fechas_semana(fecha_inicio)
+        problemas = []
+
+        for (dia, turno_id), elementos in sorted(
+            (asignaciones or {}).items(),
+            key=lambda item: (DIAS_SEMANA.index(item[0][0]), item[0][1])
+        ):
+
+            turno = turnos_por_id.get(turno_id)
+
+            if not turno:
+
+                continue
+
+            for asignacion in elementos or []:
+
+                repartidor_id = asignacion.get("repartidor_id")
+
+                if repartidor_id is None:
+
+                    continue
+
+                repartidor = repartidores_por_id.get(repartidor_id)
+                restaurante = restaurantes_por_id.get(
+                    asignacion.get("restaurante_id")
+                )
+
+                if not repartidor or not restaurante:
+
+                    continue
+
+                motivo = motivo_no_puede_trabajar(
+                    repartidor,
+                    restaurante,
+                    dia,
+                    turno,
+                    fechas.get(dia)
+                )
+
+                if motivo:
+
+                    problemas.append({
+                        "dia": dia,
+                        "turno": turno.get("nombre", "Turno"),
+                        "restaurante": restaurante.get("nombre", ""),
+                        "repartidor": repartidor.get("nombre", ""),
+                        "motivo": motivo,
+                        "detalle": (
+                            f"{repartidor.get('nombre', 'Repartidor')} "
+                            f"no puede cubrir {dia} / "
+                            f"{turno.get('nombre', 'Turno')} en "
+                            f"{restaurante.get('nombre', 'restaurante')}: "
+                            f"{motivo}."
+                        )
+                    })
+                    continue
+
+                registrar_asignacion(
+                    repartidor,
+                    restaurante,
+                    turno,
+                    dia
+                )
+
+        return problemas
+
+    def repartidores_normalizados_para_reglas(self, repartidores):
+
+        normalizados = {}
+
+        for repartidor in repartidores or []:
+
+            try:
+
+                datos = normalizar_repartidor(repartidor)
+
+            except (IndexError, KeyError, TypeError, ValueError):
+
+                continue
+
+            normalizados[datos["id"]] = datos
+
+        return normalizados
+
+    def diagnosticar_semana(
+        self,
+        fecha_inicio,
+        calendario,
+        asignaciones,
+        indicadores,
+        alertas,
+        turnos,
+        restaurantes,
+        repartidores
+    ):
+
+        alertas = alertas or []
+        altas = [
+            alerta
+            for alerta in alertas
+            if alerta.get("severidad") == "alta"
+        ]
+        medias = [
+            alerta
+            for alerta in alertas
+            if alerta.get("severidad") == "media"
+        ]
+        problemas = [
+            self.problema_desde_alerta(alerta)
+            for alerta in alertas
+        ]
+
+        if not calendario and not indicadores.get("asignaciones"):
+
+            estado = "pendiente"
+            resumen = (
+                "No hay cuadrante guardado para esta semana. "
+                "Genera uno o asigna turnos manualmente para poder analizarlo."
+            )
+
+        elif altas:
+
+            estado = "critico"
+            resumen = (
+                f"Hay {len(altas)} problema(s) critico(s) que conviene "
+                "resolver antes de usar el cuadrante."
+            )
+
+        elif medias:
+
+            estado = "aviso"
+            resumen = (
+                f"El cuadrante puede usarse, pero tiene {len(medias)} "
+                "aviso(s) operativo(s)."
+            )
+
+        else:
+
+            estado = "ok"
+            resumen = (
+                "Cuadrante cubierto sin problemas detectados con las "
+                "reglas actuales."
+            )
+
+        return {
+            "fecha_inicio": normalizar_fecha_inicio_semana(fecha_inicio),
+            "estado": estado,
+            "resumen": resumen,
+            "total_alertas": len(alertas),
+            "criticas": len(altas),
+            "avisos": len(medias),
+            "asignaciones": indicadores.get("asignaciones", 0),
+            "con_repartidor": indicadores.get("con_repartidor", 0),
+            "sin_repartidor": indicadores.get("sin_repartidor", 0),
+            "problemas": problemas,
+            "texto": self.texto_diagnostico(
+                resumen,
+                indicadores,
+                problemas
+            )
+        }
+
+    def problema_desde_alerta(self, alerta):
+
+        tipo = alerta.get("tipo", "")
+        return {
+            "tipo": tipo,
+            "detalle": alerta.get("detalle", ""),
+            "severidad": alerta.get("severidad", "media"),
+            "accion": self.accion_recomendada_alerta(tipo)
+        }
+
+    def accion_recomendada_alerta(self, tipo):
+
+        acciones = {
+            "Turnos sin cubrir": (
+                "Asigna un repartidor compatible o baja la demanda "
+                "si la plaza no es necesaria."
+            ),
+            "Asignaciones sin repartidor": (
+                "Completa las plazas vacias antes de publicar el cuadrante."
+            ),
+            "Horas pendientes": (
+                "Revisa si el repartidor necesita mas turnos o si su "
+                "disponibilidad impide completar contrato."
+            ),
+            "Horas extra": (
+                "Confirma que las horas complementarias estan permitidas "
+                "y dentro del limite."
+            ),
+            "Restaurantes sin demanda": (
+                "Configura demanda por restaurante, zona o ciudad para "
+                "que el generador sepa cuantas plazas crear."
+            ),
+            "Conflictos por vacaciones/bajas": (
+                "Cambia la asignacion o retira al repartidor ausente."
+            ),
+            "Reglas incumplidas": (
+                "Sustituye el repartidor o corrige disponibilidad, descanso "
+                "y autorizaciones."
+            )
+        }
+
+        return acciones.get(
+            tipo,
+            "Revisa la configuracion relacionada con esta alerta."
+        )
+
+    def texto_diagnostico(self, resumen, indicadores, problemas):
+
+        lineas = [
+            resumen,
+            (
+                f"Asignaciones: {indicadores.get('asignaciones', 0)} | "
+                f"Cubiertas: {indicadores.get('con_repartidor', 0)} | "
+                f"Pendientes: {indicadores.get('sin_repartidor', 0)}"
+            )
+        ]
+
+        if problemas:
+
+            lineas.append("Acciones recomendadas:")
+
+            for problema in problemas[:5]:
+
+                lineas.append(
+                    f"- {problema['tipo']}: {problema['accion']}"
+                )
+
+        return "\n".join(lineas)
+
     def alertas_generacion(self, resultado):
 
         alertas = []
@@ -1273,7 +1575,7 @@ class CuadrantesService:
                     asignacion.get("repartidor_id")
                 )
                 etiqueta_repartidor = (
-                    f" - {repartidor[1]}"
+                    f" - {self.valor_campo(repartidor, 'nombre', 1)}"
                     if repartidor
                     else " - Sin repartidor"
                 )
@@ -1281,8 +1583,13 @@ class CuadrantesService:
 
                     sin_repartidor += 1
 
-                textos.append(f"{restaurante[1]}{etiqueta_repartidor}")
-                detalle.append(f"{restaurante[1]}{etiqueta_repartidor}")
+                nombre_restaurante = self.valor_campo(
+                    restaurante,
+                    "nombre",
+                    1
+                )
+                textos.append(f"{nombre_restaurante}{etiqueta_repartidor}")
+                detalle.append(f"{nombre_restaurante}{etiqueta_repartidor}")
 
             if horario and textos:
 
@@ -1302,7 +1609,9 @@ class CuadrantesService:
                     else "completo"
                 ),
                 "fondo": (
-                    self.color_restaurante(primer_restaurante[0])
+                    self.color_restaurante(
+                        self.valor_campo(primer_restaurante, "id", 0)
+                    )
                     if primer_restaurante
                     else None
                 ),
@@ -1318,7 +1627,7 @@ class CuadrantesService:
     def tooltip_celda(self, turno, dia, detalle, sin_repartidor):
 
         partes = []
-        nombre_turno = turno[2] if turno else "Turno"
+        nombre_turno = self.nombre_turno(turno) if turno else "Turno"
         partes.append(f"{dia.capitalize()} - {nombre_turno}")
         horario = self.texto_horario_turno(turno)
 
@@ -1370,12 +1679,12 @@ class CuadrantesService:
 
         return [
             {
-                "restaurante_id": restaurante[0],
-                "nombre": restaurante[1],
+                "restaurante_id": self.valor_campo(restaurante, "id", 0),
+                "nombre": self.valor_campo(restaurante, "nombre", 1),
                 "dias": {
                     dia: self.texto_local_dia(
                         asignaciones,
-                        restaurante[0],
+                        self.valor_campo(restaurante, "id", 0),
                         dia,
                         turnos,
                         repartidores
@@ -1569,7 +1878,9 @@ class CuadrantesService:
 
             if restaurante:
 
-                detalle += f"\n{restaurante[1]}"
+                detalle += (
+                    f"\n{self.valor_campo(restaurante, 'nombre', 1)}"
+                )
 
             lineas.append(detalle)
 
@@ -1701,7 +2012,9 @@ class CuadrantesService:
 
         for turno in turnos:
 
-            for asignacion in asignaciones.get((dia, turno[0]), []):
+            turno_id = self.valor_campo(turno, "id", 0)
+
+            for asignacion in asignaciones.get((dia, turno_id), []):
 
                 if asignacion["restaurante_id"] != restaurante_id:
 
@@ -1710,7 +2023,7 @@ class CuadrantesService:
                 repartidor = repartidores_por_id.get(
                     asignacion.get("repartidor_id")
                 )
-                texto = turno[2]
+                texto = self.nombre_turno(turno)
                 horario = self.texto_horario_turno(turno)
 
                 if horario:
@@ -1719,7 +2032,9 @@ class CuadrantesService:
 
                 if repartidor:
 
-                    texto += f" - {repartidor[1]}"
+                    texto += (
+                        f" - {self.valor_campo(repartidor, 'nombre', 1)}"
+                    )
 
                 else:
 
@@ -2022,7 +2337,10 @@ class CuadrantesService:
             "Personalizado": "#990000"
         }
 
-        return turno[5] or colores.get(turno[1], "#333333")
+        color = self.valor_campo(turno, "color", 5)
+        tipo = self.valor_campo(turno, "tipo", 1)
+
+        return color or colores.get(tipo, "#333333")
 
     def semana_tiene_datos(self, fecha_inicio):
 
