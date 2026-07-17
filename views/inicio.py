@@ -83,6 +83,7 @@ class VistaInicio(QWidget):
         acciones.setSpacing(10)
 
         botones = [
+            ("Guia de uso", "guia_uso"),
             ("Puesta en marcha", "puesta_marcha"),
             ("Nuevo repartidor", "repartidores"),
             ("Nuevo restaurante", "restaurantes"),
@@ -96,7 +97,7 @@ class VistaInicio(QWidget):
                 texto,
                 (
                     "primary"
-                    if pagina in ("puesta_marcha", "cuadrantes")
+                    if pagina in ("guia_uso", "puesta_marcha", "cuadrantes")
                     else "secondary"
                 )
             )
