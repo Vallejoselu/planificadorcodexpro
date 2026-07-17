@@ -119,6 +119,15 @@ class CuadrantesService:
     def generar_cuadrante(self, contexto, fecha_inicio):
 
         fecha_inicio = normalizar_fecha_inicio_semana(fecha_inicio)
+        precomprobacion = self.precomprobar_generacion(
+            contexto,
+            fecha_inicio
+        )
+
+        if not precomprobacion["puede_generar"]:
+
+            raise ValueError(precomprobacion["texto"])
+
         self.validar_contexto_base_generacion(contexto)
         self.asegurar_turnos_generacion(contexto)
         self.validar_contexto_generacion(contexto)
@@ -141,6 +150,7 @@ class CuadrantesService:
                 "Generacion automatica multiciudad",
                 fecha_inicio
             )
+            resultado["_precomprobacion"] = precomprobacion
 
             return {
                 "resultado": resultado,
@@ -164,6 +174,7 @@ class CuadrantesService:
             "Generacion automatica",
             fecha_inicio
         )
+        resultado["_precomprobacion"] = precomprobacion
 
         return {
             "resultado": resultado,
@@ -172,6 +183,123 @@ class CuadrantesService:
                 mapa_turnos
             )
         }
+
+    def precomprobar_generacion(self, contexto, fecha_inicio):
+
+        fecha_inicio = normalizar_fecha_inicio_semana(fecha_inicio)
+        repartidores = contexto.get("repartidores", [])
+        restaurantes = contexto.get("restaurantes", [])
+        turnos = contexto.get("turnos", [])
+        restaurante_turnos = contexto.get("restaurante_turnos", [])
+        demandas_restaurante = contexto.get("demandas_restaurante", [])
+        demandas_zona = contexto.get("demandas_zona", [])
+        demandas_ciudad = contexto.get("demandas_ciudad", [])
+        errores = []
+        advertencias = []
+
+        if not repartidores:
+
+            errores.append("No hay repartidores activos.")
+
+        if not restaurantes:
+
+            errores.append("No hay restaurantes activos.")
+
+        if not turnos and not restaurante_turnos:
+
+            advertencias.append(
+                "No hay turnos configurados; se crearan turnos base "
+                "de comida y cena antes de generar."
+            )
+
+        restaurantes_sin_demanda = self.alertas_restaurantes_sin_demanda(
+            restaurantes,
+            demandas_restaurante,
+            demandas_zona,
+            demandas_ciudad
+        )
+
+        for alerta in restaurantes_sin_demanda:
+
+            advertencias.append(alerta["detalle"])
+
+        if restaurantes and not (
+            demandas_restaurante
+            or demandas_zona
+            or demandas_ciudad
+        ):
+
+            advertencias.append(
+                "No hay demanda configurada. El generador puede crear "
+                "una propuesta basica, pero el resultado no representa "
+                "necesidades reales de cobertura."
+            )
+
+        datos = {
+            "fecha_inicio": fecha_inicio,
+            "repartidores": len(repartidores),
+            "restaurantes": len(restaurantes),
+            "turnos": len(turnos),
+            "turnos_propios": len(restaurante_turnos),
+            "demandas_restaurante": len(demandas_restaurante),
+            "demandas_zona": len(demandas_zona),
+            "demandas_ciudad": len(demandas_ciudad),
+            "errores": errores,
+            "advertencias": advertencias,
+            "puede_generar": not errores
+        }
+        datos["texto"] = self.texto_precomprobacion(datos)
+        return datos
+
+    def texto_precomprobacion(self, datos):
+
+        estado = (
+            "Lista para generar"
+            if datos["puede_generar"]
+            else "No se puede generar"
+        )
+        lineas = [
+            "Comprobacion previa del cuadrante",
+            "",
+            f"Estado: {estado}",
+            f"Semana: {datos['fecha_inicio']}",
+            f"Repartidores activos: {datos['repartidores']}",
+            f"Restaurantes activos: {datos['restaurantes']}",
+            f"Turnos globales: {datos['turnos']}",
+            f"Turnos propios de restaurante: {datos['turnos_propios']}",
+            (
+                "Demandas configuradas: "
+                f"{datos['demandas_restaurante']} por restaurante, "
+                f"{datos['demandas_zona']} por zona, "
+                f"{datos['demandas_ciudad']} por ciudad"
+            )
+        ]
+
+        lineas.extend(["", "Errores bloqueantes"])
+
+        if datos["errores"]:
+
+            for error in datos["errores"]:
+
+                lineas.append(f"- {error}")
+
+        else:
+
+            lineas.append("- Ninguno")
+
+        lineas.extend(["", "Advertencias"])
+
+        if datos["advertencias"]:
+
+            for advertencia in datos["advertencias"]:
+
+                lineas.append(f"- {advertencia}")
+
+        else:
+
+            lineas.append("- Ninguna")
+
+        return "\n".join(lineas)
 
     def validar_contexto_generacion(self, contexto):
 
@@ -1983,10 +2111,30 @@ class CuadrantesService:
                 or incidencia.get("regla") == "minimo de repartidores por turno"
             )
         ]
-        turnos_cubiertos = sum(
+        asignaciones_generadas = sum(
             len(asignaciones)
             for turnos_dia in resultado.get("horario", {}).values()
             for asignaciones in turnos_dia.values()
+        )
+        asignaciones_con_repartidor = sum(
+            1
+            for turnos_dia in resultado.get("horario", {}).values()
+            for asignaciones in turnos_dia.values()
+            for asignacion in asignaciones
+            if asignacion.get("repartidor_id") is not None
+        )
+        asignaciones_sin_repartidor = (
+            asignaciones_generadas - asignaciones_con_repartidor
+        )
+        cobertura_porcentaje = (
+            round(
+                asignaciones_con_repartidor
+                * 100
+                / asignaciones_generadas,
+                1
+            )
+            if asignaciones_generadas
+            else 0
         )
         horas_totales = sum(
             item.get("horas", 0)
@@ -2003,9 +2151,12 @@ class CuadrantesService:
             "incidencias": incidencias,
             "horas_complementarias": horas_complementarias,
             "sin_cubrir": sin_cubrir,
-            "asignaciones_generadas": turnos_cubiertos,
+            "asignaciones_generadas": asignaciones_generadas,
+            "asignaciones_con_repartidor": asignaciones_con_repartidor,
+            "asignaciones_sin_repartidor": asignaciones_sin_repartidor,
+            "cobertura_porcentaje": cobertura_porcentaje,
             "advertencias": len(incidencias),
-            "turnos_cubiertos": turnos_cubiertos,
+            "turnos_cubiertos": asignaciones_con_repartidor,
             "horas_totales": horas_totales,
             "repartidores_asignados": repartidores_asignados
         }
@@ -2019,18 +2170,50 @@ class CuadrantesService:
             else "Listo para guardar"
         )
         lineas = [
-            "Resumen del cuadrante",
+            "Vista previa del cuadrante",
             "",
+            "El cuadrante aun no esta guardado.",
             f"Resultado: {resultado_texto}",
             f"Asignaciones generadas: {datos['asignaciones_generadas']}",
+            (
+                "Asignaciones con repartidor: "
+                f"{datos['asignaciones_con_repartidor']}"
+            ),
+            (
+                "Asignaciones sin repartidor: "
+                f"{datos['asignaciones_sin_repartidor']}"
+            ),
+            f"Cobertura: {datos['cobertura_porcentaje']:g}%",
             f"Repartidores asignados: {len(datos['repartidores_asignados'])}",
             f"Turnos cubiertos: {datos['turnos_cubiertos']}",
             f"Turnos sin cubrir: {len(datos['sin_cubrir'])}",
             f"Horas totales: {datos['horas_totales']:g}",
-            f"Advertencias: {datos['advertencias']}",
+            f"Advertencias: {datos['advertencias']}"
+        ]
+
+        precomprobacion = resultado.get("_precomprobacion")
+
+        if precomprobacion:
+
+            lineas.extend([
+                "",
+                "Comprobacion previa"
+            ])
+
+            if precomprobacion.get("advertencias"):
+
+                for advertencia in precomprobacion["advertencias"]:
+
+                    lineas.append(f"- {advertencia}")
+
+            else:
+
+                lineas.append("- Sin advertencias previas")
+
+        lineas.extend([
             "",
             "Repartidores"
-        ]
+        ])
 
         if datos["repartidores_asignados"]:
 

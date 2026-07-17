@@ -559,7 +559,10 @@ class TestCuadrantesServicePorCapa(unittest.TestCase):
         resultado = {
             "horario": {
                 "lunes": {
-                    "comida": [{"repartidor_id": 1}]
+                    "comida": [
+                        {"repartidor_id": 1},
+                        {"repartidor_id": None}
+                    ]
                 }
             },
             "resumen": [{"nombre": "Ana", "horas": 3}],
@@ -579,11 +582,57 @@ class TestCuadrantesServicePorCapa(unittest.TestCase):
         texto = servicio.texto_resumen_generacion(resultado)
 
         self.assertIn("Resultado: Con advertencias", texto)
-        self.assertIn("Asignaciones generadas: 1", texto)
+        self.assertIn("El cuadrante aun no esta guardado.", texto)
+        self.assertIn("Asignaciones generadas: 2", texto)
+        self.assertIn("Asignaciones con repartidor: 1", texto)
+        self.assertIn("Asignaciones sin repartidor: 1", texto)
+        self.assertIn("Cobertura: 50%", texto)
         self.assertIn("Advertencias: 1", texto)
         self.assertIn("Turnos sin cubrir: 1", texto)
         self.assertIn("Horas complementarias", texto)
         self.assertIn("Ana: 2 h de 4 permitidas", texto)
+
+    def test_precomprobar_generacion_detecta_configuracion_incompleta(self):
+
+        servicio = CuadrantesService()
+
+        precomprobacion = servicio.precomprobar_generacion(
+            {
+                "repartidores": [],
+                "restaurantes": [],
+                "turnos": [],
+                "restaurante_turnos": [],
+                "demandas_restaurante": [],
+                "demandas_zona": [],
+                "demandas_ciudad": []
+            },
+            "2026-07-13"
+        )
+
+        self.assertFalse(precomprobacion["puede_generar"])
+        self.assertIn("No hay repartidores activos.", precomprobacion["texto"])
+        self.assertIn("No hay restaurantes activos.", precomprobacion["texto"])
+
+    def test_precomprobar_generacion_avisa_sin_demanda(self):
+
+        servicio = CuadrantesService()
+
+        precomprobacion = servicio.precomprobar_generacion(
+            {
+                "repartidores": [(1, "Ana", 30)],
+                "restaurantes": [(2, "BK Centro", "", "Centro", "", 50, 1)],
+                "turnos": [(5, "Comida", "Comida", "13:00", "16:00", "", 3, 1)],
+                "restaurante_turnos": [],
+                "demandas_restaurante": [],
+                "demandas_zona": [],
+                "demandas_ciudad": []
+            },
+            "2026-07-13"
+        )
+
+        self.assertTrue(precomprobacion["puede_generar"])
+        self.assertIn("no tiene demanda configurada", precomprobacion["texto"])
+        self.assertIn("No hay demanda configurada", precomprobacion["texto"])
 
     def test_preparar_cambio_no_duplica_mismo_repartidor_mismo_turno(self):
 

@@ -50,6 +50,11 @@ class TestUxClaridadOperativa(unittest.TestCase):
             "Quitar asignacion"
         )
         self.assertIn("No elimina", cuadrantes.btn_eliminar.toolTip())
+        self.assertEqual(
+            cuadrantes.btn_comprobar.text(),
+            "Comprobar configuracion"
+        )
+        self.assertEqual(cuadrantes.selector_vista.currentData(), "empleado")
 
     def test_inicio_muestra_guia_operativa(self):
 
@@ -81,6 +86,28 @@ class TestUxClaridadOperativa(unittest.TestCase):
         self.assertEqual(avisos[0][1], "Quitar asignacion")
         self.assertIn("Selecciona una celda", avisos[0][2])
         self.assertIn("no elimina restaurantes", avisos[0][2].lower())
+
+    def test_comprobar_configuracion_muestra_resultado_previo(self):
+
+        avisos = []
+        info_original = cuadrantes_view.QMessageBox.information
+        cuadrantes_view.QMessageBox.information = (
+            lambda *args, **kwargs: avisos.append(args)
+        )
+
+        try:
+
+            vista = VistaCuadrantes()
+            vista.comprobar_configuracion()
+
+        finally:
+
+            cuadrantes_view.QMessageBox.information = info_original
+
+        self.assertEqual(len(avisos), 1)
+        self.assertEqual(avisos[0][1], "Configuracion incompleta")
+        self.assertIn("Comprobacion previa", avisos[0][2])
+        self.assertIn("No hay repartidores activos", avisos[0][2])
 
 
 if __name__ == "__main__":
