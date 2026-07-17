@@ -12,10 +12,12 @@ from PySide6.QtWidgets import (
 )
 
 from services.configuracion_guiada import ConfiguracionGuiadaService
+from services.datos_demo import DatosDemoService
 from ui.widgets import PageHeader, configure_table
 
 
 configuracion_guiada_service = ConfiguracionGuiadaService()
+datos_demo_service = DatosDemoService()
 
 
 class VistaPuestaMarcha(QWidget):
@@ -68,11 +70,17 @@ class VistaPuestaMarcha(QWidget):
 
         self.btn_actualizar = QPushButton("Actualizar diagnostico")
         self.btn_abrir = QPushButton("Abrir pantalla recomendada")
+        self.btn_cargar_demo = QPushButton("Cargar ejemplo")
+        self.btn_limpiar_demo = QPushButton("Limpiar ejemplo")
         self.btn_actualizar.clicked.connect(self.cargar_datos)
         self.btn_abrir.clicked.connect(self.abrir_pantalla_recomendada)
+        self.btn_cargar_demo.clicked.connect(self.cargar_datos_demo)
+        self.btn_limpiar_demo.clicked.connect(self.limpiar_datos_demo)
 
         acciones.addWidget(self.btn_actualizar)
         acciones.addWidget(self.btn_abrir)
+        acciones.addWidget(self.btn_cargar_demo)
+        acciones.addWidget(self.btn_limpiar_demo)
         acciones.addStretch()
         self.layout.addLayout(acciones)
 
@@ -144,3 +152,61 @@ class VistaPuestaMarcha(QWidget):
         if self.ventana:
 
             self.ventana.mostrar_pagina(pagina)
+
+    def cargar_datos_demo(self):
+
+        respuesta = QMessageBox.question(
+            self,
+            "Cargar ejemplo",
+            (
+                "Se crearan datos de ejemplo marcados como [Demo]. "
+                "No se modificaran tus datos reales. "
+                "Puedes limpiarlos despues desde esta misma pantalla."
+            )
+        )
+
+        if respuesta != QMessageBox.Yes:
+
+            return
+
+        resumen = datos_demo_service.cargar_demo()
+        self.cargar_datos()
+        QMessageBox.information(
+            self,
+            "Cargar ejemplo",
+            (
+                "Datos demo preparados: "
+                f"{resumen['ciudades']} ciudades, "
+                f"{resumen['restaurantes']} restaurantes, "
+                f"{resumen['turnos']} turnos y "
+                f"{resumen['repartidores']} repartidores."
+            )
+        )
+
+    def limpiar_datos_demo(self):
+
+        respuesta = QMessageBox.question(
+            self,
+            "Limpiar ejemplo",
+            (
+                "Se desactivaran solo los datos marcados como [Demo]. "
+                "Tus datos reales no se tocaran."
+            )
+        )
+
+        if respuesta != QMessageBox.Yes:
+
+            return
+
+        resumen = datos_demo_service.limpiar_demo()
+        self.cargar_datos()
+        QMessageBox.information(
+            self,
+            "Limpiar ejemplo",
+            (
+                "Datos demo desactivados: "
+                f"{resumen['ciudades']} ciudades, "
+                f"{resumen['restaurantes']} restaurantes y "
+                f"{resumen['repartidores']} repartidores."
+            )
+        )
