@@ -57,13 +57,24 @@ class TestUiThemeNavigation(unittest.TestCase):
     def test_paginas_stack(self):
 
         ventana = VentanaPrincipal()
+        paginas_esperadas = {
+            "inicio",
+            "guia_uso",
+            "puesta_marcha",
+            "repartidores",
+            "ciudades",
+            "restaurantes",
+            "turnos",
+            "cuadrantes",
+            "asistente",
+            "reglas",
+            "estadisticas",
+            "exportar",
+            "configuracion",
+        }
 
-        self.assertEqual(ventana.stack.count(), 12)
-        self.assertIn("inicio", ventana.paginas)
-        self.assertIn("puesta_marcha", ventana.paginas)
-        self.assertIn("ciudades", ventana.paginas)
-        self.assertIn("reglas", ventana.paginas)
-        self.assertIn("configuracion", ventana.paginas)
+        self.assertEqual(ventana.stack.count(), len(paginas_esperadas))
+        self.assertEqual(set(ventana.paginas), paginas_esperadas)
 
     def test_cambio_pagina_desde_menu(self):
 
