@@ -1,5 +1,33 @@
 # CHANGELOG
 
+## 2.2.1 - Claridad de uso y modo simple
+
+### Incluido
+
+- Pantalla de puesta en marcha mas clara para saber que falta antes de generar
+  cuadrantes.
+- Guia de uso dentro de la aplicacion con flujo paso a paso.
+- Auditoria de producto con puntos de mejora y riesgos pendientes.
+- Modo simple en Configuracion para ocultar opciones tecnicas hasta que hagan
+  falta.
+- Modo simple en Cuadrantes para dejar visibles las acciones principales y
+  mover edicion manual, copiar, pegar, plantillas, deshacer y rehacer a modo
+  avanzado.
+- Mejoras de textos y documentacion para explicar mejor datos locales,
+  backups, diagnostico, colores y estados del cuadrante.
+
+### Corregido
+
+- Pruebas de navegacion actualizadas para reconocer la nueva pagina de Guia de
+  uso.
+- Aislamiento de pruebas de guia para no contaminar bases de datos reales.
+- Importacion de controles de interfaz necesarios para Configuracion.
+
+### Preparacion
+
+- Actualizacion de version a 2.2.1.
+- Instalador preparado como `PlanificadorDeliveryPro-Setup-2.2.1.exe`.
+
 ## 2.2.0 - Datos locales y preparacion de release
 
 ### Incluido
