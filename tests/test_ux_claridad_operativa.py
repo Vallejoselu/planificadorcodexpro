@@ -66,7 +66,10 @@ class TestUxClaridadOperativa(unittest.TestCase):
 
         self.assertTrue(hasattr(vista, "guia_operativa"))
         self.assertIn("Antes de generar", vista.guia_operativa.text())
-        self.assertIn("crear repartidores", vista.guia_operativa.text())
+        self.assertTrue(vista.estado_detalle.wordWrap())
+        self.assertLessEqual(len(vista.pendientes_labels), 5)
+        self.assertEqual(vista.btn_accion_principal.text(), "Resolver Restaurantes")
+        self.assertEqual(vista.btn_comprobar.text(), "Comprobar configuracion")
 
     def test_configuracion_usa_scroll_para_no_aplastar_paneles(self):
 
