@@ -66,6 +66,8 @@ class TestUxClaridadOperativa(unittest.TestCase):
 
         self.assertTrue(hasattr(vista, "guia_operativa"))
         self.assertIn("Antes de generar", vista.guia_operativa.text())
+        self.assertEqual(vista.panel_estado.objectName(), "estadoPanel")
+        self.assertIn("#2A1418", vista.estilo_estado("pendiente"))
         self.assertTrue(vista.estado_detalle.wordWrap())
         self.assertLessEqual(len(vista.pendientes_labels), 5)
         self.assertEqual(vista.btn_accion_principal.text(), "Resolver Restaurantes")
@@ -103,8 +105,12 @@ class TestUxClaridadOperativa(unittest.TestCase):
 
         vista = VistaPuestaMarcha()
 
-        self.assertIn("checklist", vista.guia.text().lower())
+        self.assertIn("asistente de arranque", vista.guia.text().lower())
+        self.assertIn("no edita datos directamente", vista.ayuda_accion.text())
         self.assertEqual(vista.resumen.objectName(), "infoPanel")
+        self.assertEqual(vista.btn_abrir.text(), "Abrir paso seleccionado")
+        self.assertEqual(vista.btn_cargar_demo.text(), "Cargar demo guiada")
+        self.assertGreaterEqual(vista.tabla.currentRow(), 0)
         self.assertEqual(vista.btn_empezar_cero.text(), "Empezar de cero")
         self.assertEqual(vista.btn_empezar_cero.property("variant"), "danger")
 
