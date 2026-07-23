@@ -71,14 +71,7 @@ class VistaCuadrantes(QWidget):
             "de cubrir; no es una persona asignada."
         )
         self.guia_operativa.setWordWrap(True)
-        self.guia_operativa.setObjectName("guia_operativa")
-        self.guia_operativa.setStyleSheet("""
-            padding:10px 12px;
-            border:1px solid #334155;
-            border-radius:6px;
-            background:#0F172A;
-            color:#E2E8F0;
-        """)
+        self.guia_operativa.setObjectName("infoPanel")
         self.layout.addWidget(self.guia_operativa)
 
         self.leyenda_cuadrante = QLabel(
@@ -87,14 +80,7 @@ class VistaCuadrantes(QWidget):
             "sin turno | Sin repartidor = plaza pendiente"
         )
         self.leyenda_cuadrante.setWordWrap(True)
-        self.leyenda_cuadrante.setObjectName("guia_operativa")
-        self.leyenda_cuadrante.setStyleSheet("""
-            padding:8px 12px;
-            border:1px solid #CBD5E1;
-            border-radius:6px;
-            background:#F8FAFC;
-            color:#1E293B;
-        """)
+        self.leyenda_cuadrante.setObjectName("infoPanel")
         self.layout.addWidget(self.leyenda_cuadrante)
 
         self.aviso_modo_simple = QLabel(
@@ -103,7 +89,7 @@ class VistaCuadrantes(QWidget):
             "copiar, pegar o usar plantillas."
         )
         self.aviso_modo_simple.setWordWrap(True)
-        self.aviso_modo_simple.setObjectName("guia_operativa")
+        self.aviso_modo_simple.setObjectName("infoPanel")
         self.layout.addWidget(self.aviso_modo_simple)
 
         self.selector_restaurante = QComboBox()
@@ -127,9 +113,10 @@ class VistaCuadrantes(QWidget):
         self.detalle_seleccion.setObjectName("detalle_seleccion")
         self.diagnostico_cuadrante = QLabel("")
         self.diagnostico_cuadrante.setWordWrap(True)
-        self.diagnostico_cuadrante.setObjectName("guia_operativa")
+        self.diagnostico_cuadrante.setObjectName("infoPanel")
         self.estado_publicacion = QLabel("Estado: borrador")
         self.estado_publicacion.setWordWrap(True)
+        self.estado_publicacion.setObjectName("pageSubtitle")
 
         self.btn_comprobar = QPushButton("Comprobar configuracion")
         self.btn_generar = QPushButton("Generar cuadrante")
@@ -258,7 +245,9 @@ class VistaCuadrantes(QWidget):
         )
         self.tabla_alertas.verticalHeader().setVisible(False)
         self.tabla_alertas.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        self.tabla_alertas.setMaximumHeight(180)
+        self.tabla_alertas.setSelectionMode(QAbstractItemView.NoSelection)
+        self.tabla_alertas.setMinimumHeight(120)
+        self.tabla_alertas.setMaximumHeight(150)
         self.layout.addWidget(self.tabla_alertas)
 
         self.btn_actualizar.clicked.connect(self.cargar_datos)
@@ -290,7 +279,7 @@ class VistaCuadrantes(QWidget):
     def configurar_controles_barra(self):
 
         self.selector_semana.setFixedWidth(112)
-        self.selector_vista.setFixedWidth(96)
+        self.selector_vista.setFixedWidth(125)
         self.selector_restaurante.setMinimumWidth(160)
         self.selector_turno.setMinimumWidth(130)
         self.selector_repartidor.setMinimumWidth(150)
@@ -1081,30 +1070,30 @@ class VistaCuadrantes(QWidget):
     def color_celda_empleado(self, estado):
 
         colores = {
-            "libre": "#FEE2E2",
-            "doble": "#FEF3C7",
-            "comida": "#DBEAFE",
-            "cena": "#EDE9FE",
-            "disponible": "#F8FAFC",
-            "turno": "#DCFCE7"
+            "libre": "#FCA5A5",
+            "doble": "#FCD34D",
+            "comida": "#BAE6FD",
+            "cena": "#C7D2FE",
+            "disponible": "#E5E7EB",
+            "turno": "#86EFAC"
         }
 
-        return colores.get(estado, "#F8FAFC")
+        return colores.get(estado, "#E5E7EB")
 
     # ======================================
 
     def color_texto_celda_empleado(self, estado):
 
         colores = {
-            "libre": "#7F1D1D",
-            "doble": "#78350F",
-            "comida": "#1E3A8A",
-            "cena": "#312E81",
-            "disponible": "#475569",
-            "turno": "#14532D"
+            "libre": "#450A0A",
+            "doble": "#422006",
+            "comida": "#0C4A6E",
+            "cena": "#1E1B4B",
+            "disponible": "#374151",
+            "turno": "#052E16"
         }
 
-        return colores.get(estado, "#334155")
+        return colores.get(estado, "#374151")
 
     # ======================================
 
@@ -1120,9 +1109,9 @@ class VistaCuadrantes(QWidget):
         self.tabla_alertas.setRowCount(len(filas))
 
         colores = {
-            "alta": ("#FEE2E2", "#7F1D1D"),
-            "media": ("#FEF3C7", "#78350F"),
-            "ok": ("#DCFCE7", "#14532D")
+            "alta": ("#FCA5A5", "#450A0A"),
+            "media": ("#FCD34D", "#422006"),
+            "ok": ("#86EFAC", "#052E16")
         }
 
         for fila, alerta in enumerate(filas):
@@ -1134,7 +1123,7 @@ class VistaCuadrantes(QWidget):
             ]
             fondo, texto = colores.get(
                 alerta.get("severidad"),
-                ("#F8FAFC", "#334155")
+                ("#E5E7EB", "#374151")
             )
 
             for columna, valor in enumerate(valores):
@@ -1145,7 +1134,19 @@ class VistaCuadrantes(QWidget):
                 item.setForeground(QBrush(QColor(texto)))
                 self.tabla_alertas.setItem(fila, columna, item)
 
-        self.tabla_alertas.resizeColumnsToContents()
+        self.tabla_alertas.horizontalHeader().setSectionResizeMode(
+            0,
+            QHeaderView.ResizeToContents
+        )
+        self.tabla_alertas.horizontalHeader().setSectionResizeMode(
+            1,
+            QHeaderView.Stretch
+        )
+        self.tabla_alertas.horizontalHeader().setSectionResizeMode(
+            2,
+            QHeaderView.ResizeToContents
+        )
+        self.tabla_alertas.resizeRowsToContents()
 
     # ======================================
 

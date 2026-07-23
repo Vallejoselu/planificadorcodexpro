@@ -7,6 +7,7 @@ from PySide6.QtWidgets import (
     QFileDialog,
     QFormLayout,
     QFrame,
+    QGridLayout,
     QHBoxLayout,
     QLabel,
     QLineEdit,
@@ -235,25 +236,36 @@ class VistaConfiguracion(QWidget):
         layout.setContentsMargins(16, 16, 16, 16)
         layout.setSpacing(10)
 
-        layout.addWidget(QLabel("Datos locales y copias de seguridad"))
+        titulo = QLabel("Datos locales y copias de seguridad")
+        titulo.setObjectName("cardTitle")
+        layout.addWidget(titulo)
 
         self.estado_datos_locales = QLabel()
         self.estado_datos_locales.setWordWrap(True)
         layout.addWidget(self.estado_datos_locales)
 
-        acciones = QHBoxLayout()
+        acciones = QGridLayout()
+        acciones.setHorizontalSpacing(8)
+        acciones.setVerticalSpacing(8)
         self.btn_backup_datos = make_button("Crear backup", "secondary")
         self.btn_exportar_datos = make_button("Exportar datos", "secondary")
         self.btn_diagnosticar_datos = make_button("Diagnosticar", "secondary")
         self.btn_reparar_datos = make_button("Reparar", "secondary")
         self.btn_importar_datos = make_button("Importar o restaurar", "danger")
 
-        acciones.addWidget(self.btn_backup_datos)
-        acciones.addWidget(self.btn_exportar_datos)
-        acciones.addWidget(self.btn_diagnosticar_datos)
-        acciones.addWidget(self.btn_reparar_datos)
-        acciones.addWidget(self.btn_importar_datos)
-        acciones.addStretch()
+        botones_datos = [
+            self.btn_diagnosticar_datos,
+            self.btn_backup_datos,
+            self.btn_exportar_datos,
+            self.btn_reparar_datos,
+            self.btn_importar_datos
+        ]
+
+        for indice, boton in enumerate(botones_datos):
+
+            boton.setMinimumWidth(150)
+            acciones.addWidget(boton, indice // 3, indice % 3)
+
         layout.addLayout(acciones)
 
         self.estado_diagnostico_datos = QLabel("Diagnostico pendiente.")
@@ -263,6 +275,7 @@ class VistaConfiguracion(QWidget):
         layout.addWidget(QLabel("Backups recientes"))
         self.tabla_backups = QTableWidget()
         configure_table(self.tabla_backups)
+        self.tabla_backups.setMaximumHeight(170)
         self.tabla_backups.setColumnCount(3)
         self.tabla_backups.setHorizontalHeaderLabels([
             "Archivo",
@@ -283,7 +296,9 @@ class VistaConfiguracion(QWidget):
         layout.setContentsMargins(16, 16, 16, 16)
         layout.setSpacing(10)
 
-        layout.addWidget(QLabel("Email"))
+        titulo = QLabel("Email")
+        titulo.setObjectName("cardTitle")
+        layout.addWidget(titulo)
 
         formulario = QFormLayout()
         self.campo_email_host = QLineEdit()
@@ -334,7 +349,9 @@ class VistaConfiguracion(QWidget):
         layout.setContentsMargins(16, 16, 16, 16)
         layout.setSpacing(10)
 
-        layout.addWidget(QLabel("Delivery generico"))
+        titulo = QLabel("Delivery generico")
+        titulo.setObjectName("cardTitle")
+        layout.addWidget(titulo)
 
         formulario = QFormLayout()
         self.campo_delivery_webhook = QLineEdit()
@@ -375,9 +392,13 @@ class VistaConfiguracion(QWidget):
         layout.setContentsMargins(16, 16, 16, 16)
         layout.setSpacing(10)
 
-        layout.addWidget(QLabel("Demanda por zona y turno"))
+        titulo = QLabel("Demanda por zona y turno")
+        titulo.setObjectName("cardTitle")
+        layout.addWidget(titulo)
 
-        formulario = QHBoxLayout()
+        formulario = QGridLayout()
+        formulario.setHorizontalSpacing(8)
+        formulario.setVerticalSpacing(8)
 
         self.selector_zona_demanda = QComboBox()
         self.selector_zona_demanda.setEditable(True)
@@ -398,16 +419,16 @@ class VistaConfiguracion(QWidget):
         self.campo_repartidores_demanda.setRange(0, 200)
         self.campo_repartidores_demanda.setValue(1)
 
-        formulario.addWidget(QLabel("Zona"))
-        formulario.addWidget(self.selector_zona_demanda)
-        formulario.addWidget(QLabel("Turno"))
-        formulario.addWidget(self.selector_turno_demanda)
-        formulario.addWidget(QLabel("Dia"))
-        formulario.addWidget(self.selector_dia_demanda)
-        formulario.addWidget(QLabel("Fecha"))
-        formulario.addWidget(self.campo_fecha_demanda)
-        formulario.addWidget(QLabel("Repartidores"))
-        formulario.addWidget(self.campo_repartidores_demanda)
+        formulario.addWidget(QLabel("Zona"), 0, 0)
+        formulario.addWidget(self.selector_zona_demanda, 0, 1)
+        formulario.addWidget(QLabel("Turno"), 0, 2)
+        formulario.addWidget(self.selector_turno_demanda, 0, 3)
+        formulario.addWidget(QLabel("Dia"), 1, 0)
+        formulario.addWidget(self.selector_dia_demanda, 1, 1)
+        formulario.addWidget(QLabel("Fecha"), 1, 2)
+        formulario.addWidget(self.campo_fecha_demanda, 1, 3)
+        formulario.addWidget(QLabel("Repartidores"), 2, 0)
+        formulario.addWidget(self.campo_repartidores_demanda, 2, 1)
 
         layout.addLayout(formulario)
 
@@ -432,6 +453,7 @@ class VistaConfiguracion(QWidget):
 
         self.tabla_demanda_zona = QTableWidget()
         configure_table(self.tabla_demanda_zona)
+        self.tabla_demanda_zona.setMaximumHeight(220)
         layout.addWidget(self.tabla_demanda_zona)
 
         self.contenido_layout.addWidget(self.panel_demanda_zona)
@@ -446,9 +468,13 @@ class VistaConfiguracion(QWidget):
         layout.setContentsMargins(16, 16, 16, 16)
         layout.setSpacing(10)
 
-        layout.addWidget(QLabel("Demanda por ciudad y turno"))
+        titulo = QLabel("Demanda por ciudad y turno")
+        titulo.setObjectName("cardTitle")
+        layout.addWidget(titulo)
 
-        formulario = QHBoxLayout()
+        formulario = QGridLayout()
+        formulario.setHorizontalSpacing(8)
+        formulario.setVerticalSpacing(8)
 
         self.selector_ciudad_demanda = QComboBox()
         self.selector_turno_demanda_ciudad = QComboBox()
@@ -467,16 +493,16 @@ class VistaConfiguracion(QWidget):
         self.campo_repartidores_demanda_ciudad.setRange(0, 200)
         self.campo_repartidores_demanda_ciudad.setValue(1)
 
-        formulario.addWidget(QLabel("Ciudad"))
-        formulario.addWidget(self.selector_ciudad_demanda)
-        formulario.addWidget(QLabel("Turno"))
-        formulario.addWidget(self.selector_turno_demanda_ciudad)
-        formulario.addWidget(QLabel("Dia"))
-        formulario.addWidget(self.selector_dia_demanda_ciudad)
-        formulario.addWidget(QLabel("Fecha"))
-        formulario.addWidget(self.campo_fecha_demanda_ciudad)
-        formulario.addWidget(QLabel("Repartidores"))
-        formulario.addWidget(self.campo_repartidores_demanda_ciudad)
+        formulario.addWidget(QLabel("Ciudad"), 0, 0)
+        formulario.addWidget(self.selector_ciudad_demanda, 0, 1)
+        formulario.addWidget(QLabel("Turno"), 0, 2)
+        formulario.addWidget(self.selector_turno_demanda_ciudad, 0, 3)
+        formulario.addWidget(QLabel("Dia"), 1, 0)
+        formulario.addWidget(self.selector_dia_demanda_ciudad, 1, 1)
+        formulario.addWidget(QLabel("Fecha"), 1, 2)
+        formulario.addWidget(self.campo_fecha_demanda_ciudad, 1, 3)
+        formulario.addWidget(QLabel("Repartidores"), 2, 0)
+        formulario.addWidget(self.campo_repartidores_demanda_ciudad, 2, 1)
 
         layout.addLayout(formulario)
 
@@ -501,6 +527,7 @@ class VistaConfiguracion(QWidget):
 
         self.tabla_demanda_ciudad = QTableWidget()
         configure_table(self.tabla_demanda_ciudad)
+        self.tabla_demanda_ciudad.setMaximumHeight(220)
         layout.addWidget(self.tabla_demanda_ciudad)
 
         self.contenido_layout.addWidget(self.panel_demanda_ciudad)
