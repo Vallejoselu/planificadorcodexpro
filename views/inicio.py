@@ -44,7 +44,7 @@ class VistaInicio(QWidget):
     def crear_panel_estado(self):
 
         self.panel_estado = QFrame()
-        self.panel_estado.setObjectName("card")
+        self.panel_estado.setObjectName("estadoPanel")
         estado_layout = QVBoxLayout(self.panel_estado)
         estado_layout.setContentsMargins(18, 16, 18, 16)
         estado_layout.setSpacing(6)
@@ -58,7 +58,7 @@ class VistaInicio(QWidget):
         self.estado_detalle.setWordWrap(True)
 
         self.guia_operativa = QLabel("")
-        self.guia_operativa.setObjectName("guia_operativa")
+        self.guia_operativa.setObjectName("estadoDetalle")
         self.guia_operativa.setWordWrap(True)
 
         estado_layout.addWidget(self.estado_titulo)
@@ -193,17 +193,25 @@ class VistaInicio(QWidget):
     def estilo_estado(self, nivel):
 
         colores = {
-            "ok": ("#DCFCE7", "#166534"),
-            "aviso": ("#FEF3C7", "#92400E"),
-            "pendiente": ("#FEE2E2", "#991B1B")
+            "ok": ("#102A1D", "#22C55E", "#BBF7D0"),
+            "aviso": ("#2A220F", "#F59E0B", "#FDE68A"),
+            "pendiente": ("#2A1418", "#F87171", "#FECACA")
         }
-        fondo, borde = colores.get(nivel, colores["pendiente"])
+        fondo, borde, detalle = colores.get(nivel, colores["pendiente"])
 
         return (
-            "QFrame#card {"
+            "QFrame#estadoPanel {"
             f"background:{fondo};"
             f"border:1px solid {borde};"
             "border-radius:8px;"
+            "}"
+            "QFrame#estadoPanel QLabel {"
+            "background:transparent;"
+            "color:#F9FAFB;"
+            "}"
+            "QFrame#estadoPanel QLabel#pageSubtitle,"
+            "QFrame#estadoPanel QLabel#estadoDetalle {"
+            f"color:{detalle};"
             "}"
         )
 

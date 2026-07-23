@@ -39,9 +39,10 @@ class VistaPuestaMarcha(QWidget):
         )
 
         self.guia = QLabel(
-            "Usa esta pantalla como checklist. Si quieres probar sin datos "
-            "anteriores, usa 'Empezar de cero': crea una copia de seguridad y "
-            "deja la aplicacion sin repartidores, restaurantes ni cuadrantes."
+            "Usa esta pantalla como asistente de arranque. Selecciona un paso "
+            "pendiente y pulsa 'Abrir paso seleccionado' para ir a la pantalla "
+            "correcta. Si quieres probar la app con datos de ejemplo, usa "
+            "'Cargar demo guiada'."
         )
         self.guia.setWordWrap(True)
         self.guia.setObjectName("guia_operativa")
@@ -51,6 +52,14 @@ class VistaPuestaMarcha(QWidget):
         self.resumen.setWordWrap(True)
         self.resumen.setObjectName("infoPanel")
         self.layout.addWidget(self.resumen)
+
+        self.ayuda_accion = QLabel(
+            "La tabla no edita datos directamente: te indica que falta y te "
+            "lleva a la pantalla donde se corrige."
+        )
+        self.ayuda_accion.setWordWrap(True)
+        self.ayuda_accion.setObjectName("pageSubtitle")
+        self.layout.addWidget(self.ayuda_accion)
 
         self.tabla = QTableWidget(self)
         configure_table(self.tabla)
@@ -84,10 +93,17 @@ class VistaPuestaMarcha(QWidget):
         acciones.setSpacing(10)
 
         self.btn_actualizar = make_button("Actualizar", "secondary")
-        self.btn_abrir = make_button("Abrir recomendado", "primary")
-        self.btn_cargar_demo = make_button("Cargar ejemplo", "secondary")
+        self.btn_abrir = make_button("Abrir paso seleccionado", "primary")
+        self.btn_cargar_demo = make_button("Cargar demo guiada", "secondary")
         self.btn_limpiar_demo = make_button("Limpiar ejemplo", "secondary")
         self.btn_empezar_cero = make_button("Empezar de cero", "danger")
+        self.btn_actualizar.setToolTip("Vuelve a comprobar la configuracion.")
+        self.btn_abrir.setToolTip(
+            "Abre la pantalla del paso seleccionado en la tabla."
+        )
+        self.btn_cargar_demo.setToolTip(
+            "Crea datos de ejemplo marcados como [Demo] para probar la app."
+        )
         self.btn_actualizar.clicked.connect(self.cargar_datos)
         self.btn_abrir.clicked.connect(self.abrir_pantalla_recomendada)
         self.btn_cargar_demo.clicked.connect(self.cargar_datos_demo)
@@ -121,6 +137,7 @@ class VistaPuestaMarcha(QWidget):
             f"{resumen['pendientes']} pendientes."
         )
         self.pintar_tabla()
+        self.seleccionar_primer_paso_accionable()
 
     def pintar_tabla(self):
 
@@ -128,14 +145,14 @@ class VistaPuestaMarcha(QWidget):
         self.tabla.setRowCount(len(self.pasos))
 
         colores = {
-            "ok": "#DCFCE7",
-            "aviso": "#FEF3C7",
-            "pendiente": "#FEE2E2"
+            "ok": "#BBF7D0",
+            "aviso": "#FDE68A",
+            "pendiente": "#FCA5A5"
         }
         textos = {
-            "ok": "#14532D",
-            "aviso": "#78350F",
-            "pendiente": "#7F1D1D"
+            "ok": "#052E16",
+            "aviso": "#422006",
+            "pendiente": "#450A0A"
         }
         textos_estado = {
             "ok": "Correcto",
@@ -165,6 +182,19 @@ class VistaPuestaMarcha(QWidget):
 
         self.tabla.resizeColumnsToContents()
         self.tabla.resizeRowsToContents()
+
+    def seleccionar_primer_paso_accionable(self):
+
+        for fila, paso in enumerate(self.pasos):
+
+            if paso.get("estado") != "ok":
+
+                self.tabla.selectRow(fila)
+                return
+
+        if self.pasos:
+
+            self.tabla.selectRow(0)
 
     def abrir_pantalla_recomendada(self):
 
