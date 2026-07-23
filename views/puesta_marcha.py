@@ -5,7 +5,6 @@ from PySide6.QtWidgets import (
     QHeaderView,
     QLabel,
     QMessageBox,
-    QPushButton,
     QTableWidget,
     QTableWidgetItem,
     QVBoxLayout,
@@ -14,7 +13,7 @@ from PySide6.QtWidgets import (
 
 from services.configuracion_guiada import ConfiguracionGuiadaService
 from services.datos_demo import DatosDemoService
-from ui.widgets import PageHeader, configure_table
+from ui.widgets import PageHeader, configure_table, make_button
 
 
 configuracion_guiada_service = ConfiguracionGuiadaService()
@@ -50,14 +49,7 @@ class VistaPuestaMarcha(QWidget):
 
         self.resumen = QLabel("")
         self.resumen.setWordWrap(True)
-        self.resumen.setObjectName("guia_operativa")
-        self.resumen.setStyleSheet("""
-            padding:10px 12px;
-            border:1px solid #CBD5E1;
-            border-radius:6px;
-            background:#F8FAFC;
-            color:#1E293B;
-        """)
+        self.resumen.setObjectName("infoPanel")
         self.layout.addWidget(self.resumen)
 
         self.tabla = QTableWidget(self)
@@ -84,18 +76,18 @@ class VistaPuestaMarcha(QWidget):
         )
         self.tabla.setSelectionBehavior(QTableWidget.SelectRows)
         self.tabla.setSelectionMode(QTableWidget.SingleSelection)
+        self.tabla.setMinimumHeight(280)
         self.tabla.doubleClicked.connect(self.abrir_pantalla_recomendada)
         self.layout.addWidget(self.tabla)
 
         acciones = QHBoxLayout()
         acciones.setSpacing(10)
 
-        self.btn_actualizar = QPushButton("Actualizar diagnostico")
-        self.btn_abrir = QPushButton("Abrir pantalla recomendada")
-        self.btn_cargar_demo = QPushButton("Cargar ejemplo")
-        self.btn_limpiar_demo = QPushButton("Limpiar ejemplo")
-        self.btn_empezar_cero = QPushButton("Empezar de cero")
-        self.btn_empezar_cero.setProperty("variant", "danger")
+        self.btn_actualizar = make_button("Actualizar", "secondary")
+        self.btn_abrir = make_button("Abrir recomendado", "primary")
+        self.btn_cargar_demo = make_button("Cargar ejemplo", "secondary")
+        self.btn_limpiar_demo = make_button("Limpiar ejemplo", "secondary")
+        self.btn_empezar_cero = make_button("Empezar de cero", "danger")
         self.btn_actualizar.clicked.connect(self.cargar_datos)
         self.btn_abrir.clicked.connect(self.abrir_pantalla_recomendada)
         self.btn_cargar_demo.clicked.connect(self.cargar_datos_demo)
@@ -105,10 +97,15 @@ class VistaPuestaMarcha(QWidget):
         acciones.addWidget(self.btn_actualizar)
         acciones.addWidget(self.btn_abrir)
         acciones.addWidget(self.btn_cargar_demo)
-        acciones.addWidget(self.btn_limpiar_demo)
-        acciones.addWidget(self.btn_empezar_cero)
         acciones.addStretch()
         self.layout.addLayout(acciones)
+
+        limpieza = QHBoxLayout()
+        limpieza.setSpacing(10)
+        limpieza.addWidget(self.btn_limpiar_demo)
+        limpieza.addWidget(self.btn_empezar_cero)
+        limpieza.addStretch()
+        self.layout.addLayout(limpieza)
 
         self.cargar_datos()
 
@@ -163,8 +160,10 @@ class VistaPuestaMarcha(QWidget):
                 item.setTextAlignment(Qt.AlignTop | Qt.AlignLeft)
                 item.setBackground(fondo)
                 item.setForeground(texto)
+                item.setToolTip(str(valor))
                 self.tabla.setItem(fila, columna, item)
 
+        self.tabla.resizeColumnsToContents()
         self.tabla.resizeRowsToContents()
 
     def abrir_pantalla_recomendada(self):

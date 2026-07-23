@@ -104,6 +104,7 @@ class TestUxClaridadOperativa(unittest.TestCase):
         vista = VistaPuestaMarcha()
 
         self.assertIn("checklist", vista.guia.text().lower())
+        self.assertEqual(vista.resumen.objectName(), "infoPanel")
         self.assertEqual(vista.btn_empezar_cero.text(), "Empezar de cero")
         self.assertEqual(vista.btn_empezar_cero.property("variant"), "danger")
 
@@ -111,16 +112,25 @@ class TestUxClaridadOperativa(unittest.TestCase):
 
         vista = VistaCuadrantes()
 
-        self.assertEqual(vista.color_celda_empleado("libre"), "#FEE2E2")
+        self.assertEqual(vista.color_celda_empleado("libre"), "#FCA5A5")
         self.assertEqual(
             vista.color_texto_celda_empleado("libre"),
-            "#7F1D1D"
+            "#450A0A"
         )
-        self.assertEqual(vista.color_celda_empleado("disponible"), "#F8FAFC")
+        self.assertEqual(vista.color_celda_empleado("disponible"), "#E5E7EB")
         self.assertEqual(
             vista.color_texto_celda_empleado("disponible"),
-            "#475569"
+            "#374151"
         )
+
+    def test_cuadrantes_usa_paneles_adaptados_al_tema(self):
+
+        vista = VistaCuadrantes()
+
+        self.assertEqual(vista.guia_operativa.objectName(), "infoPanel")
+        self.assertEqual(vista.leyenda_cuadrante.objectName(), "infoPanel")
+        self.assertEqual(vista.aviso_modo_simple.objectName(), "infoPanel")
+        self.assertEqual(vista.tabla_alertas.maximumHeight(), 150)
 
     def test_cuadrantes_oculta_herramientas_avanzadas_por_defecto(self):
 
