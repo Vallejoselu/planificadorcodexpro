@@ -185,6 +185,20 @@ class TestDatosDemoService(unittest.TestCase):
         self.assertEqual(resumen["repartidores"], 1)
         self.assertEqual(resumen["cuadrantes"], 1)
 
+    def test_empezar_de_cero_elimina_datos_demo(self):
+
+        self.servicio.cargar_demo()
+
+        resumen = self.servicio.empezar_de_cero()
+
+        self.assertEqual(resumen["demo_eliminados"]["ciudades"], 3)
+        self.assertEqual(resumen["demo_eliminados"]["restaurantes"], 4)
+        self.assertEqual(resumen["demo_eliminados"]["repartidores"], 5)
+        self.assertEqual(self.contar_demo("ciudades"), 0)
+        self.assertEqual(self.contar_demo("restaurantes"), 0)
+        self.assertEqual(self.contar_demo("repartidores"), 0)
+        self.assertEqual(self.contar("calendario_semanal", True), 0)
+
     def resumen_tablas(self):
 
         return {
@@ -207,6 +221,17 @@ class TestDatosDemoService(unittest.TestCase):
         cursor = conexion.cursor()
         condicion = "" if incluir_inactivos else " WHERE activo=1"
         cursor.execute(f"SELECT COUNT(*) FROM {tabla}{condicion}")
+        total = cursor.fetchone()[0]
+        conexion.close()
+        return total
+
+    def contar_demo(self, tabla):
+
+        conexion = database.conectar()
+        cursor = conexion.cursor()
+        cursor.execute(
+            f"SELECT COUNT(*) FROM {tabla} WHERE nombre LIKE '[Demo] %'"
+        )
         total = cursor.fetchone()[0]
         conexion.close()
         return total

@@ -169,6 +169,9 @@ class DatosDemoService:
 
             self._vaciar_tabla(cursor, tabla)
 
+        demo = self._eliminar_demo_permanente(cursor)
+        resumen["demo_eliminados"] = demo
+
         conexion.commit()
         conexion.close()
 
@@ -439,6 +442,61 @@ class DatosDemoService:
             parametros
         )
 
+    def _eliminar_demo_permanente(self, cursor):
+
+        repartidores = self._ids_por_nombre(cursor, "repartidores")
+        restaurantes = self._ids_por_nombre(cursor, "restaurantes")
+        ciudades = self._ids_por_nombre(cursor, "ciudades")
+        restaurante_turnos = self._ids_por_columna(
+            cursor,
+            "restaurante_turnos",
+            "restaurante_id",
+            restaurantes
+        )
+
+        self._eliminar_calendario_demo(cursor, repartidores, restaurantes)
+
+        for tabla, columna, ids in (
+            ("plantilla_semana_asignaciones", "repartidor_id", repartidores),
+            ("plantilla_semana_asignaciones", "restaurante_id", restaurantes),
+            ("demanda_restaurante", "turno_restaurante_id", restaurante_turnos),
+            ("demanda_restaurante", "restaurante_id", restaurantes),
+            ("demanda_ciudad", "ciudad_id", ciudades),
+            ("restaurante_turnos", "restaurante_id", restaurantes),
+            ("restaurante_repartidores", "repartidor_id", repartidores),
+            ("restaurante_repartidores", "restaurante_id", restaurantes),
+            ("repartidor_ciudades", "repartidor_id", repartidores),
+            ("repartidor_ciudades", "ciudad_id", ciudades),
+            (
+                "repartidor_restaurantes_autorizados",
+                "repartidor_id",
+                repartidores
+            ),
+            (
+                "repartidor_restaurantes_autorizados",
+                "restaurante_id",
+                restaurantes
+            ),
+            ("descansos", "repartidor_id", repartidores),
+            ("disponibilidad", "repartidor_id", repartidores),
+            ("vacaciones", "repartidor_id", repartidores),
+            ("bajas", "repartidor_id", repartidores),
+            ("preferencias", "repartidor_id", repartidores),
+            ("preferencias", "restaurante_id", restaurantes)
+        ):
+
+            self._eliminar_por_ids(cursor, tabla, ids, columna=columna)
+
+        self._eliminar_por_ids(cursor, "repartidores", repartidores)
+        self._eliminar_por_ids(cursor, "restaurantes", restaurantes)
+        self._eliminar_por_ids(cursor, "ciudades", ciudades)
+
+        return {
+            "ciudades": len(ciudades),
+            "restaurantes": len(restaurantes),
+            "repartidores": len(repartidores)
+        }
+
     def _desactivar_por_ids(self, cursor, tabla, ids, columna="id"):
 
         if not ids:
@@ -450,6 +508,51 @@ class DatosDemoService:
             f"UPDATE {tabla} SET activo=0 WHERE {columna} IN ({marcadores})",
             ids
         )
+
+    def _eliminar_por_ids(self, cursor, tabla, ids, columna="id"):
+
+        if not ids or not self._tabla_existe(cursor, tabla):
+
+            return
+
+        if columna not in self._columnas(cursor, tabla):
+
+            return
+
+        marcadores = ",".join("?" for _ in ids)
+        cursor.execute(
+            f"DELETE FROM {tabla} WHERE {columna} IN ({marcadores})",
+            ids
+        )
+
+    def _ids_por_nombre(self, cursor, tabla):
+
+        if not self._tabla_existe(cursor, tabla):
+
+            return []
+
+        cursor.execute(
+            f"SELECT id FROM {tabla} WHERE nombre LIKE ?",
+            (self._like_demo(),)
+        )
+        return [fila[0] for fila in cursor.fetchall()]
+
+    def _ids_por_columna(self, cursor, tabla, columna, ids):
+
+        if not ids or not self._tabla_existe(cursor, tabla):
+
+            return []
+
+        if columna not in self._columnas(cursor, tabla):
+
+            return []
+
+        marcadores = ",".join("?" for _ in ids)
+        cursor.execute(
+            f"SELECT id FROM {tabla} WHERE {columna} IN ({marcadores})",
+            ids
+        )
+        return [fila[0] for fila in cursor.fetchall()]
 
     def _tabla_existe(self, cursor, tabla):
 
