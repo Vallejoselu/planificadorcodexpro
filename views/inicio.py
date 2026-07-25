@@ -128,6 +128,14 @@ class VistaInicio(QWidget):
             lambda checked=False: self.ir_a("puesta_marcha")
         )
 
+        self.btn_creacion_guiada = make_button(
+            "Crear paso a paso",
+            "secondary"
+        )
+        self.btn_creacion_guiada.clicked.connect(
+            lambda checked=False: self.ir_a("creacion_guiada")
+        )
+
         self.btn_guia = make_button("Guia de uso", "secondary")
         self.btn_guia.clicked.connect(
             lambda checked=False: self.ir_a("guia_uso")
@@ -135,6 +143,7 @@ class VistaInicio(QWidget):
 
         acciones.addWidget(self.btn_accion_principal)
         acciones.addWidget(self.btn_comprobar)
+        acciones.addWidget(self.btn_creacion_guiada)
         acciones.addWidget(self.btn_guia)
         acciones.addStretch()
         self.layout.addLayout(acciones)

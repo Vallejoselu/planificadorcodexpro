@@ -12,6 +12,7 @@ import views.cuadrantes as cuadrantes_view
 from database.database import crear_base_datos
 from views.cuadrantes import VistaCuadrantes
 from views.configuracion import VistaConfiguracion
+from views.creacion_guiada import VistaCreacionGuiada
 from views.inicio import VistaInicio
 from views.puesta_marcha import VistaPuestaMarcha
 from views.restaurantes import VistaRestaurantes
@@ -72,6 +73,7 @@ class TestUxClaridadOperativa(unittest.TestCase):
         self.assertLessEqual(len(vista.pendientes_labels), 5)
         self.assertEqual(vista.btn_accion_principal.text(), "Resolver Restaurantes")
         self.assertEqual(vista.btn_comprobar.text(), "Comprobar configuracion")
+        self.assertEqual(vista.btn_creacion_guiada.text(), "Crear paso a paso")
 
     def test_configuracion_usa_scroll_para_no_aplastar_paneles(self):
 
@@ -113,6 +115,16 @@ class TestUxClaridadOperativa(unittest.TestCase):
         self.assertGreaterEqual(vista.tabla.currentRow(), 0)
         self.assertEqual(vista.btn_empezar_cero.text(), "Empezar de cero")
         self.assertEqual(vista.btn_empezar_cero.property("variant"), "danger")
+
+    def test_creacion_guiada_muestra_paso_recomendado(self):
+
+        vista = VistaCreacionGuiada()
+
+        self.assertEqual(vista.titulo.text(), "Ciudades")
+        self.assertIn("Paso 1 de", vista.indicador.text())
+        self.assertEqual(vista.btn_abrir.text(), "Crear o revisar ciudades")
+        self.assertTrue(vista.ayuda.wordWrap())
+        self.assertEqual(len(vista.labels_pasos), 8)
 
     def test_colores_cuadrante_tienen_contraste_en_empleados_y_alertas(self):
 

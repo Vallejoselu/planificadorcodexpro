@@ -23,10 +23,10 @@ class VistaGuiaUso(QWidget):
         (
             "2. Orden recomendado",
             (
-                "Empieza por Puesta en marcha. Despues crea ciudades, "
-                "restaurantes, turnos, repartidores y demanda. Cuando todo "
-                "este correcto, entra en Cuadrantes y pulsa Comprobar "
-                "configuracion antes de Generar cuadrante."
+                "Si empiezas de cero, usa Crear paso a paso. La app te lleva "
+                "en orden por ciudades, restaurantes, turnos, demanda, "
+                "repartidores, disponibilidad y generacion. Puesta en marcha "
+                "queda como comprobacion rapida del estado."
             )
         ),
         (

@@ -61,6 +61,7 @@ class TestUiThemeNavigation(unittest.TestCase):
             "inicio",
             "guia_uso",
             "puesta_marcha",
+            "creacion_guiada",
             "repartidores",
             "ciudades",
             "restaurantes",
@@ -75,6 +76,10 @@ class TestUiThemeNavigation(unittest.TestCase):
 
         self.assertEqual(ventana.stack.count(), len(paginas_esperadas))
         self.assertEqual(set(ventana.paginas), paginas_esperadas)
+        self.assertEqual(
+            ventana.botones["creacion_guiada"].text(),
+            "Crear paso a paso"
+        )
 
     def test_cambio_pagina_desde_menu(self):
 
