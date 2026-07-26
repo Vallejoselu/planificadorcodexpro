@@ -313,9 +313,23 @@ class VistaCuadrantes(QWidget):
             self.btn_actualizar
         ):
 
-            boton.setMinimumHeight(36)
-            boton.setMinimumWidth(max(82, boton.sizeHint().width() + 18))
-            boton.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+            self.ajustar_boton_barra(boton)
+
+    # ======================================
+
+    def ajustar_boton_barra(self, boton):
+
+        boton.setMinimumHeight(36)
+        boton.setMinimumWidth(max(82, boton.sizeHint().width() + 18))
+        boton.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+
+    # ======================================
+
+    def ajustar_barra_despues_de_cambio(self, widget, scroll):
+
+        widget.adjustSize()
+        widget.setMinimumWidth(widget.sizeHint().width())
+        scroll.setFixedHeight(widget.sizeHint().height() + 18)
 
     # ======================================
 
@@ -759,6 +773,12 @@ class VistaCuadrantes(QWidget):
                 "Comprueba datos minimos y crea la primera propuesta "
                 "de cuadrante para esta semana."
             )
+
+        self.ajustar_boton_barra(self.btn_generar)
+        self.ajustar_barra_despues_de_cambio(
+            self.barra_filtros_widget,
+            self.barra_filtros_scroll
+        )
 
     # ======================================
 
