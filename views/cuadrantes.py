@@ -603,12 +603,30 @@ class VistaCuadrantes(QWidget):
 
     def mostrar_resumen_generacion(self, resultado):
 
+        resumen = cuadrantes_service.resumen_generacion(resultado)
         dialogo = DialogoResumenGeneracion(
             self,
+            resumen,
             cuadrantes_service.texto_resumen_generacion(resultado)
         )
 
-        return dialogo.exec() == QDialog.Accepted
+        aceptado = dialogo.exec() == QDialog.Accepted
+
+        if dialogo.accion == "alertas":
+
+            self.enfocar_alertas()
+            return False
+
+        return aceptado
+
+    # ======================================
+
+    def enfocar_alertas(self):
+
+        self.tabla_alertas.setFocus()
+        if self.tabla_alertas.rowCount() > 0:
+
+            self.tabla_alertas.selectRow(0)
 
     # ======================================
 
@@ -2044,13 +2062,28 @@ class DialogoEditarAsignacion(QDialog):
 
 class DialogoResumenGeneracion(QDialog):
 
-    def __init__(self, parent, texto):
+    def __init__(self, parent, resumen, texto):
         super().__init__(parent)
 
         self.setWindowTitle("Vista previa del cuadrante")
         self.resize(640, 520)
+        self.accion = "cancelar"
 
         layout = QVBoxLayout(self)
+
+        cabecera = QLabel(resumen["estado"]["titulo"])
+        cabecera.setStyleSheet("font-size: 18px; font-weight: bold;")
+        detalle = QLabel(resumen["estado"]["detalle"])
+        detalle.setWordWrap(True)
+        indicadores = QLabel(
+            (
+                f"Plazas: {resumen['asignaciones_generadas']} | "
+                f"Cubiertas: {resumen['asignaciones_con_repartidor']} | "
+                f"Pendientes: {resumen['asignaciones_sin_repartidor']} | "
+                f"Cobertura: {resumen['cobertura_porcentaje']:g}%"
+            )
+        )
+        indicadores.setWordWrap(True)
 
         resultado = QTextEdit()
         resultado.setReadOnly(True)
@@ -2058,18 +2091,41 @@ class DialogoResumenGeneracion(QDialog):
 
         botones = QDialogButtonBox()
         guardar = botones.addButton(
-            "Confirmar y guardar",
+            "Guardar cuadrante",
             QDialogButtonBox.AcceptRole
+        )
+        revisar = botones.addButton(
+            "Revisar alertas",
+            QDialogButtonBox.ActionRole
         )
         cancelar = botones.addButton(
             "Cancelar",
             QDialogButtonBox.RejectRole
         )
-        guardar.clicked.connect(self.accept)
-        cancelar.clicked.connect(self.reject)
+        guardar.clicked.connect(self.guardar)
+        revisar.clicked.connect(self.revisar_alertas)
+        cancelar.clicked.connect(self.cancelar)
 
+        layout.addWidget(cabecera)
+        layout.addWidget(detalle)
+        layout.addWidget(indicadores)
         layout.addWidget(resultado)
         layout.addWidget(botones)
+
+    def guardar(self):
+
+        self.accion = "guardar"
+        self.accept()
+
+    def revisar_alertas(self):
+
+        self.accion = "alertas"
+        self.reject()
+
+    def cancelar(self):
+
+        self.accion = "cancelar"
+        self.reject()
 
 
 class DialogoCopiarSemana(QDialog):
