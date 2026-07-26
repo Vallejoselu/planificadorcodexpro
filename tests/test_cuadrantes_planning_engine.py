@@ -7,7 +7,7 @@ from pathlib import Path
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PySide6.QtCore import QDate
-from PySide6.QtWidgets import QApplication, QScrollArea
+from PySide6.QtWidgets import QApplication, QMessageBox, QScrollArea
 
 import database.database as database
 import views.cuadrantes as cuadrantes_view
@@ -58,8 +58,9 @@ class TestCuadrantesPlanningEngine(unittest.TestCase):
 
         self.assertEqual(
             vista.btn_generar.text(),
-            "Generar cuadrante"
+            "Generar primer cuadrante"
         )
+        self.assertIn("primera propuesta", vista.btn_generar.toolTip())
         self.assertTrue(hasattr(vista, "selector_semana"))
         self.assertEqual(vista.btn_copiar_semana.text(), "Copiar semana")
         self.assertEqual(
@@ -71,6 +72,30 @@ class TestCuadrantesPlanningEngine(unittest.TestCase):
             "Aplicar plantilla"
         )
         self.assertEqual(vista.btn_editar.text(), "Editar celda")
+
+    def test_generar_primer_cuadrante_pide_confirmacion(self):
+
+        preguntas = []
+        question_original = cuadrantes_view.QMessageBox.question
+        cuadrantes_view.QMessageBox.question = (
+            lambda *args, **kwargs: preguntas.append(args) or QMessageBox.No
+        )
+
+        try:
+
+            vista = VistaCuadrantes()
+            vista.selector_semana.setDate(QDate(2026, 7, 13))
+            vista.mostrar_resumen_generacion = lambda resultado: True
+            vista.generar_cuadrante_guiado()
+
+        finally:
+
+            cuadrantes_view.QMessageBox.question = question_original
+
+        self.assertEqual(len(preguntas), 1)
+        self.assertEqual(preguntas[0][1], "Primer cuadrante preparado")
+        self.assertIn("Quieres generar ahora", preguntas[0][2])
+        self.assertEqual(obtener_calendario_semanal("2026-07-13"), [])
 
     def test_barras_superiores_no_comprimen_controles(self):
 
