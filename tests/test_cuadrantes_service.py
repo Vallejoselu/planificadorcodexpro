@@ -811,6 +811,52 @@ class TestCuadrantesServicePorCapa(unittest.TestCase):
         self.assertIn("no tiene demanda configurada", precomprobacion["texto"])
         self.assertIn("No hay demanda configurada", precomprobacion["texto"])
 
+    def test_diagnostico_primer_cuadrante_explica_bloqueos(self):
+
+        servicio = CuadrantesService()
+
+        diagnostico = servicio.diagnostico_primer_cuadrante(
+            {
+                "repartidores": [],
+                "restaurantes": [],
+                "turnos": [],
+                "restaurante_turnos": [],
+                "demandas_restaurante": [],
+                "demandas_zona": [],
+                "demandas_ciudad": []
+            },
+            "2026-07-13"
+        )
+
+        self.assertFalse(diagnostico["puede_generar"])
+        self.assertEqual(diagnostico["estado"], "bloqueado")
+        self.assertIn("Faltan datos", diagnostico["titulo"])
+        self.assertIn("No hay repartidores activos.", diagnostico["texto"])
+        self.assertIn("No hay restaurantes activos.", diagnostico["texto"])
+
+    def test_diagnostico_primer_cuadrante_prepara_generacion_con_avisos(self):
+
+        servicio = CuadrantesService()
+
+        diagnostico = servicio.diagnostico_primer_cuadrante(
+            {
+                "repartidores": [(1, "Ana", 30)],
+                "restaurantes": [(2, "BK Centro", "", "Centro", "", 50, 1)],
+                "turnos": [(5, "Comida", "Comida", "13:00", "16:00", "", 3, 1)],
+                "restaurante_turnos": [],
+                "demandas_restaurante": [],
+                "demandas_zona": [],
+                "demandas_ciudad": []
+            },
+            "2026-07-13"
+        )
+
+        self.assertTrue(diagnostico["puede_generar"])
+        self.assertEqual(diagnostico["estado"], "listo")
+        self.assertIn("primera propuesta", diagnostico["texto"])
+        self.assertIn("vista Por empleado", diagnostico["texto"])
+        self.assertIn("plazas sin repartidor", diagnostico["texto"])
+
     def test_preparar_cambio_no_duplica_mismo_repartidor_mismo_turno(self):
 
         servicio = CuadrantesService()

@@ -120,6 +120,9 @@ class VistaCuadrantes(QWidget):
 
         self.btn_comprobar = QPushButton("Comprobar configuracion")
         self.btn_generar = QPushButton("Generar cuadrante")
+        self.btn_generar.setToolTip(
+            "Genera una propuesta automatica para la semana seleccionada."
+        )
         self.btn_generar.setProperty("variant", "primary")
         self.btn_marcar_listo = QPushButton("Marcar listo")
         self.btn_publicar = QPushButton("Publicar")
@@ -257,7 +260,7 @@ class VistaCuadrantes(QWidget):
             self.actualizar_modo_visual
         )
         self.btn_comprobar.clicked.connect(self.comprobar_configuracion)
-        self.btn_generar.clicked.connect(self.generar_cuadrante)
+        self.btn_generar.clicked.connect(self.generar_cuadrante_guiado)
         self.btn_marcar_listo.clicked.connect(self.marcar_cuadrante_listo)
         self.btn_publicar.clicked.connect(self.publicar_cuadrante)
         self.btn_editar.clicked.connect(self.editar_celda_actual)
@@ -310,9 +313,23 @@ class VistaCuadrantes(QWidget):
             self.btn_actualizar
         ):
 
-            boton.setMinimumHeight(36)
-            boton.setMinimumWidth(max(82, boton.sizeHint().width() + 18))
-            boton.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+            self.ajustar_boton_barra(boton)
+
+    # ======================================
+
+    def ajustar_boton_barra(self, boton):
+
+        boton.setMinimumHeight(36)
+        boton.setMinimumWidth(max(82, boton.sizeHint().width() + 18))
+        boton.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+
+    # ======================================
+
+    def ajustar_barra_despues_de_cambio(self, widget, scroll):
+
+        widget.adjustSize()
+        widget.setMinimumWidth(widget.sizeHint().width())
+        scroll.setFixedHeight(widget.sizeHint().height() + 18)
 
     # ======================================
 
@@ -419,6 +436,42 @@ class VistaCuadrantes(QWidget):
         return normalizar_fecha_inicio_semana(
             self.selector_semana.date().toPython()
         )
+
+    # ======================================
+
+    def generar_cuadrante_guiado(self):
+
+        if not self.hay_asignaciones_guardadas():
+
+            diagnostico = cuadrantes_service.diagnostico_primer_cuadrante(
+                self.contexto_cuadrante(),
+                self.fecha_inicio_semana(),
+                tiene_cuadrante=False
+            )
+
+            if not diagnostico["puede_generar"]:
+
+                QMessageBox.warning(
+                    self,
+                    diagnostico["titulo"],
+                    diagnostico["texto"]
+                )
+                return
+
+            respuesta = QMessageBox.question(
+                self,
+                diagnostico["titulo"],
+                (
+                    diagnostico["texto"]
+                    + "\n\nQuieres generar ahora el primer cuadrante?"
+                )
+            )
+
+            if respuesta != QMessageBox.Yes:
+
+                return
+
+        self.generar_cuadrante()
 
     # ======================================
 
@@ -692,6 +745,7 @@ class VistaCuadrantes(QWidget):
         self.estado_semana.setToolTip(estado["estado_texto"])
         self.actualizar_diagnostico(estado["diagnostico"])
         self.actualizar_publicacion(estado["publicacion"])
+        self.actualizar_accion_generacion()
 
         self.pintar_tabla()
         self.pintar_tabla_locales()
@@ -699,6 +753,32 @@ class VistaCuadrantes(QWidget):
         self.actualizar_panel_alertas(self.alertas)
         self.cambiar_vista()
         self.actualizar_detalle_seleccion()
+
+    # ======================================
+
+    def actualizar_accion_generacion(self):
+
+        if self.hay_asignaciones_guardadas():
+
+            self.btn_generar.setText("Generar cuadrante")
+            self.btn_generar.setToolTip(
+                "Genera una nueva propuesta para esta semana. "
+                "Si ya hay datos, se pedira confirmacion antes de guardar."
+            )
+
+        else:
+
+            self.btn_generar.setText("Generar primer cuadrante")
+            self.btn_generar.setToolTip(
+                "Comprueba datos minimos y crea la primera propuesta "
+                "de cuadrante para esta semana."
+            )
+
+        self.ajustar_boton_barra(self.btn_generar)
+        self.ajustar_barra_despues_de_cambio(
+            self.barra_filtros_widget,
+            self.barra_filtros_scroll
+        )
 
     # ======================================
 

@@ -306,6 +306,108 @@ class CuadrantesService:
 
         return "\n".join(lineas)
 
+    def diagnostico_primer_cuadrante(
+        self,
+        contexto,
+        fecha_inicio,
+        tiene_cuadrante=False
+    ):
+
+        precomprobacion = self.precomprobar_generacion(
+            contexto,
+            fecha_inicio
+        )
+        acciones = self.acciones_primer_cuadrante(precomprobacion)
+
+        if tiene_cuadrante:
+
+            titulo = "Esta semana ya tiene cuadrante"
+            estado = "existente"
+            introduccion = (
+                "Ya hay un cuadrante guardado para esta semana. Si generas "
+                "otra vez, la app te pedira confirmacion antes de sobrescribir."
+            )
+
+        elif precomprobacion["puede_generar"]:
+
+            titulo = "Primer cuadrante preparado"
+            estado = "listo"
+            introduccion = (
+                "La app puede crear una primera propuesta de cuadrante. "
+                "Despues revisa las plazas sin repartidor y las alertas antes "
+                "de publicar."
+            )
+
+        else:
+
+            titulo = "Faltan datos para el primer cuadrante"
+            estado = "bloqueado"
+            introduccion = (
+                "Todavia no conviene generar. Resuelve primero los puntos "
+                "bloqueantes para que el cuadrante tenga sentido."
+            )
+
+        lineas = [
+            introduccion,
+            "",
+            f"Semana: {precomprobacion['fecha_inicio']}",
+            f"Repartidores activos: {precomprobacion['repartidores']}",
+            f"Restaurantes activos: {precomprobacion['restaurantes']}",
+            (
+                "Turnos configurados: "
+                f"{precomprobacion['turnos']} globales y "
+                f"{precomprobacion['turnos_propios']} propios"
+            ),
+            (
+                "Demanda configurada: "
+                f"{precomprobacion['demandas_restaurante']} por restaurante, "
+                f"{precomprobacion['demandas_zona']} por zona, "
+                f"{precomprobacion['demandas_ciudad']} por ciudad"
+            ),
+            "",
+            "Que hacer ahora:"
+        ]
+
+        for accion in acciones:
+
+            lineas.append(f"- {accion}")
+
+        return {
+            "titulo": titulo,
+            "estado": estado,
+            "puede_generar": precomprobacion["puede_generar"],
+            "precomprobacion": precomprobacion,
+            "acciones": acciones,
+            "texto": "\n".join(lineas)
+        }
+
+    def acciones_primer_cuadrante(self, precomprobacion):
+
+        acciones = []
+
+        if precomprobacion["errores"]:
+
+            acciones.extend(precomprobacion["errores"])
+
+        if precomprobacion["advertencias"]:
+
+            acciones.extend(precomprobacion["advertencias"][:3])
+
+        if precomprobacion["puede_generar"]:
+
+            acciones.append(
+                "Genera el cuadrante y revisa la vista Por empleado."
+            )
+            acciones.append(
+                "Si aparecen plazas sin repartidor, son pendientes de cubrir."
+            )
+
+        if not acciones:
+
+            acciones.append("Todo listo para generar una propuesta inicial.")
+
+        return acciones
+
     def validar_contexto_generacion(self, contexto):
 
         self.validar_contexto_base_generacion(contexto)
