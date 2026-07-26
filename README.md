@@ -85,6 +85,7 @@ docs\FLUJO_GIT_SEGURO.md
 - Calendario semanal con varias coberturas por dia y turno.
 - Creacion guiada para configurar la empresa paso a paso.
 - Primer cuadrante guiado con comprobacion previa en lenguaje claro.
+- Validacion previa antes de generar para detectar datos incompletos.
 - Vista de cuadrante por empleado con contrato, libres, comidas, cenas,
   dobles y horarios visibles.
 - Asignacion opcional de repartidor en calendario.

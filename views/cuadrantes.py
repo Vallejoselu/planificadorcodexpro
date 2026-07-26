@@ -441,7 +441,9 @@ class VistaCuadrantes(QWidget):
 
     def generar_cuadrante_guiado(self):
 
-        if not self.hay_asignaciones_guardadas():
+        tiene_cuadrante = self.hay_asignaciones_guardadas()
+
+        if not tiene_cuadrante:
 
             diagnostico = cuadrantes_service.diagnostico_primer_cuadrante(
                 self.contexto_cuadrante(),
@@ -471,11 +473,11 @@ class VistaCuadrantes(QWidget):
 
                 return
 
-        self.generar_cuadrante()
+        self.generar_cuadrante(confirmar_avisos=tiene_cuadrante)
 
     # ======================================
 
-    def generar_cuadrante(self):
+    def generar_cuadrante(self, confirmar_avisos=False):
 
         precomprobacion = cuadrantes_service.precomprobar_generacion(
             self.contexto_cuadrante(),
@@ -489,6 +491,14 @@ class VistaCuadrantes(QWidget):
                 "No se puede generar el cuadrante",
                 precomprobacion["texto"]
             )
+            return
+
+        if (
+            confirmar_avisos
+            and precomprobacion.get("requiere_confirmacion")
+            and not self.confirmar_precomprobacion(precomprobacion)
+        ):
+
             return
 
         try:
@@ -537,6 +547,22 @@ class VistaCuadrantes(QWidget):
                 f"{self.texto_fecha_inicio_semana()}."
             )
         )
+
+    # ======================================
+
+    def confirmar_precomprobacion(self, precomprobacion):
+
+        respuesta = QMessageBox.question(
+            self,
+            "Revisar avisos antes de generar",
+            (
+                precomprobacion["texto"]
+                + "\n\nHay avisos que pueden afectar al resultado. "
+                "Quieres generar igualmente?"
+            )
+        )
+
+        return respuesta == QMessageBox.Yes
 
     # ======================================
 
