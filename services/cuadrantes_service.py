@@ -15,6 +15,7 @@ from services.rules.ausencias import esta_ausente, esta_ausente_por_tipo
 from services.rules.disponibilidad import (
     categoria_turno,
     esta_disponible,
+    esta_disponible_dia,
     parsear_fecha
 )
 from services.rules.candidatos import motivo_no_puede_trabajar
@@ -217,6 +218,28 @@ class CuadrantesService:
                 "de comida y cena antes de generar."
             )
 
+        repartidores_sin_disponibilidad = (
+            self.repartidores_sin_disponibilidad_configurada(repartidores)
+        )
+        repartidores_sin_dias_disponibles = (
+            self.repartidores_sin_dias_disponibles(repartidores)
+        )
+
+        if repartidores_sin_disponibilidad:
+
+            advertencias.append(
+                "Hay repartidores sin disponibilidad semanal configurada: "
+                f"{', '.join(repartidores_sin_disponibilidad)}. "
+                "La app los tratara como disponibles toda la semana."
+            )
+
+        if repartidores_sin_dias_disponibles:
+
+            errores.append(
+                "Hay repartidores activos sin ningun dia disponible: "
+                f"{', '.join(repartidores_sin_dias_disponibles)}."
+            )
+
         restaurantes_sin_demanda = self.alertas_restaurantes_sin_demanda(
             restaurantes,
             demandas_restaurante,
@@ -251,10 +274,108 @@ class CuadrantesService:
             "demandas_ciudad": len(demandas_ciudad),
             "errores": errores,
             "advertencias": advertencias,
-            "puede_generar": not errores
+            "puede_generar": not errores,
+            "requiere_confirmacion": bool(advertencias and not errores)
         }
+        datos["acciones_recomendadas"] = (
+            self.acciones_precomprobacion_generacion(datos)
+        )
         datos["texto"] = self.texto_precomprobacion(datos)
         return datos
+
+    def repartidores_sin_disponibilidad_configurada(self, repartidores):
+
+        nombres = []
+
+        for repartidor in repartidores or []:
+
+            disponibilidad = self.disponibilidad_repartidor(repartidor)
+
+            if disponibilidad:
+
+                continue
+
+            nombres.append(self.nombre_repartidor(repartidor))
+
+        return nombres
+
+    def repartidores_sin_dias_disponibles(self, repartidores):
+
+        nombres = []
+
+        for repartidor in repartidores or []:
+
+            disponibilidad = self.disponibilidad_repartidor(repartidor)
+
+            if not disponibilidad:
+
+                continue
+
+            datos = {
+                "disponibilidad": disponibilidad
+            }
+
+            if not any(esta_disponible_dia(datos, dia) for dia in DIAS_SEMANA):
+
+                nombres.append(self.nombre_repartidor(repartidor))
+
+        return nombres
+
+    def disponibilidad_repartidor(self, repartidor):
+
+        return self.valor_campo(repartidor, "disponibilidad", 11, None)
+
+    def nombre_repartidor(self, repartidor):
+
+        return str(
+            self.valor_campo(repartidor, "nombre", 1, "Sin nombre")
+            or "Sin nombre"
+        )
+
+    def acciones_precomprobacion_generacion(self, datos):
+
+        acciones = []
+
+        if datos["repartidores"] == 0:
+
+            acciones.append("Abre Repartidores y crea al menos un empleado.")
+
+        if datos["restaurantes"] == 0:
+
+            acciones.append("Abre Restaurantes y crea al menos un local.")
+
+        if datos["turnos"] == 0 and datos["turnos_propios"] == 0:
+
+            acciones.append(
+                "Revisa Turnos si no quieres usar los turnos base automaticos."
+            )
+
+        if (
+            datos["restaurantes"] > 0
+            and datos["demandas_restaurante"] == 0
+            and datos["demandas_zona"] == 0
+            and datos["demandas_ciudad"] == 0
+        ):
+
+            acciones.append(
+                "Configura demanda para indicar cuantos repartidores hacen "
+                "falta por turno."
+            )
+
+        if any("disponibilidad semanal" in aviso for aviso in datos["advertencias"]):
+
+            acciones.append(
+                "Completa la disponibilidad de cada repartidor para evitar "
+                "asignaciones demasiado amplias."
+            )
+
+        if not acciones and datos["puede_generar"]:
+
+            acciones.append(
+                "Puedes generar y revisar alertas antes de publicar."
+            )
+
+        return acciones
 
     def texto_precomprobacion(self, datos):
 
@@ -303,6 +424,12 @@ class CuadrantesService:
         else:
 
             lineas.append("- Ninguna")
+
+        lineas.extend(["", "Siguiente accion recomendada"])
+
+        for accion in datos["acciones_recomendadas"]:
+
+            lineas.append(f"- {accion}")
 
         return "\n".join(lineas)
 

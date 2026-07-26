@@ -808,8 +808,129 @@ class TestCuadrantesServicePorCapa(unittest.TestCase):
         )
 
         self.assertTrue(precomprobacion["puede_generar"])
+        self.assertTrue(precomprobacion["requiere_confirmacion"])
         self.assertIn("no tiene demanda configurada", precomprobacion["texto"])
         self.assertIn("No hay demanda configurada", precomprobacion["texto"])
+        self.assertIn(
+            "Configura demanda",
+            precomprobacion["texto"]
+        )
+
+    def test_precomprobar_generacion_avisa_sin_disponibilidad(self):
+
+        servicio = CuadrantesService()
+
+        precomprobacion = servicio.precomprobar_generacion(
+            {
+                "repartidores": [{
+                    "id": 1,
+                    "nombre": "Ana",
+                    "horas": 30,
+                    "disponibilidad": {}
+                }],
+                "restaurantes": [{
+                    "id": 2,
+                    "nombre": "BK Centro",
+                    "zona": "Centro",
+                    "activo": 1
+                }],
+                "turnos": [{
+                    "id": 5,
+                    "tipo": "Comida",
+                    "nombre": "Comida",
+                    "hora_inicio": "13:00",
+                    "hora_fin": "16:00",
+                    "duracion": 3,
+                    "activo": 1
+                }],
+                "restaurante_turnos": [],
+                "demandas_restaurante": [{
+                    "id": 10,
+                    "restaurante_id": 2,
+                    "turno_restaurante_id": None,
+                    "fecha": "2026-07-13",
+                    "dia_semana": None,
+                    "repartidores_necesarios": 1,
+                    "activo": 1
+                }],
+                "demandas_zona": [],
+                "demandas_ciudad": []
+            },
+            "2026-07-13"
+        )
+
+        self.assertTrue(precomprobacion["puede_generar"])
+        self.assertTrue(precomprobacion["requiere_confirmacion"])
+        self.assertIn(
+            "sin disponibilidad semanal configurada: Ana",
+            precomprobacion["texto"]
+        )
+        self.assertIn(
+            "Completa la disponibilidad",
+            precomprobacion["texto"]
+        )
+
+    def test_precomprobar_generacion_bloquea_sin_dias_disponibles(self):
+
+        servicio = CuadrantesService()
+        disponibilidad = {
+            dia: "No disponible"
+            for dia in (
+                "lunes",
+                "martes",
+                "miercoles",
+                "jueves",
+                "viernes",
+                "sabado",
+                "domingo"
+            )
+        }
+
+        precomprobacion = servicio.precomprobar_generacion(
+            {
+                "repartidores": [{
+                    "id": 1,
+                    "nombre": "Ana",
+                    "horas": 30,
+                    "disponibilidad": disponibilidad
+                }],
+                "restaurantes": [{
+                    "id": 2,
+                    "nombre": "BK Centro",
+                    "zona": "Centro",
+                    "activo": 1
+                }],
+                "turnos": [{
+                    "id": 5,
+                    "tipo": "Comida",
+                    "nombre": "Comida",
+                    "hora_inicio": "13:00",
+                    "hora_fin": "16:00",
+                    "duracion": 3,
+                    "activo": 1
+                }],
+                "restaurante_turnos": [],
+                "demandas_restaurante": [{
+                    "id": 10,
+                    "restaurante_id": 2,
+                    "turno_restaurante_id": None,
+                    "fecha": "2026-07-13",
+                    "dia_semana": None,
+                    "repartidores_necesarios": 1,
+                    "activo": 1
+                }],
+                "demandas_zona": [],
+                "demandas_ciudad": []
+            },
+            "2026-07-13"
+        )
+
+        self.assertFalse(precomprobacion["puede_generar"])
+        self.assertFalse(precomprobacion["requiere_confirmacion"])
+        self.assertIn(
+            "sin ningun dia disponible: Ana",
+            precomprobacion["texto"]
+        )
 
     def test_diagnostico_primer_cuadrante_explica_bloqueos(self):
 
