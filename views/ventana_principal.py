@@ -17,6 +17,7 @@ from app_info import APP_NAME, VERSION
 from views.asistente import VistaAsistente
 from views.ciudades import VistaCiudades
 from views.configuracion import VistaConfiguracion
+from views.creacion_guiada import VistaCreacionGuiada
 from views.cuadrantes import VistaCuadrantes
 from views.estadisticas import VistaEstadisticas
 from views.exportaciones import VistaExportaciones
@@ -85,6 +86,7 @@ class VentanaPrincipal(QMainWindow):
         self.registrar_pagina("inicio", VistaInicio(self))
         self.registrar_pagina("guia_uso", VistaGuiaUso())
         self.registrar_pagina("puesta_marcha", VistaPuestaMarcha(self))
+        self.registrar_pagina("creacion_guiada", VistaCreacionGuiada(self))
         self.registrar_pagina("repartidores", VistaRepartidores())
         self.registrar_pagina("ciudades", VistaCiudades())
         self.registrar_pagina("restaurantes", VistaRestaurantes())
@@ -122,6 +124,11 @@ class VentanaPrincipal(QMainWindow):
             "puesta_marcha",
             "Puesta en marcha",
             QStyle.SP_DialogApplyButton
+        )
+        self.agregar_boton(
+            "creacion_guiada",
+            "Crear paso a paso",
+            QStyle.SP_FileDialogNewFolder
         )
 
         self.agregar_seccion("GESTION")
@@ -245,6 +252,12 @@ class VentanaPrincipal(QMainWindow):
     def abrir_repartidores(self):
 
         self.mostrar_pagina("repartidores")
+
+    # =====================================
+
+    def abrir_creacion_guiada(self):
+
+        self.mostrar_pagina("creacion_guiada")
 
     # =====================================
 
