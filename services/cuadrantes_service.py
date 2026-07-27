@@ -2879,8 +2879,14 @@ class CuadrantesService:
             for item in resumen
             if item.get("horas", 0) > 0
         ]
+        estado = self.estado_resumen_generacion(
+            asignaciones_generadas,
+            asignaciones_sin_repartidor,
+            incidencias
+        )
 
         return {
+            "estado": estado,
             "resumen": resumen,
             "incidencias": incidencias,
             "horas_complementarias": horas_complementarias,
@@ -2895,6 +2901,53 @@ class CuadrantesService:
             "repartidores_asignados": repartidores_asignados
         }
 
+    def estado_resumen_generacion(
+        self,
+        asignaciones_generadas,
+        asignaciones_sin_repartidor,
+        incidencias
+    ):
+
+        if not asignaciones_generadas:
+
+            return {
+                "clave": "sin_asignaciones",
+                "titulo": "No se crearon plazas",
+                "detalle": (
+                    "Revisa demanda, restaurantes y turnos antes de guardar."
+                )
+            }
+
+        if asignaciones_sin_repartidor:
+
+            return {
+                "clave": "pendiente",
+                "titulo": "Cuadrante generado con plazas pendientes",
+                "detalle": (
+                    "Hay turnos sin repartidor. Revisa alertas antes "
+                    "de publicar."
+                )
+            }
+
+        if incidencias:
+
+            return {
+                "clave": "avisos",
+                "titulo": "Cuadrante generado con avisos",
+                "detalle": (
+                    "La cobertura esta completa, pero conviene revisar "
+                    "las incidencias."
+                )
+            }
+
+        return {
+            "clave": "correcto",
+            "titulo": "Cuadrante listo para guardar",
+            "detalle": (
+                "No hay plazas pendientes ni incidencias detectadas."
+            )
+        }
+
     def texto_resumen_generacion(self, resultado):
 
         datos = self.resumen_generacion(resultado)
@@ -2907,14 +2960,17 @@ class CuadrantesService:
             "Vista previa del cuadrante",
             "",
             "El cuadrante aun no esta guardado.",
+            datos["estado"]["titulo"],
+            datos["estado"]["detalle"],
+            "",
             f"Resultado: {resultado_texto}",
-            f"Asignaciones generadas: {datos['asignaciones_generadas']}",
+            f"Plazas creadas: {datos['asignaciones_generadas']}",
             (
-                "Asignaciones con repartidor: "
+                "Plazas cubiertas: "
                 f"{datos['asignaciones_con_repartidor']}"
             ),
             (
-                "Asignaciones sin repartidor: "
+                "Plazas pendientes: "
                 f"{datos['asignaciones_sin_repartidor']}"
             ),
             f"Cobertura: {datos['cobertura_porcentaje']:g}%",
@@ -3015,7 +3071,50 @@ class CuadrantesService:
 
             lineas.append("- Ninguna")
 
+        lineas.extend([
+            "",
+            "Que hacer ahora"
+        ])
+
+        for accion in self.acciones_resumen_generacion(datos):
+
+            lineas.append(f"- {accion}")
+
         return "\n".join(lineas)
+
+    def acciones_resumen_generacion(self, datos):
+
+        acciones = []
+
+        if datos["asignaciones_sin_repartidor"]:
+
+            acciones.append(
+                "Pulsa Revisar alertas y completa las plazas pendientes."
+            )
+
+        if datos["horas_complementarias"]:
+
+            acciones.append(
+                "Revisa las horas complementarias usadas antes de publicar."
+            )
+
+        if datos["incidencias"] and not datos["asignaciones_sin_repartidor"]:
+
+            acciones.append(
+                "Revisa las incidencias y decide si el cuadrante es valido."
+            )
+
+        if not acciones:
+
+            acciones.append(
+                "Guarda el cuadrante y revisalo en la vista Por empleado."
+            )
+
+        acciones.append(
+            "Publica solo cuando no queden alertas criticas."
+        )
+
+        return acciones
 
     def texto_incidencia(self, incidencia):
 

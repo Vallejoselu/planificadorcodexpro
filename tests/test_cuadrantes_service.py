@@ -757,17 +757,65 @@ class TestCuadrantesServicePorCapa(unittest.TestCase):
         }
 
         texto = servicio.texto_resumen_generacion(resultado)
+        resumen = servicio.resumen_generacion(resultado)
 
+        self.assertEqual(resumen["estado"]["clave"], "pendiente")
+        self.assertIn("plazas pendientes", resumen["estado"]["titulo"])
         self.assertIn("Resultado: Con advertencias", texto)
         self.assertIn("El cuadrante aun no esta guardado.", texto)
-        self.assertIn("Asignaciones generadas: 2", texto)
-        self.assertIn("Asignaciones con repartidor: 1", texto)
-        self.assertIn("Asignaciones sin repartidor: 1", texto)
+        self.assertIn("Plazas creadas: 2", texto)
+        self.assertIn("Plazas cubiertas: 1", texto)
+        self.assertIn("Plazas pendientes: 1", texto)
         self.assertIn("Cobertura: 50%", texto)
         self.assertIn("Advertencias: 1", texto)
         self.assertIn("Turnos sin cubrir: 1", texto)
         self.assertIn("Horas complementarias", texto)
         self.assertIn("Ana: 2 h de 4 permitidas", texto)
+        self.assertIn("Que hacer ahora", texto)
+        self.assertIn("Pulsa Revisar alertas", texto)
+        self.assertIn("Publica solo cuando no queden alertas criticas", texto)
+
+    def test_resumen_generacion_marca_correcto_sin_incidencias(self):
+
+        servicio = CuadrantesService()
+        resumen = servicio.resumen_generacion({
+            "horario": {
+                "lunes": {
+                    "comida": [
+                        {"repartidor_id": 1}
+                    ]
+                }
+            },
+            "resumen": [{"nombre": "Ana", "horas": 3}],
+            "incidencias": []
+        })
+        texto = servicio.texto_resumen_generacion({
+            "horario": {
+                "lunes": {
+                    "comida": [
+                        {"repartidor_id": 1}
+                    ]
+                }
+            },
+            "resumen": [{"nombre": "Ana", "horas": 3}],
+            "incidencias": []
+        })
+
+        self.assertEqual(resumen["estado"]["clave"], "correcto")
+        self.assertIn("Cuadrante listo para guardar", texto)
+        self.assertIn("Guarda el cuadrante", texto)
+
+    def test_resumen_generacion_detecta_sin_asignaciones(self):
+
+        servicio = CuadrantesService()
+        resumen = servicio.resumen_generacion({
+            "horario": {},
+            "resumen": [],
+            "incidencias": []
+        })
+
+        self.assertEqual(resumen["estado"]["clave"], "sin_asignaciones")
+        self.assertIn("No se crearon plazas", resumen["estado"]["titulo"])
 
     def test_precomprobar_generacion_detecta_configuracion_incompleta(self):
 
