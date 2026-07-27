@@ -146,6 +146,7 @@ class TestUxClaridadOperativa(unittest.TestCase):
         vista = VistaCuadrantes()
 
         self.assertEqual(vista.guia_operativa.objectName(), "infoPanel")
+        self.assertIn("Flujo recomendado", vista.guia_operativa.text())
         self.assertEqual(vista.leyenda_cuadrante.objectName(), "infoPanel")
         self.assertEqual(vista.aviso_modo_simple.objectName(), "infoPanel")
         self.assertEqual(vista.tabla_alertas.maximumHeight(), 150)
@@ -154,10 +155,18 @@ class TestUxClaridadOperativa(unittest.TestCase):
 
         vista = VistaCuadrantes()
 
+        self.assertEqual(
+            vista.selector_modo_avanzado.text(),
+            "Herramientas avanzadas"
+        )
         self.assertFalse(vista.selector_modo_avanzado.isChecked())
         self.assertTrue(vista.barra_acciones_scroll.isHidden())
         self.assertTrue(vista.detalle_seleccion.isHidden())
         self.assertFalse(vista.aviso_modo_simple.isHidden())
+        self.assertIs(
+            vista.btn_marcar_listo.parentWidget(),
+            vista.barra_acciones_widget
+        )
 
         vista.selector_modo_avanzado.setChecked(True)
 
