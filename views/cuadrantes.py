@@ -66,9 +66,8 @@ class VistaCuadrantes(QWidget):
         self.layout.addWidget(titulo)
 
         self.guia_operativa = QLabel(
-            "Para generar bien: crea repartidores activos, restaurantes, "
-            "turnos y demanda. 'Sin repartidor' significa plaza pendiente "
-            "de cubrir; no es una persona asignada."
+            "Flujo recomendado: comprobar configuracion, generar, revisar "
+            "alertas y publicar."
         )
         self.guia_operativa.setWordWrap(True)
         self.guia_operativa.setObjectName("infoPanel")
@@ -84,9 +83,8 @@ class VistaCuadrantes(QWidget):
         self.layout.addWidget(self.leyenda_cuadrante)
 
         self.aviso_modo_simple = QLabel(
-            "Modo simple activo: revisa la semana, comprueba configuracion, "
-            "genera y publica. Activa Modo avanzado solo para editar celdas, "
-            "copiar, pegar o usar plantillas."
+            "Herramientas manuales ocultas. Activa Herramientas avanzadas "
+            "para editar celdas, copiar semanas o usar plantillas."
         )
         self.aviso_modo_simple.setWordWrap(True)
         self.aviso_modo_simple.setObjectName("infoPanel")
@@ -144,10 +142,15 @@ class VistaCuadrantes(QWidget):
         self.btn_deshacer = QPushButton("Deshacer")
         self.btn_rehacer = QPushButton("Rehacer")
         self.btn_actualizar = QPushButton("Actualizar")
-        self.selector_modo_avanzado = QCheckBox("Modo avanzado")
+        self.selector_modo_avanzado = QCheckBox("Herramientas avanzadas")
         self.selector_modo_avanzado.setToolTip(
             "Muestra herramientas manuales: editar, asignar, copiar, "
             "plantillas, deshacer y rehacer."
+        )
+        self.selector_modo_avanzado.setMinimumWidth(170)
+        self.selector_modo_avanzado.setSizePolicy(
+            QSizePolicy.Fixed,
+            QSizePolicy.Fixed
         )
 
         self.selector_vista.addItem("Semana", "semana")
@@ -345,11 +348,10 @@ class VistaCuadrantes(QWidget):
         barra_filtros.addWidget(QLabel("Vista"))
         barra_filtros.addWidget(self.selector_vista)
         barra_filtros.addWidget(self.estado_semana)
-        barra_filtros.addWidget(self.selector_modo_avanzado)
         barra_filtros.addWidget(self.btn_comprobar)
         barra_filtros.addWidget(self.btn_generar)
-        barra_filtros.addWidget(self.btn_marcar_listo)
         barra_filtros.addWidget(self.btn_publicar)
+        barra_filtros.addWidget(self.selector_modo_avanzado)
 
         self.barra_acciones_widget = QWidget()
         barra_acciones = QHBoxLayout(self.barra_acciones_widget)
@@ -361,6 +363,7 @@ class VistaCuadrantes(QWidget):
         barra_acciones.addWidget(self.selector_repartidor)
         barra_acciones.addWidget(self.btn_editar)
         barra_acciones.addWidget(self.btn_asignar)
+        barra_acciones.addWidget(self.btn_marcar_listo)
         barra_acciones.addWidget(self.btn_copiar)
         barra_acciones.addWidget(self.btn_pegar)
         barra_acciones.addWidget(self.btn_copiar_semana)
