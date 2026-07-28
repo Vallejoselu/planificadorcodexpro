@@ -76,7 +76,7 @@ class VistaCuadrantes(QWidget):
         self.leyenda_cuadrante = QLabel(
             "Leyenda: LIBRE = no trabaja | COMIDA = turno de comida | "
             "CENA = turno de cena | DOBLE = comida y cena | "
-            "- = disponible sin turno | Sin repartidor/Pendiente = plaza "
+            "- = disponible sin turno | Sin repartidor = plaza pendiente "
             "sin cubrir"
         )
         self.leyenda_cuadrante.setWordWrap(True)
