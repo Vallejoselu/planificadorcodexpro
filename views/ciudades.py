@@ -64,7 +64,7 @@ class VistaCiudades(QWidget):
 
     def cargar_tabla(self):
 
-        datos = ciudades_repository.listar_todas()
+        datos = ciudades_repository.listar_activas()
         self.tabla.setRowCount(len(datos))
 
         for fila, ciudad in enumerate(datos):

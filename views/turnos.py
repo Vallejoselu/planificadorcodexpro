@@ -110,7 +110,7 @@ class VistaTurnos(QWidget):
 
     def cargar_tabla(self):
 
-        datos = turnos_service.listar_todos()
+        datos = turnos_service.listar_activos()
 
         self.tabla.setRowCount(len(datos))
 

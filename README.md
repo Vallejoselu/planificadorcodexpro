@@ -82,6 +82,7 @@ docs\FLUJO_GIT_SEGURO.md
 - Disponibilidad semanal por comidas, cenas, ambos o no disponible.
 - Gestion de restaurantes con zona, direccion, telefono, estado, horarios y repartidores fijos.
 - Gestion de turnos de comida, cena, turno partido y personalizados.
+- Listados de gestion centrados en datos activos para no mezclar elementos desactivados.
 - Calendario semanal con varias coberturas por dia y turno.
 - Creacion guiada para configurar la empresa paso a paso.
 - Primer cuadrante guiado con comprobacion previa en lenguaje claro.
