@@ -75,8 +75,9 @@ class VistaCuadrantes(QWidget):
 
         self.leyenda_cuadrante = QLabel(
             "Leyenda: LIBRE = no trabaja | COMIDA = turno de comida | "
-            "CENA = turno de cena | DOBLE = comida y cena | - = disponible "
-            "sin turno | Sin repartidor = plaza pendiente"
+            "CENA = turno de cena | DOBLE = comida y cena | "
+            "- = disponible sin turno | Sin repartidor = plaza pendiente "
+            "sin cubrir"
         )
         self.leyenda_cuadrante.setWordWrap(True)
         self.leyenda_cuadrante.setObjectName("infoPanel")
@@ -1196,31 +1197,42 @@ class VistaCuadrantes(QWidget):
 
     def color_celda_empleado(self, estado):
 
-        colores = {
-            "libre": "#FCA5A5",
-            "doble": "#FCD34D",
-            "comida": "#BAE6FD",
-            "cena": "#C7D2FE",
-            "disponible": "#E5E7EB",
-            "turno": "#86EFAC"
-        }
+        colores = self.paleta_empleados()
 
-        return colores.get(estado, "#E5E7EB")
+        return colores.get(estado, colores["disponible"])[0]
 
     # ======================================
 
     def color_texto_celda_empleado(self, estado):
 
+        colores = self.paleta_empleados()
+
+        return colores.get(estado, colores["disponible"])[1]
+
+    # ======================================
+
+    def paleta_empleados(self):
+
         colores = {
-            "libre": "#450A0A",
-            "doble": "#422006",
-            "comida": "#0C4A6E",
-            "cena": "#1E1B4B",
-            "disponible": "#374151",
-            "turno": "#052E16"
+            "libre": ("#FEE2E2", "#7F1D1D"),
+            "doble": ("#FEF3C7", "#78350F"),
+            "comida": ("#DBEAFE", "#1E3A8A"),
+            "cena": ("#EDE9FE", "#4C1D95"),
+            "disponible": ("#F9FAFB", "#374151"),
+            "turno": ("#DCFCE7", "#14532D")
         }
 
-        return colores.get(estado, "#374151")
+        return colores
+
+    # ======================================
+
+    def paleta_alertas(self):
+
+        return {
+            "alta": ("#FEE2E2", "#7F1D1D"),
+            "media": ("#FEF3C7", "#78350F"),
+            "ok": ("#DCFCE7", "#14532D")
+        }
 
     # ======================================
 
@@ -1235,11 +1247,7 @@ class VistaCuadrantes(QWidget):
         self.tabla_alertas.clearContents()
         self.tabla_alertas.setRowCount(len(filas))
 
-        colores = {
-            "alta": ("#FCA5A5", "#450A0A"),
-            "media": ("#FCD34D", "#422006"),
-            "ok": ("#86EFAC", "#052E16")
-        }
+        colores = self.paleta_alertas()
 
         for fila, alerta in enumerate(filas):
 
@@ -1250,7 +1258,7 @@ class VistaCuadrantes(QWidget):
             ]
             fondo, texto = colores.get(
                 alerta.get("severidad"),
-                ("#E5E7EB", "#374151")
+                ("#F9FAFB", "#374151")
             )
 
             for columna, valor in enumerate(valores):

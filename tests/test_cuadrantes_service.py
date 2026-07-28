@@ -493,6 +493,8 @@ class TestCuadrantesServicePorCapa(unittest.TestCase):
         self.assertIn("Sin repartidor", celda["texto"])
         self.assertIn("Pendientes sin repartidor: 1", celda["tooltip"])
         self.assertEqual(celda["estado"], "pendiente")
+        self.assertEqual(celda["fondo"], "#FEF3C7")
+        self.assertEqual(celda["color_texto"], "#78350F")
         self.assertEqual(estado["indicadores"]["sin_repartidor"], 1)
         self.assertEqual(
             estado["filas_locales"][0]["dias"]["lunes"],

@@ -1,4 +1,5 @@
 import os
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -130,16 +131,23 @@ class TestUxClaridadOperativa(unittest.TestCase):
 
         vista = VistaCuadrantes()
 
-        self.assertEqual(vista.color_celda_empleado("libre"), "#FCA5A5")
+        self.assertEqual(vista.color_celda_empleado("libre"), "#FEE2E2")
         self.assertEqual(
             vista.color_texto_celda_empleado("libre"),
-            "#450A0A"
+            "#7F1D1D"
         )
-        self.assertEqual(vista.color_celda_empleado("disponible"), "#E5E7EB")
+        self.assertEqual(vista.color_celda_empleado("comida"), "#DBEAFE")
+        self.assertEqual(vista.color_texto_celda_empleado("comida"), "#1E3A8A")
+        self.assertEqual(vista.color_celda_empleado("cena"), "#EDE9FE")
+        self.assertEqual(vista.color_texto_celda_empleado("cena"), "#4C1D95")
+        self.assertEqual(vista.color_celda_empleado("doble"), "#FEF3C7")
+        self.assertEqual(vista.color_texto_celda_empleado("doble"), "#78350F")
+        self.assertEqual(vista.color_celda_empleado("disponible"), "#F9FAFB")
         self.assertEqual(
             vista.color_texto_celda_empleado("disponible"),
             "#374151"
         )
+        self.assertEqual(vista.paleta_alertas()["alta"], ("#FEE2E2", "#7F1D1D"))
 
     def test_cuadrantes_usa_paneles_adaptados_al_tema(self):
 

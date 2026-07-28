@@ -2011,6 +2011,19 @@ class CuadrantesService:
 
                 textos.insert(0, horario)
 
+            estado_celda = "pendiente" if sin_repartidor else "completo"
+            fondo_celda = None
+
+            if sin_repartidor:
+
+                fondo_celda = self.color_estado_cuadrante(estado_celda)
+
+            elif primer_restaurante:
+
+                fondo_celda = self.color_restaurante(
+                    self.valor_campo(primer_restaurante, "id", 0)
+                )
+
             celdas[(dia, turno_id)] = {
                 "texto": "\n".join(textos),
                 "tooltip": self.tooltip_celda(
@@ -2019,20 +2032,10 @@ class CuadrantesService:
                     detalle,
                     sin_repartidor
                 ),
-                "estado": (
-                    "pendiente"
-                    if sin_repartidor
-                    else "completo"
-                ),
-                "fondo": (
-                    self.color_restaurante(
-                        self.valor_campo(primer_restaurante, "id", 0)
-                    )
-                    if primer_restaurante
-                    else None
-                ),
+                "estado": estado_celda,
+                "fondo": fondo_celda,
                 "color_texto": (
-                    self.color_turno(turno)
+                    self.color_texto_estado_cuadrante(estado_celda, turno)
                     if turno
                     else None
                 )
@@ -2743,6 +2746,28 @@ class CuadrantesService:
         ]
 
         return colores[restaurante_id % len(colores)]
+
+    def color_estado_cuadrante(self, estado):
+
+        colores = {
+            "pendiente": "#FEF3C7",
+            "completo": "#F9FAFB"
+        }
+
+        return colores.get(estado, "#F9FAFB")
+
+    def color_texto_estado_cuadrante(self, estado, turno=None):
+
+        colores = {
+            "pendiente": "#78350F",
+            "completo": "#1F2937"
+        }
+
+        if estado in colores:
+
+            return colores[estado]
+
+        return self.color_turno(turno) if turno else "#1F2937"
 
     def color_turno(self, turno):
 
