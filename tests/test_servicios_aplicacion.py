@@ -63,7 +63,11 @@ class FakeTurnosRepository:
 
     def listar_activos(self):
 
-        return self.turnos
+        return [
+            turno
+            for turno in self.turnos
+            if turno[7]
+        ]
 
     def listar_todos(self):
 
@@ -554,6 +558,29 @@ class TestServiciosAplicacion(unittest.TestCase):
 
         self.assertEqual(datos[0]["repartidores_fijos_texto"], "Ana")
 
+    def test_restaurantes_service_lista_tabla_solo_activos(self):
+
+        restaurantes_repo = FakeRestaurantesRepository()
+        restaurantes_repo.restaurantes = [
+            (1, "Local activo", "", "Centro", "", "", 1, "", "", None, ""),
+            (2, "Local inactivo", "", "Centro", "", "", 0, "", "", None, "")
+        ]
+        servicio = RestaurantesService(
+            restaurantes_repository=restaurantes_repo,
+            repartidores_repository=FakeRepartidoresRepository()
+        )
+
+        datos = servicio.listar_tabla()
+
+        self.assertEqual(
+            [item["restaurante"][1] for item in datos],
+            ["Local activo"]
+        )
+        self.assertEqual(
+            [restaurante[1] for restaurante in servicio.listar_todos()],
+            ["Local activo", "Local inactivo"]
+        )
+
     def test_turnos_service_delega_operaciones_basicas(self):
 
         turnos_repo = FakeTurnosRepository()
@@ -565,6 +592,24 @@ class TestServiciosAplicacion(unittest.TestCase):
         self.assertEqual(servicio.obtener_por_id(1)[2], "Comida")
         servicio.desactivar(1)
         self.assertEqual(servicio.listar_todos(), [])
+
+    def test_turnos_service_lista_activos_sin_desactivados(self):
+
+        turnos_repo = FakeTurnosRepository()
+        turnos_repo.turnos = [
+            (1, "Comida", "Comida", "13:00", "16:00", "", 3, 1),
+            (2, "Cena", "Cena", "20:00", "00:00", "", 4, 0)
+        ]
+        servicio = TurnosService(turnos_repo)
+
+        self.assertEqual(
+            [turno[2] for turno in servicio.listar_activos()],
+            ["Comida"]
+        )
+        self.assertEqual(
+            [turno[2] for turno in servicio.listar_todos()],
+            ["Comida", "Cena"]
+        )
 
 
 if __name__ == "__main__":

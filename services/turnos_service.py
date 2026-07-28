@@ -11,6 +11,10 @@ class TurnosService:
 
         return self.turnos_repository.listar_todos()
 
+    def listar_activos(self):
+
+        return self.turnos_repository.listar_activos()
+
     def obtener_por_id(self, turno_id):
 
         return self.turnos_repository.obtener_por_id(turno_id)

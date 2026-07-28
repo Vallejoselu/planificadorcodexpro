@@ -22,12 +22,16 @@ class RestaurantesService:
 
         return self.restaurantes_repository.listar_todos()
 
+    def listar_activos(self):
+
+        return self.restaurantes_repository.listar_activos()
+
     def listar_tabla(self):
 
         nombres_repartidores = self.obtener_nombres_repartidores()
         datos = []
 
-        for restaurante in self.restaurantes_repository.listar_todos():
+        for restaurante in self.restaurantes_repository.listar_activos():
 
             repartidores_fijos = (
                 self.restaurantes_repository.obtener_repartidores_fijos(
