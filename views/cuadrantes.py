@@ -403,9 +403,19 @@ class VistaCuadrantes(QWidget):
     def actualizar_modo_visual(self):
 
         avanzado = self.selector_modo_avanzado.isChecked()
+
+        if avanzado and self.selector_vista.currentData() != "semana":
+
+            indice_semana = self.selector_vista.findData("semana")
+
+            if indice_semana >= 0:
+
+                self.selector_vista.setCurrentIndex(indice_semana)
+
         self.barra_acciones_scroll.setVisible(avanzado)
         self.detalle_seleccion.setVisible(avanzado)
         self.aviso_modo_simple.setVisible(not avanzado)
+        self.actualizar_estado_herramientas_celda()
 
     # ======================================
 
@@ -442,6 +452,39 @@ class VistaCuadrantes(QWidget):
         self.tabla.setVisible(vista == "semana")
         self.tabla_locales.setVisible(vista_local)
         self.tabla_empleados.setVisible(vista_empleado)
+        self.actualizar_estado_herramientas_celda()
+
+    # ======================================
+
+    def actualizar_estado_herramientas_celda(self):
+
+        herramientas_celda = (
+            self.selector_restaurante,
+            self.selector_turno,
+            self.selector_repartidor,
+            self.btn_editar,
+            self.btn_asignar,
+            self.btn_copiar,
+            self.btn_pegar,
+            self.btn_eliminar
+        )
+        habilitar = self.selector_vista.currentData() == "semana"
+
+        for widget in herramientas_celda:
+
+            widget.setEnabled(habilitar)
+
+        if habilitar:
+
+            self.detalle_seleccion.setText(
+                "Selecciona una celda para ver que se va a editar."
+            )
+
+        else:
+
+            self.detalle_seleccion.setText(
+                "Las herramientas de celda se usan en la vista Semana."
+            )
 
     # ======================================
 
@@ -893,6 +936,18 @@ class VistaCuadrantes(QWidget):
 
     def detalle_celda_actual(self):
 
+        if self.selector_vista.currentData() != "semana":
+
+            return {
+                "texto": (
+                    "Las herramientas de celda se usan en la vista Semana."
+                ),
+                "tooltip": (
+                    "Cambia a Vista Semana para editar, copiar, pegar o "
+                    "quitar asignaciones concretas."
+                )
+            }
+
         clave = self.clave_actual()
 
         if not clave:
@@ -1050,6 +1105,10 @@ class VistaCuadrantes(QWidget):
     # ======================================
 
     def editar_celda_actual(self):
+
+        if not self.asegurar_vista_semana_para_celda("Editar celda"):
+
+            return
 
         fila = self.tabla.currentRow()
         columna = self.tabla.currentColumn()
@@ -1386,6 +1445,10 @@ class VistaCuadrantes(QWidget):
 
     def asignar_seleccion(self):
 
+        if not self.asegurar_vista_semana_para_celda("Asignar turno"):
+
+            return
+
         fila = self.tabla.currentRow()
         columna = self.tabla.currentColumn()
 
@@ -1617,10 +1680,19 @@ class VistaCuadrantes(QWidget):
 
     def copiar(self):
 
+        if not self.asegurar_vista_semana_para_celda("Copiar asignacion"):
+
+            return
+
         clave = self.clave_actual()
 
         if not clave:
 
+            QMessageBox.warning(
+                self,
+                "Copiar asignacion",
+                "Selecciona una celda de la vista Semana para copiar."
+            )
             return
 
         asignacion = self.asignaciones.get(clave)
@@ -1631,6 +1703,13 @@ class VistaCuadrantes(QWidget):
                 dict(item)
                 for item in asignacion
             ]
+            return
+
+        QMessageBox.information(
+            self,
+            "Copiar asignacion",
+            "La celda seleccionada no tiene asignaciones que copiar."
+        )
 
     # ======================================
 
@@ -1874,14 +1953,28 @@ class VistaCuadrantes(QWidget):
 
     def pegar(self):
 
+        if not self.asegurar_vista_semana_para_celda("Pegar asignacion"):
+
+            return
+
         if not self.portapapeles:
 
+            QMessageBox.information(
+                self,
+                "Pegar asignacion",
+                "Primero copia una celda con asignaciones."
+            )
             return
 
         clave = self.clave_actual()
 
         if not clave:
 
+            QMessageBox.warning(
+                self,
+                "Pegar asignacion",
+                "Selecciona una celda de la vista Semana para pegar."
+            )
             return
 
         fila = self.tabla.currentRow()
@@ -1927,6 +2020,10 @@ class VistaCuadrantes(QWidget):
 
     def eliminar(self):
 
+        if not self.asegurar_vista_semana_para_celda("Quitar asignacion"):
+
+            return
+
         clave = self.clave_actual()
 
         if not clave:
@@ -1954,6 +2051,26 @@ class VistaCuadrantes(QWidget):
             columna,
             limpiar=True
         )
+
+    # ======================================
+
+    def asegurar_vista_semana_para_celda(self, titulo):
+
+        if self.selector_vista.currentData() == "semana":
+
+            return True
+
+        QMessageBox.warning(
+            self,
+            titulo,
+            (
+                "Las acciones de celda solo se pueden usar en la vista "
+                "Semana.\n\n"
+                "Cambia la vista a Semana para editar, copiar, pegar o "
+                "quitar asignaciones concretas."
+            )
+        )
+        return False
 
     # ======================================
 
