@@ -55,6 +55,12 @@ class TestUxClaridadOperativa(unittest.TestCase):
         )
         self.assertIn("No elimina", cuadrantes.btn_eliminar.toolTip())
         self.assertEqual(
+            cuadrantes.btn_vaciar_semana.text(),
+            "Vaciar semana"
+        )
+        self.assertIn("semana seleccionada", cuadrantes.btn_vaciar_semana.toolTip())
+        self.assertIn("No borra repartidores", cuadrantes.btn_vaciar_semana.toolTip())
+        self.assertEqual(
             cuadrantes.btn_comprobar.text(),
             "Comprobar configuracion"
         )

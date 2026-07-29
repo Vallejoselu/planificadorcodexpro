@@ -186,6 +186,34 @@ class TestCuadrantesServicePorCapa(unittest.TestCase):
 
         self.assertEqual(historial.registros[0][0], "Eliminar turno")
 
+    def test_vaciar_semana_elimina_solo_semana_y_registra_historial(self):
+
+        calendario = FakeCalendarioRepository()
+        historial = FakeHistorialRepository()
+        publicaciones = FakePublicacionesRepository()
+        servicio = self.crear_servicio_aislado(
+            calendario_repository=calendario,
+            historial_repository=historial,
+            publicaciones_repository=publicaciones
+        )
+
+        resultado = servicio.vaciar_semana("2026-07-15")
+
+        self.assertEqual(calendario.eliminados, [("semana", "2026-07-13")])
+        self.assertEqual(
+            publicaciones.guardadas[0],
+            (
+                "2026-07-13",
+                "borrador",
+                resultado["resumen"]
+            )
+        )
+        self.assertEqual(
+            historial.registros[0][0],
+            "Vaciar cuadrante semanal"
+        )
+        self.assertIn("otras semanas", historial.registros[0][2])
+
     def test_copiar_semana_conserva_restaurante_turno_y_repartidor(self):
 
         calendario = FakeCalendarioRepository()
