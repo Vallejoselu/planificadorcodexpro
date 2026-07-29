@@ -2789,6 +2789,30 @@ class CuadrantesService:
             normalizar_fecha_inicio_semana(fecha_inicio)
         )
 
+    def vaciar_semana(self, fecha_inicio):
+
+        fecha_inicio = normalizar_fecha_inicio_semana(fecha_inicio)
+        self.calendario_repository.eliminar_semana(fecha_inicio)
+        resumen = (
+            "Cuadrante vaciado. No se han borrado repartidores, "
+            "restaurantes, turnos, demandas ni otras semanas."
+        )
+        self.publicaciones_repository.guardar(
+            fecha_inicio,
+            "borrador",
+            resumen
+        )
+        self.registrar_historial(
+            "Vaciar cuadrante semanal",
+            "calendario_semanal",
+            resumen,
+            fecha_inicio
+        )
+        return {
+            "fecha_inicio_semana": fecha_inicio,
+            "resumen": resumen
+        }
+
     def guardar_asignacion_turno(
         self,
         fecha_inicio,

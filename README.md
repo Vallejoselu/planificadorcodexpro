@@ -94,6 +94,8 @@ docs\FLUJO_GIT_SEGURO.md
 - Vista de cuadrante por empleado con contrato, libres, comidas, cenas,
   dobles y horarios visibles.
 - Asignacion opcional de repartidor en calendario.
+- Vaciado seguro del cuadrante de una semana sin borrar empleados,
+  restaurantes, turnos, demandas ni otras semanas.
 - Generador de horarios con restricciones de contrato, descanso, disponibilidad, vacaciones y bajas.
 - Asistente local para consultas sobre horas, descansos, disponibilidad, cobertura y simulaciones.
 - Exportacion a Excel, PDF y CSV.

@@ -54,6 +54,10 @@ class FakeCalendarioRepository:
             fecha_inicio_semana
         ))
 
+    def eliminar_semana(self, fecha_inicio_semana):
+
+        self.eliminados.append(("semana", fecha_inicio_semana))
+
 
 class FakeTurnosRepository:
 

@@ -132,6 +132,13 @@ class VistaCuadrantes(QWidget):
         self.btn_copiar = QPushButton("Copiar")
         self.btn_pegar = QPushButton("Pegar")
         self.btn_copiar_semana = QPushButton("Copiar semana")
+        self.btn_vaciar_semana = QPushButton("Vaciar semana")
+        self.btn_vaciar_semana.setProperty("variant", "danger")
+        self.btn_vaciar_semana.setToolTip(
+            "Elimina solo el cuadrante guardado de la semana seleccionada. "
+            "No borra repartidores, restaurantes, turnos, demandas ni otras "
+            "semanas."
+        )
         self.btn_guardar_plantilla = QPushButton("Guardar plantilla")
         self.btn_aplicar_plantilla = QPushButton("Aplicar plantilla")
         self.btn_eliminar = QPushButton("Quitar asignacion")
@@ -272,6 +279,7 @@ class VistaCuadrantes(QWidget):
         self.btn_copiar.clicked.connect(self.copiar)
         self.btn_pegar.clicked.connect(self.pegar)
         self.btn_copiar_semana.clicked.connect(self.copiar_semana)
+        self.btn_vaciar_semana.clicked.connect(self.vaciar_semana)
         self.btn_guardar_plantilla.clicked.connect(self.guardar_plantilla)
         self.btn_aplicar_plantilla.clicked.connect(self.aplicar_plantilla)
         self.btn_eliminar.clicked.connect(self.eliminar)
@@ -309,6 +317,7 @@ class VistaCuadrantes(QWidget):
             self.btn_copiar,
             self.btn_pegar,
             self.btn_copiar_semana,
+            self.btn_vaciar_semana,
             self.btn_guardar_plantilla,
             self.btn_aplicar_plantilla,
             self.btn_eliminar,
@@ -368,6 +377,7 @@ class VistaCuadrantes(QWidget):
         barra_acciones.addWidget(self.btn_copiar)
         barra_acciones.addWidget(self.btn_pegar)
         barra_acciones.addWidget(self.btn_copiar_semana)
+        barra_acciones.addWidget(self.btn_vaciar_semana)
         barra_acciones.addWidget(self.btn_guardar_plantilla)
         barra_acciones.addWidget(self.btn_aplicar_plantilla)
         barra_acciones.addWidget(self.btn_eliminar)
@@ -1687,6 +1697,70 @@ class VistaCuadrantes(QWidget):
                 f"Asignaciones copiadas: {resultado['total_asignaciones']}"
             )
         )
+
+    # ======================================
+
+    def vaciar_semana(self):
+
+        if not self.hay_asignaciones_guardadas():
+
+            QMessageBox.information(
+                self,
+                "Vaciar semana",
+                (
+                    "La semana seleccionada no tiene un cuadrante guardado "
+                    "para vaciar."
+                )
+            )
+            return
+
+        if not self.confirmar_vaciar_semana():
+
+            return
+
+        resultado = cuadrantes_service.vaciar_semana(
+            self.fecha_inicio_semana()
+        )
+        self.undo_stack.clear()
+        self.cargar_datos()
+
+        QMessageBox.information(
+            self,
+            "Vaciar semana",
+            (
+                "Cuadrante semanal vaciado correctamente.\n\n"
+                f"Semana: {resultado['fecha_inicio_semana']}\n"
+                "No se han borrado repartidores, restaurantes, turnos, "
+                "demandas ni otras semanas."
+            )
+        )
+
+    # ======================================
+
+    def confirmar_vaciar_semana(self):
+
+        mensaje = QMessageBox(self)
+        mensaje.setWindowTitle("Vaciar semana")
+        mensaje.setText(
+            (
+                "Vas a eliminar todas las asignaciones del cuadrante de la "
+                f"semana {self.texto_fecha_inicio_semana()}."
+            )
+        )
+        mensaje.setInformativeText(
+            (
+                "Solo se vaciara esta semana. No se borraran repartidores, "
+                "restaurantes, turnos, demandas, plantillas ni otras semanas."
+            )
+        )
+        boton_vaciar = mensaje.addButton(
+            "Vaciar esta semana",
+            QMessageBox.AcceptRole
+        )
+        mensaje.addButton("Cancelar", QMessageBox.RejectRole)
+        mensaje.exec()
+
+        return mensaje.clickedButton() == boton_vaciar
 
     # ======================================
 
