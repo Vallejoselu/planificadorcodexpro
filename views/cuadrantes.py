@@ -266,9 +266,11 @@ class VistaCuadrantes(QWidget):
 
         self.btn_actualizar.clicked.connect(self.cargar_datos)
         self.selector_semana.dateChanged.connect(self.cambiar_semana)
-        self.selector_vista.currentIndexChanged.connect(self.cambiar_vista)
+        self.selector_vista.currentIndexChanged.connect(
+            lambda _indice: self.cambiar_vista()
+        )
         self.selector_modo_avanzado.toggled.connect(
-            self.actualizar_modo_visual
+            lambda _activo: self.actualizar_modo_visual()
         )
         self.btn_comprobar.clicked.connect(self.comprobar_configuracion)
         self.btn_generar.clicked.connect(self.generar_cuadrante_guiado)
