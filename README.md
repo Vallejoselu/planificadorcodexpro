@@ -85,6 +85,8 @@ docs\FLUJO_GIT_SEGURO.md
 - Listados de gestion centrados en datos activos para no mezclar elementos desactivados.
 - Calendario semanal con varias coberturas por dia y turno.
 - Creacion guiada para configurar la empresa paso a paso.
+- Puesta en marcha con creacion de datos minimos reales: ciudad,
+  restaurante, turnos comida/cena y demanda base sin repartidores ficticios.
 - Primer cuadrante guiado con comprobacion previa en lenguaje claro.
 - Validacion previa antes de generar para detectar datos incompletos.
 - Resumen claro tras generar con plazas cubiertas, pendientes y avisos.
