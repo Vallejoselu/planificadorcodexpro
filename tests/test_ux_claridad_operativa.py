@@ -236,11 +236,12 @@ class TestUxClaridadOperativa(unittest.TestCase):
 
             vista = VistaCuadrantes()
             vista.selector_modo_avanzado.setChecked(True)
+            vista.selector_vista.setCurrentText("Por empleado")
+            vista.copiar()
+            vista.selector_vista.setCurrentText("Semana")
             vista.clave_actual = lambda: None
             vista.copiar()
             vista.pegar()
-            vista.selector_vista.setCurrentText("Por empleado")
-            vista.copiar()
 
         finally:
 
@@ -249,10 +250,10 @@ class TestUxClaridadOperativa(unittest.TestCase):
 
         self.assertEqual(avisos[0][1], "Copiar asignacion")
         self.assertIn("vista Semana", avisos[0][2])
+        self.assertEqual(avisos[1][1], "Copiar asignacion")
+        self.assertIn("Selecciona una celda", avisos[1][2])
         self.assertEqual(mensajes[0][1], "Pegar asignacion")
         self.assertIn("Primero copia", mensajes[0][2])
-        self.assertEqual(avisos[1][1], "Copiar asignacion")
-        self.assertIn("solo se pueden usar en la vista Semana", avisos[1][2])
 
     def test_comprobar_configuracion_muestra_resultado_previo(self):
 
