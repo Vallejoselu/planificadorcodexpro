@@ -432,6 +432,7 @@ class TestCuadrantesPlanningEngine(unittest.TestCase):
         )
         vista = VistaCuadrantes()
         vista.selector_semana.setDate(QDate(2026, 7, 20))
+        vista.selector_vista.setCurrentText("Semana")
         vista.tabla.setCurrentCell(
             vista.fila_turno(turno_id),
             database.DIAS_SEMANA.index("lunes")

@@ -207,6 +207,7 @@ class TestUxClaridadOperativa(unittest.TestCase):
         try:
 
             vista = VistaCuadrantes()
+            vista.selector_vista.setCurrentText("Semana")
             vista.tabla.clearSelection()
             vista.eliminar()
 
