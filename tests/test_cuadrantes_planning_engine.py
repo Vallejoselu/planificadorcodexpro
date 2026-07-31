@@ -296,6 +296,7 @@ class TestCuadrantesPlanningEngine(unittest.TestCase):
 
         vista = VistaCuadrantes()
         vista.selector_semana.setDate(QDate(2026, 7, 20))
+        vista.selector_vista.setCurrentText("Semana")
         restaurante_id = obtener_restaurantes()[0][0]
         turno_id = obtener_turnos()[0][0]
         ana_id = self._id_repartidor("Ana")
@@ -387,6 +388,7 @@ class TestCuadrantesPlanningEngine(unittest.TestCase):
         pedro_id = self._crear_pedro_martes_no_disponible()
         vista = VistaCuadrantes()
         vista.selector_semana.setDate(QDate(2026, 7, 20))
+        vista.selector_vista.setCurrentText("Semana")
         restaurante_id = obtener_restaurantes()[0][0]
         turno_id = self._turno_por_nombre("Comida")[0]
         avisos = []
@@ -430,6 +432,7 @@ class TestCuadrantesPlanningEngine(unittest.TestCase):
         )
         vista = VistaCuadrantes()
         vista.selector_semana.setDate(QDate(2026, 7, 20))
+        vista.selector_vista.setCurrentText("Semana")
         vista.tabla.setCurrentCell(
             vista.fila_turno(turno_id),
             database.DIAS_SEMANA.index("lunes")
@@ -715,6 +718,7 @@ class TestCuadrantesPlanningEngine(unittest.TestCase):
 
         vista.selector_semana.setDate(QDate(2026, 7, 20))
         vista.generar_cuadrante()
+        vista.selector_vista.setCurrentText("Semana")
         clave = next(iter(vista.asignaciones))
         vista.tabla.setCurrentCell(
             vista.fila_turno(clave[1]),

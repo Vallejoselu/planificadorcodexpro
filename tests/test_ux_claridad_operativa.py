@@ -184,9 +184,17 @@ class TestUxClaridadOperativa(unittest.TestCase):
 
         vista.selector_modo_avanzado.setChecked(True)
 
+        self.assertEqual(vista.selector_vista.currentData(), "semana")
         self.assertFalse(vista.barra_acciones_scroll.isHidden())
         self.assertFalse(vista.detalle_seleccion.isHidden())
         self.assertTrue(vista.aviso_modo_simple.isHidden())
+        self.assertTrue(vista.btn_copiar.isEnabled())
+
+        vista.selector_vista.setCurrentText("Por empleado")
+
+        self.assertFalse(vista.btn_copiar.isEnabled())
+        self.assertFalse(vista.btn_pegar.isEnabled())
+        self.assertIn("vista Semana", vista.detalle_seleccion.text())
 
     def test_cuadrantes_avisa_si_quitar_sin_celda(self):
 
@@ -199,6 +207,7 @@ class TestUxClaridadOperativa(unittest.TestCase):
         try:
 
             vista = VistaCuadrantes()
+            vista.selector_vista.setCurrentText("Semana")
             vista.tabla.clearSelection()
             vista.eliminar()
 
@@ -210,6 +219,42 @@ class TestUxClaridadOperativa(unittest.TestCase):
         self.assertEqual(avisos[0][1], "Quitar asignacion")
         self.assertIn("Selecciona una celda", avisos[0][2])
         self.assertIn("no elimina restaurantes", avisos[0][2].lower())
+
+    def test_cuadrantes_avisa_si_copiar_o_pegar_no_es_posible(self):
+
+        avisos = []
+        mensajes = []
+        warning_original = cuadrantes_view.QMessageBox.warning
+        information_original = cuadrantes_view.QMessageBox.information
+        cuadrantes_view.QMessageBox.warning = (
+            lambda *args, **kwargs: avisos.append(args)
+        )
+        cuadrantes_view.QMessageBox.information = (
+            lambda *args, **kwargs: mensajes.append(args)
+        )
+
+        try:
+
+            vista = VistaCuadrantes()
+            vista.selector_modo_avanzado.setChecked(True)
+            vista.selector_vista.setCurrentText("Por empleado")
+            vista.copiar()
+            vista.selector_vista.setCurrentText("Semana")
+            vista.clave_actual = lambda: None
+            vista.copiar()
+            vista.pegar()
+
+        finally:
+
+            cuadrantes_view.QMessageBox.warning = warning_original
+            cuadrantes_view.QMessageBox.information = information_original
+
+        self.assertEqual(avisos[0][1], "Copiar asignacion")
+        self.assertIn("vista Semana", avisos[0][2])
+        self.assertEqual(avisos[1][1], "Copiar asignacion")
+        self.assertIn("Selecciona una celda", avisos[1][2])
+        self.assertEqual(mensajes[0][1], "Pegar asignacion")
+        self.assertIn("Primero copia", mensajes[0][2])
 
     def test_comprobar_configuracion_muestra_resultado_previo(self):
 
