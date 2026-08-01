@@ -9,6 +9,7 @@ from PySide6.QtWidgets import (
     QTextEdit,
     QPushButton,
     QMessageBox,
+    QLabel,
     QCheckBox,
     QGroupBox,
     QListWidget,
