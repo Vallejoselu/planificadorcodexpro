@@ -13,11 +13,13 @@ from PySide6.QtWidgets import (
 
 from services.configuracion_guiada import ConfiguracionGuiadaService
 from services.datos_demo import DatosDemoService
+from services.datos_iniciales import DatosInicialesService
 from ui.widgets import PageHeader, configure_table, make_button
 
 
 configuracion_guiada_service = ConfiguracionGuiadaService()
 datos_demo_service = DatosDemoService()
+datos_iniciales_service = DatosInicialesService()
 
 
 class VistaPuestaMarcha(QWidget):
@@ -41,7 +43,8 @@ class VistaPuestaMarcha(QWidget):
         self.guia = QLabel(
             "Usa esta pantalla como asistente de arranque. Selecciona un paso "
             "pendiente y pulsa 'Abrir paso seleccionado' para ir a la pantalla "
-            "correcta. Si quieres probar la app con datos de ejemplo, usa "
+            "correcta. Para empezar sin datos ficticios, usa 'Crear datos "
+            "minimos'. Si quieres probar la app con datos de ejemplo, usa "
             "'Cargar demo guiada'."
         )
         self.guia.setWordWrap(True)
@@ -94,6 +97,7 @@ class VistaPuestaMarcha(QWidget):
 
         self.btn_actualizar = make_button("Actualizar", "secondary")
         self.btn_abrir = make_button("Abrir paso seleccionado", "primary")
+        self.btn_crear_minimos = make_button("Crear datos minimos", "primary")
         self.btn_cargar_demo = make_button("Cargar demo guiada", "secondary")
         self.btn_limpiar_demo = make_button("Limpiar ejemplo", "secondary")
         self.btn_empezar_cero = make_button("Empezar de cero", "danger")
@@ -104,14 +108,20 @@ class VistaPuestaMarcha(QWidget):
         self.btn_cargar_demo.setToolTip(
             "Crea datos de ejemplo marcados como [Demo] para probar la app."
         )
+        self.btn_crear_minimos.setToolTip(
+            "Crea 1 ciudad, 1 restaurante, turnos comida/cena y demanda base. "
+            "No crea repartidores ficticios."
+        )
         self.btn_actualizar.clicked.connect(self.cargar_datos)
         self.btn_abrir.clicked.connect(self.abrir_pantalla_recomendada)
+        self.btn_crear_minimos.clicked.connect(self.crear_datos_minimos)
         self.btn_cargar_demo.clicked.connect(self.cargar_datos_demo)
         self.btn_limpiar_demo.clicked.connect(self.limpiar_datos_demo)
         self.btn_empezar_cero.clicked.connect(self.empezar_de_cero)
 
         acciones.addWidget(self.btn_actualizar)
         acciones.addWidget(self.btn_abrir)
+        acciones.addWidget(self.btn_crear_minimos)
         acciones.addWidget(self.btn_cargar_demo)
         acciones.addStretch()
         self.layout.addLayout(acciones)
@@ -214,6 +224,39 @@ class VistaPuestaMarcha(QWidget):
         if self.ventana:
 
             self.ventana.mostrar_pagina(pagina)
+
+    def crear_datos_minimos(self):
+
+        respuesta = QMessageBox.question(
+            self,
+            "Crear datos minimos",
+            (
+                "Se preparara una base minima real: una ciudad, un restaurante, "
+                "turnos de comida y cena, y demanda semanal base.\n\n"
+                "No se crearan repartidores ficticios. Despues solo tendras "
+                "que anadir tus repartidores reales. Quieres continuar?"
+            )
+        )
+
+        if respuesta != QMessageBox.Yes:
+
+            return
+
+        resumen = datos_iniciales_service.crear_datos_minimos()
+        self.cargar_datos()
+        QMessageBox.information(
+            self,
+            "Crear datos minimos",
+            (
+                "Base minima preparada.\n\n"
+                f"Ciudad creada: {'si' if resumen['ciudad_creada'] else 'ya existia'}\n"
+                f"Restaurante creado: "
+                f"{'si' if resumen['restaurante_creado'] else 'ya existia'}\n"
+                f"Turnos nuevos: {resumen['turnos_creados']}\n"
+                f"Demandas nuevas: {resumen['demandas_creadas']}\n"
+                "Repartidores creados: 0"
+            )
+        )
 
     def cargar_datos_demo(self):
 
