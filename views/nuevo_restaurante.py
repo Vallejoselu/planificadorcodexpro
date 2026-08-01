@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (
     QPushButton,
     QMessageBox,
     QCheckBox,
+    QGroupBox,
     QListWidget,
     QListWidgetItem,
     QAbstractItemView,
@@ -50,7 +51,16 @@ class NuevoRestaurante(QDialog):
         layout = QVBoxLayout(self)
 
         contenedor_formulario = QWidget()
-        formulario = QFormLayout(contenedor_formulario)
+        contenido = QVBoxLayout(contenedor_formulario)
+        contenido.setSpacing(14)
+
+        self.ayuda_inicial = QLabel(
+            "Completa los datos basicos y usa la configuracion recomendada "
+            "para crear turnos comida/cena con demanda semanal base."
+        )
+        self.ayuda_inicial.setWordWrap(True)
+        self.ayuda_inicial.setObjectName("infoPanel")
+        contenido.addWidget(self.ayuda_inicial)
 
         self.nombre = QLineEdit()
         self.direccion = QLineEdit()
@@ -138,30 +148,62 @@ class NuevoRestaurante(QDialog):
         ])
         self.tabla_demanda.setMinimumHeight(120)
 
-        formulario.addRow("Nombre", self.nombre)
-        formulario.addRow("Ciudad", self.ciudad)
-        formulario.addRow("Zona", self.zona)
-        formulario.addRow("Direccion", self.direccion)
-        formulario.addRow("Telefono", self.telefono)
-        formulario.addRow("Activo", self.activo)
-        formulario.addRow("Horario comida", self.horario_comida)
-        formulario.addRow("Horario cena", self.horario_cena)
-        formulario.addRow("Repartidores fijos", self.repartidores)
-        formulario.addRow("Turno propio", self.turno_nombre)
-        formulario.addRow("Inicio turno", self.turno_inicio)
-        formulario.addRow("Fin turno", self.turno_fin)
-        formulario.addRow("Cruza medianoche", self.turno_cruza)
-        formulario.addRow("Duracion turno", self.turno_duracion)
-        formulario.addRow("", self.btn_agregar_turno)
-        formulario.addRow("Turnos propios", self.tabla_turnos)
-        formulario.addRow("Demanda turno", self.demanda_turno)
-        formulario.addRow("Demanda dia", self.demanda_dia)
-        formulario.addRow("Demanda fecha", self.demanda_fecha)
-        formulario.addRow("Repartidores necesarios", self.demanda_repartidores)
-        formulario.addRow("", self.btn_agregar_demanda)
-        formulario.addRow("", self.btn_eliminar_demanda)
-        formulario.addRow("Demandas", self.tabla_demanda)
-        formulario.addRow("Observaciones", self.obs)
+        self.btn_configuracion_recomendada = QPushButton(
+            "Crear configuracion recomendada"
+        )
+        self.btn_configuracion_recomendada.setProperty("variant", "secondary")
+        self.btn_configuracion_recomendada.setToolTip(
+            "Prepara turnos Comida y Cena y una demanda semanal de 1 "
+            "repartidor por turno."
+        )
+
+        self.seccion_basica = QGroupBox("Datos basicos")
+        formulario_basico = QFormLayout(self.seccion_basica)
+        formulario_basico.addRow("Nombre", self.nombre)
+        formulario_basico.addRow("Ciudad", self.ciudad)
+        formulario_basico.addRow("Zona", self.zona)
+        formulario_basico.addRow("Horario comida", self.horario_comida)
+        formulario_basico.addRow("Horario cena", self.horario_cena)
+        formulario_basico.addRow("", self.btn_configuracion_recomendada)
+        contenido.addWidget(self.seccion_basica)
+
+        self.seccion_planificacion = QGroupBox("Turnos y demanda")
+        formulario_planificacion = QFormLayout(self.seccion_planificacion)
+        formulario_planificacion.addRow("Turnos configurados", self.tabla_turnos)
+        formulario_planificacion.addRow("Demanda configurada", self.tabla_demanda)
+        contenido.addWidget(self.seccion_planificacion)
+
+        self.selector_avanzado = QCheckBox("Mostrar opciones avanzadas")
+        self.selector_avanzado.setToolTip(
+            "Muestra direccion, telefono, repartidores fijos y edicion manual "
+            "de turnos o demanda por fecha."
+        )
+        contenido.addWidget(self.selector_avanzado)
+
+        self.seccion_avanzada = QGroupBox("Opciones avanzadas")
+        formulario_avanzado = QFormLayout(self.seccion_avanzada)
+        formulario_avanzado.addRow("Direccion", self.direccion)
+        formulario_avanzado.addRow("Telefono", self.telefono)
+        formulario_avanzado.addRow("Activo", self.activo)
+        formulario_avanzado.addRow("Repartidores fijos", self.repartidores)
+        formulario_avanzado.addRow("Turno propio", self.turno_nombre)
+        formulario_avanzado.addRow("Inicio turno", self.turno_inicio)
+        formulario_avanzado.addRow("Fin turno", self.turno_fin)
+        formulario_avanzado.addRow("Cruza medianoche", self.turno_cruza)
+        formulario_avanzado.addRow("Duracion turno", self.turno_duracion)
+        formulario_avanzado.addRow("", self.btn_agregar_turno)
+        formulario_avanzado.addRow("Demanda turno", self.demanda_turno)
+        formulario_avanzado.addRow("Demanda dia", self.demanda_dia)
+        formulario_avanzado.addRow("Demanda fecha", self.demanda_fecha)
+        formulario_avanzado.addRow(
+            "Repartidores necesarios",
+            self.demanda_repartidores
+        )
+        formulario_avanzado.addRow("", self.btn_agregar_demanda)
+        formulario_avanzado.addRow("", self.btn_eliminar_demanda)
+        formulario_avanzado.addRow("Observaciones", self.obs)
+        self.seccion_avanzada.setVisible(False)
+        contenido.addWidget(self.seccion_avanzada)
 
         layout.addWidget(create_scroll_area(contenedor_formulario), 1)
 
@@ -174,13 +216,125 @@ class NuevoRestaurante(QDialog):
         self.btn_agregar_turno.clicked.connect(self.agregar_turno)
         self.btn_agregar_demanda.clicked.connect(self.agregar_demanda)
         self.btn_eliminar_demanda.clicked.connect(self.eliminar_demanda)
+        self.btn_configuracion_recomendada.clicked.connect(
+            self.aplicar_configuracion_recomendada
+        )
+        self.selector_avanzado.toggled.connect(
+            self.seccion_avanzada.setVisible
+        )
 
         if self.restaurante:
 
             self.cargar_restaurante()
             self.cargar_turnos_demanda()
 
+        else:
+
+            self.aplicar_configuracion_recomendada(silencioso=True)
+
         fit_dialog_to_screen(self, 640, 640, min_width=520, min_height=420)
+
+    def aplicar_configuracion_recomendada(self, silencioso=False):
+
+        self.horario_comida.setText("13:00 - 16:00")
+        self.horario_cena.setText("20:00 - 23:30")
+        turnos_creados = self.asegurar_turno_base(
+            "Comida",
+            "13:00",
+            "16:00",
+            0,
+            3
+        )
+        turnos_creados += self.asegurar_turno_base(
+            "Cena",
+            "20:00",
+            "23:30",
+            0,
+            3.5
+        )
+        demandas_creadas = self.asegurar_demanda_semanal_base()
+        self.refrescar_turnos()
+        self.refrescar_demanda()
+
+        if not silencioso:
+
+            QMessageBox.information(
+                self,
+                "Configuracion recomendada",
+                (
+                    "Configuracion preparada.\n\n"
+                    f"Turnos nuevos: {turnos_creados}\n"
+                    f"Demandas nuevas: {demandas_creadas}"
+                )
+            )
+
+    def asegurar_turno_base(
+        self,
+        nombre,
+        hora_inicio,
+        hora_fin,
+        cruza_medianoche,
+        duracion
+    ):
+
+        for turno in self.turnos_propios:
+
+            if turno["nombre"].casefold() == nombre.casefold():
+
+                turno.update({
+                    "hora_inicio": hora_inicio,
+                    "hora_fin": hora_fin,
+                    "cruza_medianoche": int(cruza_medianoche),
+                    "duracion": float(duracion),
+                    "activo": 1
+                })
+                return 0
+
+        self.turnos_propios.append({
+            "nombre": nombre,
+            "hora_inicio": hora_inicio,
+            "hora_fin": hora_fin,
+            "cruza_medianoche": int(cruza_medianoche),
+            "duracion": float(duracion),
+            "activo": 1
+        })
+        return 1
+
+    def asegurar_demanda_semanal_base(self):
+
+        creadas = 0
+
+        for indice, turno in enumerate(self.turnos_propios):
+
+            if turno["nombre"].casefold() not in {"comida", "cena"}:
+
+                continue
+
+            for dia in (
+                "lunes",
+                "martes",
+                "miercoles",
+                "jueves",
+                "viernes",
+                "sabado",
+                "domingo"
+            ):
+
+                if self.demanda_duplicada(indice, "", dia):
+
+                    continue
+
+                self.demandas.append({
+                    "indice_turno": indice,
+                    "turno_restaurante_id": turno.get("id"),
+                    "fecha": "",
+                    "dia_semana": dia,
+                    "repartidores_necesarios": 1,
+                    "activo": 1
+                })
+                creadas += 1
+
+        return creadas
 
     def cargar_ciudades(self):
 
@@ -471,12 +625,14 @@ class NuevoRestaurante(QDialog):
 
     def guardar(self):
 
-        if self.nombre.text().strip() == "":
+        error_validacion = self.validar_formulario()
+
+        if error_validacion:
 
             QMessageBox.warning(
                 self,
                 "Error",
-                "Introduce un nombre."
+                error_validacion
             )
             return
 
@@ -526,6 +682,32 @@ class NuevoRestaurante(QDialog):
 
         self.guardar_configuracion_operativa(restaurante_id)
         self.accept()
+
+    def validar_formulario(self):
+
+        if self.nombre.text().strip() == "":
+
+            return "Introduce el nombre del restaurante."
+
+        if self.ciudad.count() > 0 and self.ciudad.currentData() is None:
+
+            return "Selecciona la ciudad del restaurante."
+
+        if not self.turnos_propios:
+
+            return (
+                "Crea al menos un turno. Puedes usar "
+                "'Crear configuracion recomendada'."
+            )
+
+        if not self.demandas:
+
+            return (
+                "Configura demanda para saber cuantos repartidores hacen "
+                "falta. Puedes usar 'Crear configuracion recomendada'."
+            )
+
+        return None
 
     def guardar_configuracion_operativa(self, restaurante_id):
 
