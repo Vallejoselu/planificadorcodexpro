@@ -78,6 +78,8 @@ docs\FLUJO_GIT_SEGURO.md
 ## Funciones principales
 
 - Gestion de repartidores con contratos de 10, 20, 25, 30, 35 y 40 horas.
+- Alta de repartidores simplificada con datos basicos, disponibilidad visible
+  y opciones avanzadas ocultas por defecto.
 - Descansos semanales validados: lunes-martes, martes-miercoles, miercoles-jueves y jueves-viernes.
 - Disponibilidad semanal por comidas, cenas, ambos o no disponible.
 - Gestion de restaurantes con zona, direccion, telefono, estado, horarios y repartidores fijos.

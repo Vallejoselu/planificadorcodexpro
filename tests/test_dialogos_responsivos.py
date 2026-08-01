@@ -108,6 +108,52 @@ class TestDialogosResponsivos(unittest.TestCase):
         dialogo = NuevoRepartidor()
 
         self.assert_dialogo_adaptado_a_pantalla(dialogo)
+        self.assertEqual(dialogo.seccion_basica.title(), "Datos basicos")
+        self.assertEqual(
+            dialogo.seccion_disponibilidad.title(),
+            "Disponibilidad semanal"
+        )
+        self.assertFalse(dialogo.selector_avanzado.isChecked())
+        self.assertTrue(dialogo.seccion_avanzada.isHidden())
+        self.assertEqual(
+            dialogo.btn_configuracion_recomendada.text(),
+            "Aplicar configuracion recomendada"
+        )
+
+    def test_dialogo_repartidor_muestra_avanzado_solo_si_se_pide(self):
+
+        dialogo = NuevoRepartidor()
+
+        dialogo.selector_avanzado.setChecked(True)
+
+        self.assertFalse(dialogo.seccion_avanzada.isHidden())
+
+    def test_dialogo_repartidor_aplica_configuracion_recomendada(self):
+
+        dialogo = NuevoRepartidor()
+
+        dialogo.horas.setCurrentText("10")
+        dialogo.permite_horas_complementarias.setChecked(True)
+        dialogo.horas_complementarias.setValue(4)
+        dialogo.max_horas_diarias.setValue(6)
+        dialogo.btn_configuracion_recomendada.click()
+
+        self.assertEqual(dialogo.horas.currentText(), "30")
+        self.assertFalse(dialogo.permite_horas_complementarias.isChecked())
+        self.assertEqual(dialogo.horas_complementarias.value(), 0)
+        self.assertEqual(dialogo.max_horas_diarias.value(), 10)
+        self.assertEqual(dialogo.descanso_inicio.currentText(), "lunes")
+
+    def test_dialogo_repartidor_valida_destino_para_generador(self):
+
+        dialogo = NuevoRepartidor()
+        dialogo.nombre.setText("Ana")
+
+        self.assertIn("Asigna una ciudad", dialogo.validar_formulario())
+
+        dialogo.apoyo_flexible.setChecked(True)
+
+        self.assertIsNone(dialogo.validar_formulario())
 
     def test_dialogo_restaurante_tiene_scroll_y_alto_limitado(self):
 

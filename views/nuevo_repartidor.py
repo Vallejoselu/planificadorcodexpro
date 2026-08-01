@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (
     QPushButton,
     QMessageBox,
     QLabel,
+    QGroupBox,
     QListWidget,
     QListWidgetItem,
     QAbstractItemView,
@@ -52,7 +53,16 @@ class NuevoRepartidor(QDialog):
         layout = QVBoxLayout(self)
 
         contenedor_formulario = QWidget()
-        formulario = QFormLayout(contenedor_formulario)
+        contenido = QVBoxLayout(contenedor_formulario)
+        contenido.setSpacing(14)
+
+        self.ayuda_inicial = QLabel(
+            "Completa primero los datos basicos. Las opciones menos habituales "
+            "estan ocultas para que crear un repartidor sea mas rapido."
+        )
+        self.ayuda_inicial.setWordWrap(True)
+        self.ayuda_inicial.setObjectName("infoPanel")
+        contenido.addWidget(self.ayuda_inicial)
 
         self.nombre = QLineEdit()
 
@@ -145,42 +155,91 @@ class NuevoRepartidor(QDialog):
         self.obs = QTextEdit()
         self.obs.setMaximumHeight(90)
 
-        formulario.addRow("Nombre", self.nombre)
-        formulario.addRow("Horas", self.horas)
-        formulario.addRow(
-            "Permitir horas complementarias",
-            self.permite_horas_complementarias
+        self.btn_configuracion_recomendada = QPushButton(
+            "Aplicar configuracion recomendada"
         )
-        formulario.addRow(
-            "Limite horas complementarias",
-            self.horas_complementarias
+        self.btn_configuracion_recomendada.setProperty("variant", "secondary")
+        self.btn_configuracion_recomendada.setToolTip(
+            "Rellena valores seguros para empezar: 30h, disponibilidad general "
+            "y reglas laborales prudentes."
         )
-        formulario.addRow("Max horas diarias", self.max_horas_diarias)
-        formulario.addRow("Max dias consecutivos", self.max_dias_consecutivos)
-        formulario.addRow("Ciudad principal", self.ciudad_principal)
-        formulario.addRow("Restaurante principal", self.restaurante_principal)
-        formulario.addRow("Ciudades autorizadas", self.ciudades_autorizadas)
-        formulario.addRow("Restaurantes autorizados", self.restaurantes_autorizados)
-        formulario.addRow("Apoyo flexible", self.apoyo_flexible)
-        formulario.addRow("Zona", self.zona)
-        formulario.addRow("Dias no laborables fijos", self.dias_no_laborables)
-        formulario.addRow("Descanso adicional", self.descanso_inicio)
-        formulario.addRow("Fin descanso adicional", self.descanso_fin)
-        formulario.addRow("", self.explicacion_descanso)
+        self.btn_configuracion_recomendada.clicked.connect(
+            self.aplicar_configuracion_recomendada
+        )
+
+        self.seccion_basica = QGroupBox("Datos basicos")
+        formulario_basico = QFormLayout(self.seccion_basica)
+        formulario_basico.addRow("Nombre", self.nombre)
+        formulario_basico.addRow("Contrato", self.horas)
+        formulario_basico.addRow("Ciudad principal", self.ciudad_principal)
+        formulario_basico.addRow(
+            "Restaurante principal",
+            self.restaurante_principal
+        )
+        formulario_basico.addRow("Apoyo flexible", self.apoyo_flexible)
+        formulario_basico.addRow("", self.btn_configuracion_recomendada)
+        contenido.addWidget(self.seccion_basica)
+
+        self.seccion_disponibilidad = QGroupBox("Disponibilidad semanal")
+        formulario_disponibilidad = QFormLayout(self.seccion_disponibilidad)
+        formulario_disponibilidad.addRow(
+            "Dias no laborables fijos",
+            self.dias_no_laborables
+        )
+        formulario_disponibilidad.addRow(
+            "Descanso adicional",
+            self.descanso_inicio
+        )
+        formulario_disponibilidad.addRow(
+            "Fin descanso adicional",
+            self.descanso_fin
+        )
+        formulario_disponibilidad.addRow("", self.explicacion_descanso)
 
         for dia in DIAS_SEMANA:
 
-            formulario.addRow(
+            formulario_disponibilidad.addRow(
                 f"Disponibilidad {dia}",
                 self.disponibilidad[dia]
             )
 
-        formulario.addRow("Doble turno", self.doble)
-        formulario.addRow("Puede hasta la 1", self.hasta1)
-        formulario.addRow("Prioridad comida", self.prio_comida)
-        formulario.addRow("Prioridad noche", self.prio_noche)
-        formulario.addRow("Prioridad Grela", self.prio_grela)
-        formulario.addRow("Observaciones", self.obs)
+        contenido.addWidget(self.seccion_disponibilidad)
+
+        self.selector_avanzado = QCheckBox("Mostrar opciones avanzadas")
+        self.selector_avanzado.setToolTip(
+            "Muestra autorizaciones, limites, prioridades y observaciones."
+        )
+        contenido.addWidget(self.selector_avanzado)
+
+        self.seccion_avanzada = QGroupBox("Opciones avanzadas")
+        formulario_avanzado = QFormLayout(self.seccion_avanzada)
+        formulario_avanzado.addRow(
+            "Permitir horas complementarias",
+            self.permite_horas_complementarias
+        )
+        formulario_avanzado.addRow(
+            "Limite horas complementarias",
+            self.horas_complementarias
+        )
+        formulario_avanzado.addRow("Max horas diarias", self.max_horas_diarias)
+        formulario_avanzado.addRow(
+            "Max dias consecutivos",
+            self.max_dias_consecutivos
+        )
+        formulario_avanzado.addRow("Ciudades autorizadas", self.ciudades_autorizadas)
+        formulario_avanzado.addRow(
+            "Restaurantes autorizados",
+            self.restaurantes_autorizados
+        )
+        formulario_avanzado.addRow("Zona", self.zona)
+        formulario_avanzado.addRow("Doble turno", self.doble)
+        formulario_avanzado.addRow("Puede hasta la 1", self.hasta1)
+        formulario_avanzado.addRow("Prioridad comida", self.prio_comida)
+        formulario_avanzado.addRow("Prioridad noche", self.prio_noche)
+        formulario_avanzado.addRow("Prioridad Grela", self.prio_grela)
+        formulario_avanzado.addRow("Observaciones", self.obs)
+        self.seccion_avanzada.setVisible(False)
+        contenido.addWidget(self.seccion_avanzada)
 
         layout.addWidget(create_scroll_area(contenedor_formulario), 1)
 
@@ -194,6 +253,9 @@ class NuevoRepartidor(QDialog):
         layout.addWidget(self.boton)
 
         self.boton.clicked.connect(self.guardar)
+        self.selector_avanzado.toggled.connect(
+            self.seccion_avanzada.setVisible
+        )
         self.descanso_inicio.currentTextChanged.connect(
             self.actualizar_descanso_fin
         )
@@ -213,6 +275,26 @@ class NuevoRepartidor(QDialog):
             self.actualizar_estado_descanso()
 
         fit_dialog_to_screen(self, 650, 620, min_width=520, min_height=420)
+
+    def aplicar_configuracion_recomendada(self):
+
+        self.horas.setCurrentText("30")
+        self.permite_horas_complementarias.setChecked(False)
+        self.horas_complementarias.setValue(0)
+        self.max_horas_diarias.setValue(10)
+        self.max_dias_consecutivos.setValue(5)
+        self.doble.setChecked(True)
+        self.hasta1.setChecked(True)
+        self.prio_comida.setValue(50)
+        self.prio_noche.setValue(50)
+        self.prio_grela.setValue(50)
+
+        for selector in self.disponibilidad.values():
+
+            selector.setCurrentText("Ambos")
+
+        self.descanso_inicio.setCurrentText("lunes")
+        self.actualizar_estado_descanso()
 
     def cargar_ubicaciones(self):
 
@@ -362,12 +444,14 @@ class NuevoRepartidor(QDialog):
 
     def guardar(self):
 
-        if self.nombre.text().strip() == "":
+        error_validacion = self.validar_formulario()
+
+        if error_validacion:
 
             QMessageBox.warning(
                 self,
                 "Error",
-                "Introduce un nombre."
+                error_validacion
             )
             return
 
@@ -455,6 +539,43 @@ class NuevoRepartidor(QDialog):
             return
 
         self.accept()
+
+    def validar_formulario(self):
+
+        if self.nombre.text().strip() == "":
+
+            return "Introduce el nombre del repartidor."
+
+        tiene_destino = any((
+            self.ciudad_principal.currentData(),
+            self.restaurante_principal.currentData(),
+            self.apoyo_flexible.isChecked(),
+            self.obtener_ids_seleccionados(self.ciudades_autorizadas),
+            self.obtener_ids_seleccionados(self.restaurantes_autorizados)
+        ))
+        hay_destinos_configurados = (
+            self.ciudad_principal.count() > 1
+            or self.restaurante_principal.count() > 1
+        )
+
+        if hay_destinos_configurados and not tiene_destino:
+
+            return (
+                "Asigna una ciudad, un restaurante o marca apoyo flexible. "
+                "Asi el generador sabe donde puede trabajar."
+            )
+
+        if (
+            self.permite_horas_complementarias.isChecked()
+            and self.horas_complementarias.value() <= 0
+        ):
+
+            return (
+                "Indica un limite de horas complementarias mayor que cero "
+                "o desmarca la opcion."
+            )
+
+        return None
 
     def actualizar_estado_horas_complementarias(self, *_):
 
