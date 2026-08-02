@@ -88,7 +88,9 @@ class TestDemandaRestauranteUI(unittest.TestCase):
             "duracion": 3.5,
             "activo": 1
         }]
+        dialogo.demandas = []
         dialogo.refrescar_turnos()
+        dialogo.refrescar_demanda()
 
         return dialogo
 

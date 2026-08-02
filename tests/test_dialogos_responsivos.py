@@ -114,3 +114,52 @@ class TestDialogosResponsivos(unittest.TestCase):
         dialogo = NuevoRestaurante()
 
         self.assert_dialogo_adaptado_a_pantalla(dialogo)
+        self.assertEqual(dialogo.seccion_basica.title(), "Datos basicos")
+        self.assertEqual(
+            dialogo.seccion_planificacion.title(),
+            "Turnos y demanda"
+        )
+        self.assertTrue(dialogo.seccion_avanzada.isHidden())
+        self.assertFalse(dialogo.selector_avanzado.isChecked())
+        self.assertEqual(
+            dialogo.btn_configuracion_recomendada.text(),
+            "Crear configuracion recomendada"
+        )
+
+    def test_dialogo_restaurante_crea_configuracion_recomendada(self):
+
+        dialogo = NuevoRestaurante()
+
+        self.assertEqual(len(dialogo.turnos_propios), 2)
+        self.assertEqual(len(dialogo.demandas), 14)
+        self.assertEqual(dialogo.horario_comida.text(), "13:00 - 16:00")
+        self.assertEqual(dialogo.horario_cena.text(), "20:00 - 23:30")
+
+        dialogo.aplicar_configuracion_recomendada(silencioso=True)
+
+        self.assertEqual(len(dialogo.turnos_propios), 2)
+        self.assertEqual(len(dialogo.demandas), 14)
+
+    def test_dialogo_restaurante_muestra_avanzado_solo_si_se_pide(self):
+
+        dialogo = NuevoRestaurante()
+
+        dialogo.selector_avanzado.setChecked(True)
+
+        self.assertFalse(dialogo.seccion_avanzada.isHidden())
+
+    def test_dialogo_restaurante_valida_nombre_turnos_y_demanda(self):
+
+        dialogo = NuevoRestaurante()
+
+        self.assertIn("nombre", dialogo.validar_formulario())
+
+        dialogo.nombre.setText("Burger Centro")
+        dialogo.turnos_propios = []
+        dialogo.demandas = []
+
+        self.assertIn("turno", dialogo.validar_formulario())
+
+        dialogo.aplicar_configuracion_recomendada(silencioso=True)
+
+        self.assertIsNone(dialogo.validar_formulario())

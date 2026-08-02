@@ -80,7 +80,8 @@ docs\FLUJO_GIT_SEGURO.md
 - Gestion de repartidores con contratos de 10, 20, 25, 30, 35 y 40 horas.
 - Descansos semanales validados: lunes-martes, martes-miercoles, miercoles-jueves y jueves-viernes.
 - Disponibilidad semanal por comidas, cenas, ambos o no disponible.
-- Gestion de restaurantes con zona, direccion, telefono, estado, horarios y repartidores fijos.
+- Gestion de restaurantes con formulario simple, turnos comida/cena y demanda
+  semanal recomendada para empezar sin configurar cada campo manualmente.
 - Gestion de turnos de comida, cena, turno partido y personalizados.
 - Listados de gestion centrados en datos activos para no mezclar elementos desactivados.
 - Calendario semanal con varias coberturas por dia y turno.
