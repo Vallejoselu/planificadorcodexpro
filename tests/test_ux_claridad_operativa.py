@@ -6,7 +6,7 @@ from pathlib import Path
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from PySide6.QtWidgets import QApplication, QLabel, QScrollArea
+from PySide6.QtWidgets import QApplication, QLabel, QPushButton, QScrollArea
 
 import database.database as database
 import views.cuadrantes as cuadrantes_view
@@ -224,6 +224,33 @@ class TestUxClaridadOperativa(unittest.TestCase):
         self.assertEqual(avisos[0][1], "Quitar asignacion")
         self.assertIn("Selecciona una celda", avisos[0][2])
         self.assertIn("no elimina restaurantes", avisos[0][2].lower())
+
+    def test_dialogo_generacion_no_guarda_vista_previa_vacia(self):
+
+        dialogo = cuadrantes_view.DialogoResumenGeneracion(
+            None,
+            {
+                "estado": {
+                    "clave": "sin_asignaciones",
+                    "titulo": "No se crearon plazas",
+                    "detalle": "Configura demanda antes de guardar."
+                },
+                "asignaciones_generadas": 0,
+                "asignaciones_con_repartidor": 0,
+                "asignaciones_sin_repartidor": 0,
+                "cobertura_porcentaje": 0
+            },
+            "No se crearon plazas"
+        )
+        botones = dialogo.findChildren(QPushButton)
+        guardar = next(
+            boton
+            for boton in botones
+            if boton.text() == "Guardar cuadrante"
+        )
+
+        self.assertFalse(guardar.isEnabled())
+        self.assertIn("sin plazas", guardar.toolTip())
 
     def test_cuadrantes_avisa_si_copiar_o_pegar_no_es_posible(self):
 

@@ -2298,6 +2298,14 @@ class DialogoResumenGeneracion(QDialog):
             "Guardar cuadrante",
             QDialogButtonBox.AcceptRole
         )
+        if resumen["estado"]["clave"] == "sin_asignaciones":
+
+            guardar.setEnabled(False)
+            guardar.setToolTip(
+                "No se puede guardar una vista previa sin plazas. "
+                "Configura demanda y vuelve a generar."
+            )
+
         revisar = botones.addButton(
             "Revisar alertas",
             QDialogButtonBox.ActionRole

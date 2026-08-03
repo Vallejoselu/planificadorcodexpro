@@ -93,6 +93,7 @@ docs\FLUJO_GIT_SEGURO.md
   restaurantes, repartidores, turnos, demandas ni cuadrantes operativos.
 - Primer cuadrante guiado con comprobacion previa en lenguaje claro.
 - Validacion previa antes de generar para detectar datos incompletos.
+- Bloqueo de vistas previas vacias para no guardar cuadrantes sin plazas.
 - Resumen claro tras generar con plazas cubiertas, pendientes y avisos.
 - Pantalla de cuadrantes simplificada con herramientas avanzadas ocultas por defecto.
 - Acciones manuales del cuadrante guiadas desde Vista Semana para evitar
