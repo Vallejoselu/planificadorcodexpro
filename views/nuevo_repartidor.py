@@ -91,9 +91,13 @@ class NuevoRepartidor(QDialog):
 
         self.descanso_fin = QLineEdit()
         self.descanso_fin.setReadOnly(True)
+        self.descanso_inicio.hide()
+        self.descanso_fin.hide()
         self.actualizar_descanso_fin()
         self.dias_no_laborables = QLabel("")
+        self.dias_no_laborables.setWordWrap(True)
         self.explicacion_descanso = QLabel("")
+        self.explicacion_descanso.setWordWrap(True)
 
         self.disponibilidad = {}
 
@@ -163,9 +167,7 @@ class NuevoRepartidor(QDialog):
         formulario.addRow("Restaurantes autorizados", self.restaurantes_autorizados)
         formulario.addRow("Apoyo flexible", self.apoyo_flexible)
         formulario.addRow("Zona", self.zona)
-        formulario.addRow("Dias no laborables fijos", self.dias_no_laborables)
-        formulario.addRow("Descanso adicional", self.descanso_inicio)
-        formulario.addRow("Fin descanso adicional", self.descanso_fin)
+        formulario.addRow("Dias que libra", self.dias_no_laborables)
         formulario.addRow("", self.explicacion_descanso)
 
         for dia in DIAS_SEMANA:
@@ -260,17 +262,7 @@ class NuevoRepartidor(QDialog):
             estado["texto_dias_no_laborables"]
         )
 
-        if estado["descanso_cubierto"]:
-
-            self.descanso_inicio.setCurrentText(
-                DESCANSO_NO_NECESARIO_TEXTO
-            )
-
-        else:
-
-            if self.descanso_inicio.currentText() == DESCANSO_NO_NECESARIO_TEXTO:
-
-                self.descanso_inicio.setCurrentText("lunes")
+        self.descanso_inicio.setCurrentText(DESCANSO_NO_NECESARIO_TEXTO)
 
         self.explicacion_descanso.setText(estado["explicacion"])
 
@@ -346,18 +338,17 @@ class NuevoRepartidor(QDialog):
 
         self.actualizar_estado_descanso()
 
-        if not repartidores_service.descanso_cubierto_por_disponibilidad(
-            self.obtener_disponibilidad()
+        if (
+            self.repartidor.get("descanso_inicio")
+            and not repartidores_service.descanso_cubierto_por_disponibilidad(
+                self.obtener_disponibilidad()
+            )
         ):
 
-            self.descanso_inicio.setCurrentText(
-                self.repartidor["descanso_inicio"] or "lunes"
-            )
-            self.descanso_fin.setText(
-                self.repartidor["descanso_fin"]
-                or repartidores_service.siguiente_descanso_valido(
-                    self.descanso_inicio.currentText()
-                )
+            self.explicacion_descanso.setText(
+                "Este repartidor tenia un descanso antiguo configurado. "
+                "Marca esos dias como No disponible para guardarlo con el "
+                "nuevo sistema."
             )
 
     def guardar(self):
@@ -374,17 +365,11 @@ class NuevoRepartidor(QDialog):
         try:
 
             disponibilidad = self.obtener_disponibilidad()
-            descanso_inicio = self.descanso_inicio.currentText()
-            descanso_fin = self.descanso_fin.text()
-
-            if descanso_inicio == DESCANSO_NO_NECESARIO_TEXTO:
-
-                repartidores_service.validar_descanso_no_necesario(
-                    disponibilidad
-                )
-
-                descanso_inicio = None
-                descanso_fin = None
+            repartidores_service.validar_descanso_no_necesario(
+                disponibilidad
+            )
+            descanso_inicio = None
+            descanso_fin = None
 
             funcion = (
                 repartidores_repository.actualizar

@@ -118,6 +118,10 @@ class VistaPuestaMarcha(QWidget):
         self.btn_cargar_demo.clicked.connect(self.cargar_datos_demo)
         self.btn_limpiar_demo.clicked.connect(self.limpiar_datos_demo)
         self.btn_empezar_cero.clicked.connect(self.empezar_de_cero)
+        self.btn_empezar_cero.setToolTip(
+            "Crea un backup y borra repartidores, ciudades, restaurantes, "
+            "turnos, demanda y cuadrantes para empezar limpio."
+        )
 
         acciones.addWidget(self.btn_actualizar)
         acciones.addWidget(self.btn_abrir)
@@ -322,10 +326,12 @@ class VistaPuestaMarcha(QWidget):
             self,
             "Empezar de cero",
             (
-                "Se creara un backup automatico y se desactivaran los datos "
+                "Se creara un backup automatico y se eliminaran los datos "
                 "operativos actuales: repartidores, restaurantes, ciudades, "
                 "turnos, demandas y cuadrantes.\n\n"
-                "La estructura de la base de datos se conserva. Quieres "
+                "Despues la aplicacion quedara sin ejemplos ni datos "
+                "operativos visibles. La estructura de la base de datos se "
+                "conserva. Quieres "
                 "continuar?"
             )
         )
@@ -342,10 +348,10 @@ class VistaPuestaMarcha(QWidget):
             (
                 "Aplicacion lista para empezar limpia.\n\n"
                 f"Backup creado:\n{resumen['respaldo']}\n\n"
-                f"Repartidores desactivados: {resumen['repartidores']}\n"
-                f"Restaurantes desactivados: {resumen['restaurantes']}\n"
-                f"Ciudades desactivadas: {resumen['ciudades']}\n"
-                f"Turnos desactivados: {resumen['turnos']}\n"
+                f"Repartidores eliminados: {resumen['repartidores']}\n"
+                f"Restaurantes eliminados: {resumen['restaurantes']}\n"
+                f"Ciudades eliminadas: {resumen['ciudades']}\n"
+                f"Turnos eliminados: {resumen['turnos']}\n"
                 f"Asignaciones de cuadrante eliminadas: "
                 f"{resumen['cuadrantes']}"
             )

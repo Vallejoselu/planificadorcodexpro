@@ -599,20 +599,20 @@ def responder_disponibilidad_repartidor(repartidor):
     if tiene_dias_consecutivos(no_laborables):
 
         descanso = (
-            "no necesita descanso adicional porque ya tiene "
+            "tiene la libranza cubierta porque ya tiene "
             f"{', '.join(no_laborables)} sin trabajo"
         )
 
     elif descanso_valido(repartidor.get("descanso", [])):
 
         descanso = (
-            "tiene descanso adicional "
+            "libra "
             + "-".join(repartidor.get("descanso", []))
         )
 
     else:
 
-        descanso = "necesita configurar descanso adicional"
+        descanso = "necesita marcar dos dias consecutivos como no disponibles"
 
     return (
         f"{repartidor['nombre']} puede trabajar de "

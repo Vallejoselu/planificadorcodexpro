@@ -24,6 +24,7 @@ from services.rule_engine import (
 )
 from views.nuevo_repartidor import DESCANSO_NO_NECESARIO_TEXTO
 from views.nuevo_repartidor import NuevoRepartidor
+from views.nuevo_repartidor import repartidores_service
 
 
 class TestReglasDescansos(unittest.TestCase):
@@ -75,28 +76,21 @@ class TestReglasDescansos(unittest.TestCase):
 
                 validar_descanso(inicio, fin)
 
-    def test_formulario_no_ofrece_inicio_fin_de_semana(self):
+    def test_formulario_usa_dias_no_disponibles_como_libranza(self):
 
         formulario = NuevoRepartidor()
-        opciones = [
-            formulario.descanso_inicio.itemText(indice)
-            for indice in range(formulario.descanso_inicio.count())
-        ]
 
-        self.assertEqual(
-            opciones,
-            [
-                DESCANSO_NO_NECESARIO_TEXTO,
-                "lunes",
-                "martes",
-                "miercoles",
-                "jueves"
-            ]
-        )
-        self.assertNotIn("viernes", opciones)
-        self.assertNotIn("sabado", opciones)
-        self.assertNotIn("domingo", opciones)
-        self.assertTrue(formulario.descanso_fin.isReadOnly())
+        self.assertFalse(formulario.descanso_inicio.isVisible())
+        self.assertFalse(formulario.descanso_fin.isVisible())
+        self.assertIn("Marca al menos dos dias consecutivos", formulario.explicacion_descanso.text())
+
+        formulario.disponibilidad["lunes"].setCurrentText("No disponible")
+        formulario.disponibilidad["martes"].setCurrentText("No disponible")
+        formulario.actualizar_estado_descanso()
+
+        self.assertIn("lunes", formulario.dias_no_laborables.text())
+        self.assertIn("martes", formulario.dias_no_laborables.text())
+        self.assertIn("Libranza cubierta", formulario.explicacion_descanso.text())
 
     def test_formulario_controla_permiso_de_horas_complementarias(self):
 
@@ -131,20 +125,19 @@ class TestReglasDescansos(unittest.TestCase):
         )
         self.assertEqual(formulario_editado.horas_complementarias.value(), 6)
 
-    def test_formulario_calcula_segundo_dia(self):
+    def test_formulario_bloquea_guardar_sin_dos_dias_libres(self):
 
         formulario = NuevoRepartidor()
-        esperados = {
-            "lunes": "martes",
-            "martes": "miercoles",
-            "miercoles": "jueves",
-            "jueves": "viernes"
-        }
+        formulario.nombre.setText("Ana")
 
-        for inicio, fin in esperados.items():
+        with self.assertRaisesRegex(
+            ValueError,
+            "dos dias consecutivos"
+        ):
 
-            formulario.descanso_inicio.setCurrentText(inicio)
-            self.assertEqual(formulario.descanso_fin.text(), fin)
+            repartidores_service.validar_descanso_no_necesario(
+                formulario.obtener_disponibilidad()
+            )
 
     def test_roberto_lunes_jueves_no_recibe_descanso_adicional(self):
 
@@ -310,7 +303,14 @@ class TestReglasDescansos(unittest.TestCase):
 
         formulario.actualizar_estado_descanso()
 
-        self.assertEqual(formulario.descanso_inicio.currentText(), "lunes")
+        self.assertEqual(
+            formulario.descanso_inicio.currentText(),
+            DESCANSO_NO_NECESARIO_TEXTO
+        )
+        self.assertIn(
+            "Marca al menos dos dias consecutivos",
+            formulario.explicacion_descanso.text()
+        )
 
     def test_vacaciones_temporales_no_modifican_descanso_permanente(self):
 
@@ -348,7 +348,7 @@ class TestReglasDescansos(unittest.TestCase):
             "Roberto puede trabajar de lunes, martes, miercoles, jueves",
             respuesta
         )
-        self.assertIn("no necesita descanso adicional", respuesta)
+        self.assertIn("tiene la libranza cubierta", respuesta)
 
     def test_generador_avisa_si_no_puede_completar_horas(self):
 

@@ -1,15 +1,16 @@
 import database.database as db
+from database.schema import CIUDAD_SIN_CIUDAD
 
 
 class CiudadesRepository:
 
     def listar_todas(self):
 
-        return db.obtener_ciudades()
+        return self._sin_ciudad_tecnica(db.obtener_ciudades())
 
     def listar_activas(self):
 
-        return db.obtener_ciudades(solo_activas=True)
+        return self._sin_ciudad_tecnica(db.obtener_ciudades(solo_activas=True))
 
     def obtener_por_id(self, ciudad_id):
 
@@ -22,3 +23,11 @@ class CiudadesRepository:
     def actualizar(self, ciudad_id, nombre, activo=1):
 
         return db.actualizar_ciudad(ciudad_id, nombre, activo)
+
+    def _sin_ciudad_tecnica(self, ciudades):
+
+        return [
+            ciudad
+            for ciudad in ciudades
+            if ciudad[1] != CIUDAD_SIN_CIUDAD
+        ]

@@ -4,6 +4,7 @@ from pathlib import Path
 
 import database.database as database
 from database.database import crear_base_datos
+from repositories.ciudades_repository import CiudadesRepository
 from services.datos_demo import DatosDemoService
 
 
@@ -143,7 +144,7 @@ class TestDatosDemoService(unittest.TestCase):
         self.assertEqual(self.contar("calendario_semanal", True), 1)
         self.assertEqual(self.calendario_restante()[0], restaurante_real)
 
-    def test_empezar_de_cero_desactiva_datos_y_vacia_cuadrantes(self):
+    def test_empezar_de_cero_elimina_datos_y_vacia_cuadrantes(self):
 
         ciudad_id = database.insertar_ciudad("Ciudad real")
         restaurante_id = database.insertar_restaurante(
@@ -181,9 +182,21 @@ class TestDatosDemoService(unittest.TestCase):
         self.assertEqual(self.contar("restaurantes"), 0)
         self.assertEqual(self.contar("repartidores"), 0)
         self.assertEqual(self.contar("turnos"), 0)
+        self.assertEqual(self.contar("ciudades", incluir_inactivos=True), 0)
+        self.assertEqual(
+            self.contar("restaurantes", incluir_inactivos=True),
+            0
+        )
+        self.assertEqual(
+            self.contar("repartidores", incluir_inactivos=True),
+            0
+        )
+        self.assertEqual(self.contar("turnos", incluir_inactivos=True), 0)
         self.assertEqual(self.contar("calendario_semanal", True), 0)
         self.assertEqual(resumen["repartidores"], 1)
         self.assertEqual(resumen["cuadrantes"], 1)
+        crear_base_datos()
+        self.assertEqual(CiudadesRepository().listar_activas(), [])
 
     def test_empezar_de_cero_elimina_datos_demo(self):
 

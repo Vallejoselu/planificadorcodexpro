@@ -125,14 +125,16 @@ class TestUxClaridadOperativa(unittest.TestCase):
         self.assertGreaterEqual(vista.tabla.currentRow(), 0)
         self.assertEqual(vista.btn_empezar_cero.text(), "Empezar de cero")
         self.assertEqual(vista.btn_empezar_cero.property("variant"), "danger")
+        self.assertIn("backup", vista.btn_empezar_cero.toolTip().lower())
+        self.assertIn("borra", vista.btn_empezar_cero.toolTip().lower())
 
     def test_creacion_guiada_muestra_paso_recomendado(self):
 
         vista = VistaCreacionGuiada()
 
-        self.assertEqual(vista.titulo.text(), "Restaurantes")
-        self.assertIn("Paso 2 de", vista.indicador.text())
-        self.assertEqual(vista.btn_abrir.text(), "Crear o revisar restaurantes")
+        self.assertEqual(vista.titulo.text(), "Ciudades")
+        self.assertIn("Paso 1 de", vista.indicador.text())
+        self.assertEqual(vista.btn_abrir.text(), "Crear o revisar ciudades")
         self.assertTrue(vista.ayuda.wordWrap())
         self.assertEqual(len(vista.labels_pasos), 8)
 
