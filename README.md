@@ -78,7 +78,8 @@ docs\FLUJO_GIT_SEGURO.md
 ## Funciones principales
 
 - Gestion de repartidores con contratos de 10, 20, 25, 30, 35 y 40 horas.
-- Descansos semanales validados: lunes-martes, martes-miercoles, miercoles-jueves y jueves-viernes.
+- Libranza semanal simple: marca los dias que el repartidor libra como
+  `No disponible`; la app exige dos dias consecutivos antes de guardar.
 - Disponibilidad semanal por comidas, cenas, ambos o no disponible.
 - Gestion de restaurantes con formulario simple, turnos comida/cena y demanda
   semanal recomendada para empezar sin configurar cada campo manualmente.
@@ -88,6 +89,8 @@ docs\FLUJO_GIT_SEGURO.md
 - Creacion guiada para configurar la empresa paso a paso.
 - Puesta en marcha con creacion de datos minimos reales: ciudad,
   restaurante, turnos comida/cena y demanda base sin repartidores ficticios.
+- Reinicio limpio con backup previo para dejar la aplicacion sin ciudades,
+  restaurantes, repartidores, turnos, demandas ni cuadrantes operativos.
 - Primer cuadrante guiado con comprobacion previa en lenguaje claro.
 - Validacion previa antes de generar para detectar datos incompletos.
 - Resumen claro tras generar con plazas cubiertas, pendientes y avisos.

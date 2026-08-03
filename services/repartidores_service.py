@@ -64,9 +64,12 @@ class RepartidoresService:
             ),
             "descanso_cubierto": descanso_cubierto,
             "explicacion": (
-                "La disponibilidad semanal ya aporta dos dias consecutivos sin trabajo."
+                "Libranza cubierta: hay al menos dos dias consecutivos sin trabajo."
                 if descanso_cubierto
-                else "Hace falta configurar descanso adicional."
+                else (
+                    "Marca al menos dos dias consecutivos como No disponible "
+                    "para guardar la libranza."
+                )
             )
         }
 
@@ -80,7 +83,9 @@ class RepartidoresService:
 
         if not self.descanso_cubierto_por_disponibilidad(disponibilidad):
 
-            raise ValueError("Configura un descanso adicional valido.")
+            raise ValueError(
+                "Marca al menos dos dias consecutivos como No disponible."
+            )
 
     def formatear_descanso(self, repartidor):
 

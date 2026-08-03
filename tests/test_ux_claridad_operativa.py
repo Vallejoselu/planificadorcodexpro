@@ -125,6 +125,8 @@ class TestUxClaridadOperativa(unittest.TestCase):
         self.assertGreaterEqual(vista.tabla.currentRow(), 0)
         self.assertEqual(vista.btn_empezar_cero.text(), "Empezar de cero")
         self.assertEqual(vista.btn_empezar_cero.property("variant"), "danger")
+        self.assertIn("backup", vista.btn_empezar_cero.toolTip().lower())
+        self.assertIn("borra", vista.btn_empezar_cero.toolTip().lower())
 
     def test_creacion_guiada_muestra_paso_recomendado(self):
 

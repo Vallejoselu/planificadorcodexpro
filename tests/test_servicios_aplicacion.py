@@ -532,7 +532,7 @@ class TestServiciosAplicacion(unittest.TestCase):
         self.assertTrue(estado["descanso_cubierto"])
         servicio.validar_descanso_no_necesario(disponibilidad)
 
-        with self.assertRaisesRegex(ValueError, "descanso adicional"):
+        with self.assertRaisesRegex(ValueError, "dos dias consecutivos"):
 
             servicio.validar_descanso_no_necesario({
                 "lunes": "No disponible",

@@ -137,39 +137,42 @@ class DatosDemoService:
             "repartidores": self._contar_activos(cursor, "repartidores"),
             "cuadrantes": self._contar_filas(cursor, "calendario_semanal")
         }
+        demo = {
+            "ciudades": len(self._ids_por_nombre(cursor, "ciudades")),
+            "restaurantes": len(self._ids_por_nombre(cursor, "restaurantes")),
+            "repartidores": len(self._ids_por_nombre(cursor, "repartidores"))
+        }
 
         for tabla in (
-            "repartidores",
-            "restaurantes",
-            "ciudades",
-            "turnos",
-            "restaurante_turnos",
+            "calendario_semanal",
+            "plantilla_semana_asignaciones",
+            "plantillas_semana",
+            "cuadrante_publicaciones",
+            "integraciones_sincronizaciones",
+            "integraciones_eventos",
+            "historial_acciones",
             "demanda_restaurante",
             "demanda_zona",
             "demanda_ciudad",
             "restaurante_repartidores",
             "repartidor_ciudades",
             "repartidor_restaurantes_autorizados",
+            "restaurante_turnos",
             "descansos",
+            "disponibilidad",
             "vacaciones",
             "bajas",
-            "plantillas_semana",
+            "preferencias",
+            "contratos",
+            "restaurantes",
+            "repartidores",
+            "turnos",
+            "ciudades",
             "integraciones_api"
-        ):
-
-            self._desactivar_tabla(cursor, tabla)
-
-        for tabla in (
-            "calendario_semanal",
-            "plantilla_semana_asignaciones",
-            "cuadrante_publicaciones",
-            "integraciones_sincronizaciones",
-            "integraciones_eventos"
         ):
 
             self._vaciar_tabla(cursor, tabla)
 
-        demo = self._eliminar_demo_permanente(cursor)
         resumen["demo_eliminados"] = demo
 
         conexion.commit()
