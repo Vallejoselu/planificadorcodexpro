@@ -251,11 +251,21 @@ class CuadrantesService:
 
             advertencias.append(alerta["detalle"])
 
-        if restaurantes and not (
+        sin_demanda = restaurantes and not (
             demandas_restaurante
             or demandas_zona
             or demandas_ciudad
-        ):
+        )
+
+        if sin_demanda and restaurante_turnos and not turnos:
+
+            errores.append(
+                "No hay demanda configurada. Los turnos propios de "
+                "restaurante necesitan demanda para saber cuantas plazas "
+                "crear."
+            )
+
+        elif sin_demanda:
 
             advertencias.append(
                 "No hay demanda configurada. El generador puede crear "
@@ -2963,7 +2973,8 @@ class CuadrantesService:
                 "clave": "sin_asignaciones",
                 "titulo": "No se crearon plazas",
                 "detalle": (
-                    "Revisa demanda, restaurantes y turnos antes de guardar."
+                    "No guardes esta vista previa. Revisa demanda, "
+                    "restaurantes y turnos antes de generar de nuevo."
                 )
             }
 
@@ -3134,6 +3145,17 @@ class CuadrantesService:
     def acciones_resumen_generacion(self, datos):
 
         acciones = []
+
+        if datos["estado"]["clave"] == "sin_asignaciones":
+
+            acciones.append(
+                "Cancela, configura demanda y vuelve a generar."
+            )
+            acciones.append(
+                "Comprueba que el restaurante tenga turnos y cobertura "
+                "necesaria."
+            )
+            return acciones
 
         if datos["asignaciones_sin_repartidor"]:
 

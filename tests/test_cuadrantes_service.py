@@ -846,6 +846,13 @@ class TestCuadrantesServicePorCapa(unittest.TestCase):
 
         self.assertEqual(resumen["estado"]["clave"], "sin_asignaciones")
         self.assertIn("No se crearon plazas", resumen["estado"]["titulo"])
+        texto = servicio.texto_resumen_generacion({
+            "horario": {},
+            "resumen": [],
+            "incidencias": []
+        })
+        self.assertIn("No guardes esta vista previa", texto)
+        self.assertIn("Cancela, configura demanda", texto)
 
     def test_precomprobar_generacion_detecta_configuracion_incompleta(self):
 
@@ -893,6 +900,30 @@ class TestCuadrantesServicePorCapa(unittest.TestCase):
             "Configura demanda",
             precomprobacion["texto"]
         )
+
+    def test_precomprobar_bloquea_turnos_propios_sin_demanda(self):
+
+        servicio = CuadrantesService()
+
+        precomprobacion = servicio.precomprobar_generacion(
+            {
+                "repartidores": [(1, "Ana", 30)],
+                "restaurantes": [(2, "BK Centro", "", "Centro", "", 50, 1)],
+                "turnos": [],
+                "restaurante_turnos": [
+                    (8, 2, "Comida", "13:00", "16:00", 0, 3, 1)
+                ],
+                "demandas_restaurante": [],
+                "demandas_zona": [],
+                "demandas_ciudad": []
+            },
+            "2026-07-13"
+        )
+
+        self.assertFalse(precomprobacion["puede_generar"])
+        self.assertFalse(precomprobacion["requiere_confirmacion"])
+        self.assertIn("Los turnos propios", precomprobacion["texto"])
+        self.assertIn("necesitan demanda", precomprobacion["texto"])
 
     def test_precomprobar_generacion_avisa_sin_disponibilidad(self):
 
