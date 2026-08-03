@@ -132,9 +132,9 @@ class TestUxClaridadOperativa(unittest.TestCase):
 
         vista = VistaCreacionGuiada()
 
-        self.assertEqual(vista.titulo.text(), "Restaurantes")
-        self.assertIn("Paso 2 de", vista.indicador.text())
-        self.assertEqual(vista.btn_abrir.text(), "Crear o revisar restaurantes")
+        self.assertEqual(vista.titulo.text(), "Ciudades")
+        self.assertIn("Paso 1 de", vista.indicador.text())
+        self.assertEqual(vista.btn_abrir.text(), "Crear o revisar ciudades")
         self.assertTrue(vista.ayuda.wordWrap())
         self.assertEqual(len(vista.labels_pasos), 8)
 
