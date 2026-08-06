@@ -92,6 +92,8 @@ docs\FLUJO_GIT_SEGURO.md
 - Reinicio limpio con backup previo para dejar la aplicacion sin ciudades,
   restaurantes, repartidores, turnos, demandas ni cuadrantes operativos.
 - Primer cuadrante guiado con comprobacion previa en lenguaje claro.
+- Validacion del primer cuadrante desde base limpia con datos minimos y
+  repartidores reales, evitando asignaciones en dias no disponibles.
 - Validacion previa antes de generar para detectar datos incompletos.
 - Bloqueo de vistas previas vacias para no guardar cuadrantes sin plazas.
 - Resumen claro tras generar con plazas cubiertas, pendientes y avisos.
