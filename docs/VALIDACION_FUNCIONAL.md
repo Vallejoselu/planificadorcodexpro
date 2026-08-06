@@ -94,6 +94,12 @@ La validacion crea datos minimos reales, anade dos repartidores con libranzas,
 genera el primer cuadrante semanal, lo guarda y comprueba que no haya plazas sin
 repartidor ni asignaciones en dias no disponibles.
 
+La revision manual previa al instalador esta detallada en:
+
+```text
+docs\CHECKLIST_PRE_RELEASE.md
+```
+
 ## Alcance
 
 Esta fase valida el flujo funcional completo desde la perspectiva de usuario,

@@ -70,6 +70,7 @@ Consulta tambien:
 ```text
 AGENTS.md
 docs\GUIA_USO.md
+docs\CHECKLIST_PRE_RELEASE.md
 docs\AUDITORIA_PRODUCTO.md
 docs\PLANTILLA_TAREA_CODEX.md
 docs\FLUJO_GIT_SEGURO.md
@@ -96,6 +97,8 @@ docs\FLUJO_GIT_SEGURO.md
   repartidores reales, evitando asignaciones en dias no disponibles.
 - Script de validacion rapida antes de instalador para probar el primer
   cuadrante real sin tocar `delivery.db`.
+- Checklist pre-release para revisar flujo real, claridad visual, horas,
+  alertas, exportaciones y persistencia antes de generar instalador.
 - Validacion previa antes de generar para detectar datos incompletos.
 - Bloqueo de vistas previas vacias para no guardar cuadrantes sin plazas.
 - Resumen claro tras generar con plazas cubiertas, pendientes y avisos.
