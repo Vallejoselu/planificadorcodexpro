@@ -3069,9 +3069,7 @@ class CuadrantesService:
 
             for item in datos["repartidores_asignados"]:
 
-                lineas.append(
-                    f"- {item['nombre']}: {item['horas']:g} h"
-                )
+                lineas.append(self.texto_horas_repartidor(item))
 
         else:
 
@@ -3141,6 +3139,31 @@ class CuadrantesService:
             lineas.append(f"- {accion}")
 
         return "\n".join(lineas)
+
+    def texto_horas_repartidor(self, item):
+
+        total = float(item.get("total_horas", item.get("horas", 0)) or 0)
+        contrato = item.get("horas_contratadas", item.get("contrato"))
+        complementarias = float(item.get("horas_complementarias", 0) or 0)
+        limite = float(item.get("limite_horas_complementarias", 0) or 0)
+
+        if contrato is None:
+
+            return f"- {item['nombre']}: {total:g} h"
+
+        texto = (
+            f"- {item['nombre']}: contrato {float(contrato):g} h, "
+            f"total {total:g} h"
+        )
+
+        if complementarias:
+
+            texto += (
+                f", complementarias {complementarias:g} h"
+                f" de {limite:g}"
+            )
+
+        return texto
 
     def acciones_resumen_generacion(self, datos):
 

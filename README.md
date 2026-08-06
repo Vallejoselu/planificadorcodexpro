@@ -99,6 +99,8 @@ docs\FLUJO_GIT_SEGURO.md
 - Validacion previa antes de generar para detectar datos incompletos.
 - Bloqueo de vistas previas vacias para no guardar cuadrantes sin plazas.
 - Resumen claro tras generar con plazas cubiertas, pendientes y avisos.
+- Resumen de horas por repartidor con contrato, total asignado y horas
+  complementarias usadas.
 - Pantalla de cuadrantes simplificada con herramientas avanzadas ocultas por defecto.
 - Acciones manuales del cuadrante guiadas desde Vista Semana para evitar
   copiar, pegar o editar celdas en vistas de solo lectura.

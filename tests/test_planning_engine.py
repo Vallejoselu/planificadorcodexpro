@@ -405,6 +405,9 @@ class TestPlanningEngine(unittest.TestCase):
 
         self.assertEqual(resultado["resumen"][0]["maximo"], 12)
         self.assertEqual(resultado["resumen"][0]["horas"], 12)
+        self.assertEqual(resultado["resumen"][0]["contrato"], 10)
+        self.assertEqual(resultado["resumen"][0]["horas_contratadas"], 10)
+        self.assertEqual(resultado["resumen"][0]["total_horas"], 12)
         self.assertEqual(
             resultado["resumen"][0]["limite_horas_complementarias"],
             2
@@ -470,6 +473,8 @@ class TestPlanningEngine(unittest.TestCase):
         )
 
         self.assertEqual(resultado["resumen"][0]["maximo"], 10)
+        self.assertEqual(resultado["resumen"][0]["contrato"], 10)
+        self.assertEqual(resultado["resumen"][0]["total_horas"], 6)
         self.assertFalse(
             resultado["resumen"][0]["horas_complementarias_permitidas"]
         )

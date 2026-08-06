@@ -442,7 +442,10 @@ def crear_resumen(repartidores):
         resumen.append({
             "id": repartidor["id"],
             "nombre": repartidor["nombre"],
+            "contrato": repartidor["horas_contratadas"],
+            "horas_contratadas": repartidor["horas_contratadas"],
             "horas": repartidor["horas_asignadas"],
+            "total_horas": repartidor["horas_asignadas"],
             "maximo": repartidor["maximo_horas"],
             "descanso": repartidor["descanso"],
             "horas_complementarias": repartidor["horas_complementarias"],

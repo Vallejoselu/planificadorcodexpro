@@ -772,7 +772,15 @@ class TestCuadrantesServicePorCapa(unittest.TestCase):
                     ]
                 }
             },
-            "resumen": [{"nombre": "Ana", "horas": 3}],
+            "resumen": [{
+                "nombre": "Ana",
+                "contrato": 30,
+                "horas_contratadas": 30,
+                "horas": 34,
+                "total_horas": 34,
+                "horas_complementarias": 4,
+                "limite_horas_complementarias": 6
+            }],
             "horas_complementarias": [{
                 "nombre": "Ana",
                 "limite": 4,
@@ -799,6 +807,10 @@ class TestCuadrantesServicePorCapa(unittest.TestCase):
         self.assertIn("Cobertura: 50%", texto)
         self.assertIn("Advertencias: 1", texto)
         self.assertIn("Turnos sin cubrir: 1", texto)
+        self.assertIn(
+            "Ana: contrato 30 h, total 34 h, complementarias 4 h de 6",
+            texto
+        )
         self.assertIn("Horas complementarias", texto)
         self.assertIn("Ana: 2 h de 4 permitidas", texto)
         self.assertIn("Que hacer ahora", texto)
