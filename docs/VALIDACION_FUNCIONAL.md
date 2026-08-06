@@ -81,6 +81,19 @@ python -m compileall .
 git diff --check
 ```
 
+## Validacion Rapida Antes De Instalador
+
+Antes de generar un instalador, ejecuta una comprobacion sobre una base
+temporal limpia. No toca `delivery.db` ni usa datos reales:
+
+```text
+python scripts\validar_flujo_base_limpia.py
+```
+
+La validacion crea datos minimos reales, anade dos repartidores con libranzas,
+genera el primer cuadrante semanal, lo guarda y comprueba que no haya plazas sin
+repartidor ni asignaciones en dias no disponibles.
+
 ## Alcance
 
 Esta fase valida el flujo funcional completo desde la perspectiva de usuario,
