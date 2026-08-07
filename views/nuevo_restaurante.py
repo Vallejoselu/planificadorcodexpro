@@ -69,13 +69,8 @@ class NuevoRestaurante(QDialog):
         self.ciudad = QComboBox()
         self.cargar_ciudades()
 
-        self.zona = QComboBox()
-        self.zona.addItems([
-            "Ronda",
-            "Grela",
-            "Outeiro",
-            "Milladoiro"
-        ])
+        self.zona = QLineEdit()
+        self.zona.setPlaceholderText("Ejemplo: San Lazaro, Fonsillon, Santiago Centro")
 
         self.telefono = QLineEdit()
 
@@ -373,10 +368,10 @@ class NuevoRestaurante(QDialog):
             if self.restaurante[2]
             else ""
         )
-        self.zona.setCurrentText(
+        self.zona.setText(
             self.restaurante[3]
             if self.restaurante[3]
-            else "Ronda"
+            else ""
         )
         self.telefono.setText(
             self.restaurante[4]
@@ -643,7 +638,7 @@ class NuevoRestaurante(QDialog):
                 self.restaurante[0],
                 self.nombre.text(),
                 self.direccion.text(),
-                self.zona.currentText(),
+                self.zona.text().strip(),
                 self.telefono.text(),
                 int(self.activo.isChecked()),
                 self.horario_comida.text(),
@@ -661,7 +656,7 @@ class NuevoRestaurante(QDialog):
 
                 self.direccion.text(),
 
-                self.zona.currentText(),
+                self.zona.text().strip(),
 
                 self.telefono.text(),
 

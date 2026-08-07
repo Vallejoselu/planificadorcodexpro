@@ -77,13 +77,8 @@ class NuevoRepartidor(QDialog):
         self.restaurantes_autorizados.setMaximumHeight(90)
         self.cargar_ubicaciones()
 
-        self.zona = QComboBox()
-        self.zona.addItems([
-            "Ronda",
-            "Grela",
-            "Outeiro",
-            "Milladoiro"
-        ])
+        self.zona = QLineEdit()
+        self.zona.setPlaceholderText("Ejemplo: San Lazaro, Fonsillon, Santiago Centro")
 
         self.descanso_inicio = QComboBox()
         self.descanso_inicio.addItem(DESCANSO_NO_NECESARIO_TEXTO)
@@ -181,7 +176,7 @@ class NuevoRepartidor(QDialog):
         formulario.addRow("Puede hasta la 1", self.hasta1)
         formulario.addRow("Prioridad comida", self.prio_comida)
         formulario.addRow("Prioridad noche", self.prio_noche)
-        formulario.addRow("Prioridad Grela", self.prio_grela)
+        formulario.addRow("Prioridad zona", self.prio_grela)
         formulario.addRow("Observaciones", self.obs)
 
         layout.addWidget(create_scroll_area(contenedor_formulario), 1)
@@ -272,7 +267,7 @@ class NuevoRepartidor(QDialog):
 
         self.nombre.setText(self.repartidor["nombre"])
         self.horas.setCurrentText(str(self.repartidor["horas"]))
-        self.zona.setCurrentText(self.repartidor["zona"] or "")
+        self.zona.setText(self.repartidor["zona"] or "")
         self.doble.setChecked(bool(self.repartidor["doble_turno"]))
         self.hasta1.setChecked(bool(self.repartidor["puede_hasta_la_una"]))
         self.prio_comida.setValue(self.repartidor["prioridad_comida"])
@@ -390,7 +385,7 @@ class NuevoRepartidor(QDialog):
 
                 int(self.horas.currentText()),
 
-                self.zona.currentText(),
+                self.zona.text().strip(),
 
                 int(self.doble.isChecked()),
 
