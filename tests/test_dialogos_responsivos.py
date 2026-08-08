@@ -3,7 +3,7 @@ import unittest
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from PySide6.QtWidgets import QApplication, QScrollArea
+from PySide6.QtWidgets import QApplication, QLineEdit, QScrollArea
 
 import views.nuevo_repartidor as nuevo_repartidor_view
 import views.nuevo_restaurante as nuevo_restaurante_view
@@ -108,6 +108,10 @@ class TestDialogosResponsivos(unittest.TestCase):
         dialogo = NuevoRepartidor()
 
         self.assert_dialogo_adaptado_a_pantalla(dialogo)
+        self.assertIsInstance(dialogo.zona, QLineEdit)
+        self.assertIn("San Lazaro", dialogo.zona.placeholderText())
+        dialogo.zona.setText("Fonsillon")
+        self.assertEqual(dialogo.zona.text(), "Fonsillon")
 
     def test_dialogo_restaurante_tiene_scroll_y_alto_limitado(self):
 
@@ -125,6 +129,10 @@ class TestDialogosResponsivos(unittest.TestCase):
             dialogo.btn_configuracion_recomendada.text(),
             "Crear configuracion recomendada"
         )
+        self.assertIsInstance(dialogo.zona, QLineEdit)
+        self.assertIn("Santiago Centro", dialogo.zona.placeholderText())
+        dialogo.zona.setText("San Lazaro")
+        self.assertEqual(dialogo.zona.text(), "San Lazaro")
 
     def test_dialogo_restaurante_crea_configuracion_recomendada(self):
 

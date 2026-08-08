@@ -119,6 +119,7 @@ docs\FLUJO_GIT_SEGURO.md
 - Exportacion a Excel, PDF y CSV.
 - Copia de cuadrantes entre semanas y plantillas reutilizables.
 - Demanda configurable por restaurante, zona y ciudad con prioridad documentada.
+- Zonas editables en repartidores y restaurantes, sin nombres fijos en formularios.
 - Panel de alertas del cuadrante e historial de acciones importantes.
 - Importacion de repartidores, restaurantes, disponibilidad, vacaciones y bajas.
 - Exportacion ICS, resumen por email, delivery JSON y webhook generico simulado.

@@ -419,7 +419,7 @@ def prioridad_repartidor(repartidor, restaurante, turno):
 
         prioridad = repartidor.get("prioridad_comida", 50)
 
-    elif restaurante.get("zona") == "Grela":
+    elif misma_zona(repartidor, restaurante):
 
         prioridad = repartidor.get("prioridad_grela", 50)
 
@@ -427,7 +427,7 @@ def prioridad_repartidor(repartidor, restaurante, turno):
 
         prioridad = repartidor.get("prioridad_noche", 50)
 
-    if repartidor.get("zona") == restaurante.get("zona"):
+    if misma_zona(repartidor, restaurante):
 
         prioridad += peso_prioridad_zona
 
@@ -436,6 +436,17 @@ def prioridad_repartidor(repartidor, restaurante, turno):
         prioridad += peso_restaurante_fijo
 
     return prioridad
+
+
+def misma_zona(repartidor, restaurante):
+
+    zona_repartidor = normalizar_texto(repartidor.get("zona"))
+    zona_restaurante = normalizar_texto(restaurante.get("zona"))
+
+    return bool(
+        zona_repartidor
+        and zona_repartidor == zona_restaurante
+    )
 
 
 def puntuacion_preferencia(repartidor, restaurante, turno):
@@ -469,18 +480,22 @@ def preferencia_aplica(preferencia, restaurante, turno):
 
         restaurante_id = preferencia.get("restaurante_id")
         restaurante_nombre = preferencia.get("restaurante")
-        zona = preferencia.get("zona")
+        zona = normalizar_texto(preferencia.get("zona"))
         turno_preferido = preferencia.get("turno")
 
         if restaurante_id and str(restaurante_id) != str(restaurante.get("id")):
 
             return False
 
-        if restaurante_nombre and restaurante_nombre != restaurante.get("nombre"):
+        if (
+            restaurante_nombre
+            and normalizar_texto(restaurante_nombre)
+            != normalizar_texto(restaurante.get("nombre"))
+        ):
 
             return False
 
-        if zona and zona != restaurante.get("zona"):
+        if zona and zona != normalizar_texto(restaurante.get("zona")):
 
             return False
 
@@ -494,14 +509,20 @@ def preferencia_aplica(preferencia, restaurante, turno):
 
         return (
             restaurante.get("id") in preferencia
-            or restaurante.get("nombre") in preferencia
-            or restaurante.get("zona") in preferencia
+            or normalizar_texto(restaurante.get("nombre")) in [
+                normalizar_texto(valor)
+                for valor in preferencia
+            ]
+            or normalizar_texto(restaurante.get("zona")) in [
+                normalizar_texto(valor)
+                for valor in preferencia
+            ]
         )
 
-    return str(preferencia) in (
+    return normalizar_texto(preferencia) in (
         str(restaurante.get("id")),
-        restaurante.get("nombre", ""),
-        restaurante.get("zona", "")
+        normalizar_texto(restaurante.get("nombre", "")),
+        normalizar_texto(restaurante.get("zona", ""))
     )
 
 
@@ -518,7 +539,10 @@ def coste_desplazamiento(repartidor, restaurante, dia):
 
         return 0
 
-    if zona_anterior and zona_anterior == restaurante.get("zona"):
+    if normalizar_texto(zona_anterior) and (
+        normalizar_texto(zona_anterior)
+        == normalizar_texto(restaurante.get("zona"))
+    ):
 
         return 1
 
@@ -600,8 +624,8 @@ def cumple_restaurante_o_zona(repartidor, restaurante):
 
         return restaurante["id"] in fijos
 
-    zona_repartidor = repartidor.get("zona")
-    zona_restaurante = restaurante.get("zona")
+    zona_repartidor = normalizar_texto(repartidor.get("zona"))
+    zona_restaurante = normalizar_texto(restaurante.get("zona"))
 
     return not zona_repartidor or not zona_restaurante or zona_repartidor == zona_restaurante
 
@@ -618,7 +642,11 @@ def puntuacion_preferencia_asistente(repartidor, turno, restaurante):
 
                 puntuacion += int(preferencia.get("prioridad", 50))
 
-            if preferencia.get("zona") and preferencia.get("zona") == restaurante.get("zona"):
+            if (
+                normalizar_texto(preferencia.get("zona"))
+                and normalizar_texto(preferencia.get("zona"))
+                == normalizar_texto(restaurante.get("zona"))
+            ):
 
                 puntuacion += int(preferencia.get("prioridad", 50))
 

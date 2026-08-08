@@ -6,7 +6,7 @@ from services.planning_models import PuntuacionConfig
 from services.planning_preparation import preparar_datos_planificacion
 from services.planning_scoring import puntuacion_solucion
 from services.planning_validation import validar_planificacion
-from services.rules.candidatos import puntuacion_preferencia
+from services.rules.candidatos import misma_zona, puntuacion_preferencia
 from services.scheduler import construir_planificacion
 
 
@@ -144,6 +144,24 @@ class TestMotorPlanificacionMejorado(unittest.TestCase):
         self.assertEqual(
             puntuacion_preferencia(repartidor, restaurante, self.turno()),
             80
+        )
+
+    def test_puntuacion_zona_funciona_con_nombres_editables(self):
+
+        repartidor = self.repartidor(1)
+        repartidor["zona"] = "Fonsillon"
+        repartidor["preferencias"] = []
+        repartidor["prioridad_grela"] = 70
+        repartidor["peso_prioridad_zona"] = 15
+        restaurante = self.restaurante()
+        restaurante["zona"] = "fonsillon"
+        turno = self.turno()
+        turno["nombre"] = "cena"
+
+        self.assertTrue(misma_zona(repartidor, restaurante))
+        self.assertEqual(
+            puntuacion_preferencia(repartidor, restaurante, turno),
+            85
         )
 
     def test_puntuacion_aplica_peso_restaurante_fijo_configurado(self):
