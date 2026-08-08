@@ -326,6 +326,8 @@ def check_business_rules():
 
     from database.database import (
         HORAS_CONTRATO,
+        HORAS_CONTRATO_MAX,
+        HORAS_CONTRATO_MIN,
         validar_descanso,
         validar_horas_contratadas
     )
@@ -334,7 +336,11 @@ def check_business_rules():
 
     if tuple(HORAS_CONTRATO) != (10, 20, 25, 30, 35, 40):
 
-        raise RuntimeError("Contratos permitidos incorrectos.")
+        raise RuntimeError("Contratos habituales incorrectos.")
+
+    if HORAS_CONTRATO_MIN != 1 or HORAS_CONTRATO_MAX != 80:
+
+        raise RuntimeError("Rango editable de contratos incorrecto.")
 
     for descanso in (
         ("lunes", "martes"),
@@ -364,6 +370,10 @@ def check_business_rules():
             raise RuntimeError(f"Descanso invalido aceptado: {descanso}")
 
     for horas in HORAS_CONTRATO:
+
+        validar_horas_contratadas(horas)
+
+    for horas in (HORAS_CONTRATO_MIN, 45, 50, HORAS_CONTRATO_MAX):
 
         validar_horas_contratadas(horas)
 
