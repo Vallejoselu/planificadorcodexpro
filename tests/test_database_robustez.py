@@ -48,7 +48,7 @@ class TestRobustezBaseDatos(unittest.TestCase):
             zona,
             activo
         )
-        VALUES('Horas antiguas', 37, 'Centro', 1)
+        VALUES('Horas antiguas', 99, 'Centro', 1)
         """)
         repartidor_id = cursor.lastrowid
         cursor.execute("""
@@ -94,6 +94,24 @@ class TestRobustezBaseDatos(unittest.TestCase):
         self.assertIn("Descansos antiguos no validos", texto)
         self.assertIn("restaurantes antiguos no tienen ciudad", texto)
         self.assertIn("Demandas antiguas invalidas", texto)
+
+    def test_diagnostico_acepta_contrato_superior_a_40(self):
+
+        crear_base_datos()
+        conexion = sqlite3.connect(database.RUTA_BD)
+        cursor = conexion.cursor()
+        cursor.execute("""
+        INSERT INTO repartidores(nombre, horas, zona, activo)
+        VALUES('Contrato alto', 45, 'Centro', 1)
+        """)
+        conexion.commit()
+        conexion.close()
+
+        diagnostico = diagnosticar_base_datos()
+        texto = " ".join(diagnostico["advertencias"])
+
+        self.assertTrue(diagnostico["ok"])
+        self.assertNotIn("horas contratadas no validas", texto)
 
     def test_reparacion_migra_base_antigua_con_duplicados(self):
 

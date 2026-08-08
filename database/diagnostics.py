@@ -6,7 +6,8 @@ from database.schema import (
     CIUDAD_SIN_CIUDAD,
     DESCANSOS_VALIDOS,
     DIAS_SEMANA,
-    HORAS_CONTRATO,
+    HORAS_CONTRATO_MAX,
+    HORAS_CONTRATO_MIN,
     SCHEMA_VERSION_ACTUAL
 )
 
@@ -249,7 +250,10 @@ def revisar_repartidores_horas_invalidas(cursor, advertencias):
     invalidos = [
         fila
         for fila in cursor.fetchall()
-        if int(fila[2] or 0) not in HORAS_CONTRATO
+        if (
+            int(fila[2] or 0) < HORAS_CONTRATO_MIN
+            or int(fila[2] or 0) > HORAS_CONTRATO_MAX
+        )
     ]
 
     if invalidos:

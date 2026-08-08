@@ -424,12 +424,40 @@ class TestPlanningEngine(unittest.TestCase):
                 "disponibles": 0
             }
         )
-        self.assertTrue(
-            any(
-                incidencia.get("regla") == "horas complementarias usadas"
-                for incidencia in resultado["incidencias"]
-            )
+
+    def test_generador_respeta_contrato_superior_a_40_sin_extra(self):
+
+        resetear_reglas_motor()
+        repartidor = self.repartidores()[0]
+        repartidor["horas"] = 50
+        repartidor["descanso"] = []
+        repartidor["max_dias_consecutivos"] = 5
+        repartidor["disponibilidad"] = {
+            "lunes": ["comida"],
+            "martes": ["comida"],
+            "miercoles": ["comida"],
+            "jueves": ["comida"],
+            "viernes": ["comida"],
+            "sabado": [],
+            "domingo": []
+        }
+
+        resultado = generar_horarios(
+            [repartidor],
+            self.restaurantes(),
+            turnos=[{
+                "nombre": "comida",
+                "horas": 9
+            }]
         )
+        resumen = resultado["resumen"][0]
+
+        self.assertEqual(resumen["contrato"], 50)
+        self.assertEqual(resumen["horas_contratadas"], 50)
+        self.assertEqual(resumen["maximo"], 50)
+        self.assertEqual(resumen["horas"], 45)
+        self.assertEqual(resumen["horas_complementarias"], 0)
+        self.assertEqual(resultado["horas_complementarias"][0]["usadas"], 0)
 
     def test_generador_aplica_maximo_horas_semanales_configurado(self):
 

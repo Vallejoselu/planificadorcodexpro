@@ -2,7 +2,7 @@ import csv
 import unicodedata
 from pathlib import Path
 
-from database.schema import HORAS_CONTRATO
+from database.schema import HORAS_CONTRATO_MAX, HORAS_CONTRATO_MIN
 from repositories.historial_repository import HistorialRepository
 from repositories.repartidores_repository import RepartidoresRepository
 
@@ -185,10 +185,11 @@ class ImportadorRepartidores:
 
         horas = entero(datos.get("horas"), "horas")
 
-        if horas not in HORAS_CONTRATO:
+        if horas < HORAS_CONTRATO_MIN or horas > HORAS_CONTRATO_MAX:
 
             raise ValueError(
-                "Horas contratadas no validas. Usa 10, 20, 25, 30, 35 o 40."
+                "Horas contratadas no validas. Usa un valor entre "
+                f"{HORAS_CONTRATO_MIN} y {HORAS_CONTRATO_MAX}."
             )
 
         return {

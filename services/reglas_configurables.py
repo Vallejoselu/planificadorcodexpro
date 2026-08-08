@@ -43,7 +43,7 @@ class ReglasConfigurablesService:
         {
             "clave": "horas_contratadas",
             "nombre": "Horas contratadas",
-            "valor": "10, 20, 25, 30, 35, 40",
+            "valor": "Editable entre 1 y 80 h; habituales: 10, 20, 25, 30, 35, 40",
             "origen": "database.schema",
             "editable": False,
             "tipo": "texto"

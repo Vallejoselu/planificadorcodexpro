@@ -27,6 +27,8 @@ from database.schema import (
     DIAS_SEMANA,
     FECHA_INICIO_SEMANA_LEGADO,
     HORAS_CONTRATO,
+    HORAS_CONTRATO_MAX,
+    HORAS_CONTRATO_MIN,
     OPCIONES_DISPONIBILIDAD,
     PROVEEDORES_INTEGRACION,
     TIPOS_TURNO,
@@ -357,9 +359,12 @@ def validar_horas_contratadas(horas):
 
     horas = int(horas)
 
-    if horas not in HORAS_CONTRATO:
+    if horas < HORAS_CONTRATO_MIN or horas > HORAS_CONTRATO_MAX:
 
-        raise ValueError("Horas contratadas no validas.")
+        raise ValueError(
+            "Horas contratadas no validas. Deben estar entre "
+            f"{HORAS_CONTRATO_MIN} y {HORAS_CONTRATO_MAX}."
+        )
 
     return horas
 

@@ -61,6 +61,24 @@ class TestImportacionRepartidores(unittest.TestCase):
         self.assertEqual(repartidores[0][5], 0)
         self.assertEqual(obtener_historial_acciones()[0][1], "Importar repartidores")
 
+    def test_importar_repartidor_con_contrato_superior_a_40(self):
+
+        ruta = Path(self.temporal.name) / "repartidores.csv"
+        ruta.write_text(
+            "\n".join([
+                "nombre;horas;zona",
+                "Andrea;45;Santiago Centro"
+            ]),
+            encoding="utf-8"
+        )
+
+        resultado = ImportadorRepartidores().importar(ruta)
+        repartidor = obtener_repartidores()[0]
+
+        self.assertEqual(resultado["creados"], 1)
+        self.assertEqual(resultado["errores"], [])
+        self.assertEqual(repartidor[2], 45)
+
     def test_importar_repartidores_excel_actualiza_por_nombre(self):
 
         from openpyxl import Workbook
