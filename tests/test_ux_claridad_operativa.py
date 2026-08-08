@@ -77,7 +77,7 @@ class TestUxClaridadOperativa(unittest.TestCase):
         self.assertIn("#2A1418", vista.estilo_estado("pendiente"))
         self.assertTrue(vista.estado_detalle.wordWrap())
         self.assertLessEqual(len(vista.pendientes_labels), 5)
-        self.assertEqual(vista.btn_accion_principal.text(), "Resolver Restaurantes")
+        self.assertEqual(vista.btn_accion_principal.text(), "Resolver Demanda")
         self.assertEqual(vista.btn_comprobar.text(), "Comprobar configuracion")
         self.assertEqual(vista.btn_creacion_guiada.text(), "Crear paso a paso")
 

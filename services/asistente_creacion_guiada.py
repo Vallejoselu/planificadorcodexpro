@@ -54,7 +54,7 @@ class AsistenteCreacionGuiadaService:
             "ciudades": "Crear o revisar ciudades",
             "restaurantes": "Crear o revisar restaurantes",
             "turnos": "Crear o revisar turnos",
-            "demanda": "Configurar demanda",
+            "demanda": "Configurar demanda por zona o local",
             "repartidores": "Crear o revisar repartidores",
             "disponibilidad": "Revisar disponibilidad",
             "autorizaciones": "Revisar destinos y autorizaciones",

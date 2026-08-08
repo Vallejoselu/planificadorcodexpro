@@ -396,6 +396,15 @@ class VistaConfiguracion(QWidget):
         titulo.setObjectName("cardTitle")
         layout.addWidget(titulo)
 
+        ayuda = QLabel(
+            "Usa esta opcion cuando quieras cubrir una zona completa sin "
+            "crear cada restaurante. Escribe la zona, el turno y cuantos "
+            "repartidores hacen falta."
+        )
+        ayuda.setObjectName("pageSubtitle")
+        ayuda.setWordWrap(True)
+        layout.addWidget(ayuda)
+
         formulario = QGridLayout()
         formulario.setHorizontalSpacing(8)
         formulario.setVerticalSpacing(8)
