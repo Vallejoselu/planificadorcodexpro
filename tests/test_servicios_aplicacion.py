@@ -199,6 +199,39 @@ class FakeRestaurantesRepository:
             if restaurante[0] != restaurante_id
         ]
 
+    def crear(
+        self,
+        nombre,
+        direccion,
+        zona,
+        telefono,
+        prioridad,
+        observaciones="",
+        activo=1,
+        horario_comida="",
+        horario_cena="",
+        repartidores_fijos=None,
+        ciudad_id=None
+    ):
+
+        restaurante_id = max(
+            [restaurante[0] for restaurante in self.restaurantes] or [0]
+        ) + 1
+        self.restaurantes.append((
+            restaurante_id,
+            nombre,
+            direccion,
+            zona,
+            telefono,
+            prioridad,
+            activo,
+            horario_comida,
+            horario_cena,
+            ciudad_id,
+            observaciones
+        ))
+        return restaurante_id
+
 
 class FakeCiudadesRepository:
 

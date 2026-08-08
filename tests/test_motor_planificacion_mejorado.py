@@ -369,6 +369,58 @@ class TestMotorPlanificacionMejorado(unittest.TestCase):
             if incidencia.get("regla") == "cobertura requerida por demanda"
         ])
 
+    def test_multiciudad_asigna_cobertura_general_por_zona(self):
+
+        ciudades = []
+        restaurantes = [{
+            "id": -100000,
+            "nombre": "Cobertura zona Fonsillon",
+            "zona": "Fonsillon",
+            "ciudad_id": None,
+            "cobertura_general": True,
+            "cobertura_tipo": "zona"
+        }]
+        turnos = [{
+            "id": -200000,
+            "restaurante_id": -100000,
+            "nombre": "Comida",
+            "hora_inicio": "13:00",
+            "hora_fin": "16:00",
+            "duracion": 3,
+            "activo": 1,
+            "turno_id": 5,
+            "cobertura_general": True
+        }]
+        demandas = [{
+            "nivel": "zona",
+            "zona": "fonsillon",
+            "turno_id": 5,
+            "turno_nombre": "Comida",
+            "dia_semana": "lunes",
+            "repartidores_necesarios": 1,
+            "activo": 1
+        }]
+        repartidor = self.repartidor_multiciudad(1, autorizados=[])
+        repartidor["zona"] = "Fonsillon"
+        repartidor["restaurante_principal_id"] = None
+        repartidor["restaurantes_autorizados"] = []
+
+        resultado = PlanningEngine().generar_multiciudad(
+            [repartidor],
+            ciudades,
+            restaurantes,
+            turnos,
+            demandas,
+            fecha_inicio="2026-07-13"
+        )
+        asignaciones = resultado["horario"]["lunes"][
+            "restaurante_-100000_turno_-200000"
+        ]
+
+        self.assertEqual(asignaciones[0]["repartidor_id"], 1)
+        self.assertTrue(asignaciones[0]["cobertura_general"])
+        self.assertEqual(asignaciones[0]["turno_id"], 5)
+
     def repartidor_multiciudad(self, identificador, autorizados):
 
         return {

@@ -241,12 +241,27 @@ def construir_planificacion_multiciudad(datos):
                     "ciudad_id"
                 )
                 asignacion["ciudad"] = slot["restaurante"].get("ciudad")
-                asignacion["turno_restaurante_id"] = slot["turno"].get("id")
+                asignacion["turno_restaurante_id"] = None
+
+                if not slot["turno"].get("cobertura_general"):
+
+                    asignacion["turno_restaurante_id"] = slot["turno"].get(
+                        "id"
+                    )
+                asignacion["turno_id"] = slot["turno"].get("turno_id")
                 asignacion["hora_inicio"] = slot["turno"].get("hora_inicio")
                 asignacion["hora_fin"] = slot["turno"].get("hora_fin")
                 asignacion["cruza_medianoche"] = slot["turno"].get(
                     "cruza_medianoche",
                     0
+                )
+                asignacion["cobertura_tipo"] = slot["restaurante"].get(
+                    "cobertura_tipo"
+                )
+                asignacion["zona"] = slot["restaurante"].get("zona")
+                asignacion["cobertura_general"] = slot["restaurante"].get(
+                    "cobertura_general",
+                    False
                 )
 
                 horario[dia][slot["turno"]["clave"]].append(asignacion)
