@@ -34,6 +34,8 @@ En desarrollo, la base de datos se usa desde `delivery.db` dentro del proyecto. 
 ```
 
 La aplicacion crea la base de datos si no existe y no sobrescribe una base existente.
+Una instalacion nueva arranca sin datos operativos visibles: no crea ciudades,
+repartidores, restaurantes, turnos, demandas ni cuadrantes automaticamente.
 
 ## Ejecutar pruebas
 
@@ -95,6 +97,8 @@ docs\FLUJO_GIT_SEGURO.md
   restaurante, turnos comida/cena y demanda base sin repartidores ficticios.
 - Reinicio limpio con backup previo para dejar la aplicacion sin ciudades,
   restaurantes, repartidores, turnos, demandas ni cuadrantes operativos.
+- Validacion de arranque en blanco para comprobar que una base nueva no carga
+  ejemplos ni datos antiguos automaticamente.
 - Primer cuadrante guiado con comprobacion previa en lenguaje claro.
 - Validacion del primer cuadrante desde base limpia con datos minimos y
   repartidores reales, evitando asignaciones en dias no disponibles.
