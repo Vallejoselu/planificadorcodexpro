@@ -2,7 +2,8 @@ from datetime import timedelta
 
 from services.constraints import (
     DIAS,
-    HORAS_CONTRATO,
+    HORAS_CONTRATO_MAX,
+    HORAS_CONTRATO_MIN,
     MAX_HORAS_SEMANALES,
     TURNOS
 )
@@ -631,9 +632,13 @@ def normalizar_repartidor(repartidor, reglas_motor=None):
 
         limite_horas_complementarias = 0
 
-    if horas not in HORAS_CONTRATO:
+    if horas < HORAS_CONTRATO_MIN:
 
-        horas = min(horas, max_horas_semanales)
+        horas = HORAS_CONTRATO_MIN
+
+    if horas > HORAS_CONTRATO_MAX:
+
+        horas = HORAS_CONTRATO_MAX
 
     datos["horas_contratadas"] = horas
     datos["permite_horas_complementarias"] = permite_horas_complementarias

@@ -78,7 +78,8 @@ docs\FLUJO_GIT_SEGURO.md
 
 ## Funciones principales
 
-- Gestion de repartidores con contratos de 10, 20, 25, 30, 35 y 40 horas.
+- Gestion de repartidores con contratos flexibles de 1 a 80 horas
+  semanales; valores habituales: 10, 20, 25, 30, 35 y 40 horas.
 - Libranza semanal simple: marca los dias que el repartidor libra como
   `No disponible`; la app exige dos dias consecutivos antes de guardar.
 - Disponibilidad semanal por comidas, cenas, ambos o no disponible.

@@ -125,6 +125,28 @@ class TestReglasDescansos(unittest.TestCase):
         )
         self.assertEqual(formulario_editado.horas_complementarias.value(), 6)
 
+    def test_formulario_acepta_contrato_superior_a_40(self):
+
+        formulario = NuevoRepartidor({
+            "id": 1,
+            "nombre": "Ana",
+            "horas": 50,
+            "zona": "Santiago Centro",
+            "doble_turno": 1,
+            "puede_hasta_la_una": 1,
+            "prioridad_comida": 50,
+            "prioridad_noche": 50,
+            "prioridad_grela": 50,
+            "observaciones": "",
+            "descanso_inicio": None,
+            "descanso_fin": None,
+            "disponibilidad": self.disponibilidad_roberto_listas(),
+            "horas_complementarias": 0
+        })
+
+        self.assertEqual(formulario.horas.value(), 50)
+        self.assertEqual(formulario.horas.maximum(), 80)
+
     def test_formulario_bloquea_guardar_sin_dos_dias_libres(self):
 
         formulario = NuevoRepartidor()

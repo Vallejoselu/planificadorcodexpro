@@ -21,7 +21,8 @@ from PySide6.QtCore import Qt
 from database.schema import (
     DIAS_INICIO_DESCANSO,
     DIAS_SEMANA,
-    HORAS_CONTRATO,
+    HORAS_CONTRATO_MAX,
+    HORAS_CONTRATO_MIN,
     OPCIONES_DISPONIBILIDAD
 )
 from repositories.ciudades_repository import CiudadesRepository
@@ -56,12 +57,10 @@ class NuevoRepartidor(QDialog):
 
         self.nombre = QLineEdit()
 
-        self.horas = QComboBox()
-        self.horas.addItems([
-            str(horas)
-            for horas in HORAS_CONTRATO
-        ])
-        self.horas.setCurrentText("30")
+        self.horas = QSpinBox()
+        self.horas.setRange(HORAS_CONTRATO_MIN, HORAS_CONTRATO_MAX)
+        self.horas.setValue(30)
+        self.horas.setSuffix(" h")
 
         self.ciudad_principal = QComboBox()
         self.restaurante_principal = QComboBox()
@@ -118,7 +117,7 @@ class NuevoRepartidor(QDialog):
         )
 
         self.horas_complementarias = QSpinBox()
-        self.horas_complementarias.setRange(0, 40)
+        self.horas_complementarias.setRange(0, HORAS_CONTRATO_MAX)
         self.horas_complementarias.setEnabled(False)
 
         self.max_horas_diarias = QSpinBox()
@@ -145,7 +144,7 @@ class NuevoRepartidor(QDialog):
         self.obs.setMaximumHeight(90)
 
         formulario.addRow("Nombre", self.nombre)
-        formulario.addRow("Horas", self.horas)
+        formulario.addRow("Contrato semanal", self.horas)
         formulario.addRow(
             "Permitir horas complementarias",
             self.permite_horas_complementarias
@@ -266,7 +265,7 @@ class NuevoRepartidor(QDialog):
     def cargar_repartidor(self):
 
         self.nombre.setText(self.repartidor["nombre"])
-        self.horas.setCurrentText(str(self.repartidor["horas"]))
+        self.horas.setValue(int(self.repartidor["horas"]))
         self.zona.setText(self.repartidor["zona"] or "")
         self.doble.setChecked(bool(self.repartidor["doble_turno"]))
         self.hasta1.setChecked(bool(self.repartidor["puede_hasta_la_una"]))
@@ -383,7 +382,7 @@ class NuevoRepartidor(QDialog):
 
                 self.nombre.text(),
 
-                int(self.horas.currentText()),
+                self.horas.value(),
 
                 self.zona.text().strip(),
 
