@@ -100,6 +100,8 @@ docs\FLUJO_GIT_SEGURO.md
   repartidores reales, evitando asignaciones en dias no disponibles.
 - Script de validacion rapida antes de instalador para probar el primer
   cuadrante real sin tocar `delivery.db`.
+- Script de validacion del flujo por zona general: genera y guarda un
+  cuadrante completo sin restaurantes activos visibles.
 - Checklist pre-release para revisar flujo real, claridad visual, horas,
   alertas, exportaciones y persistencia antes de generar instalador.
 - Validacion previa antes de generar para detectar datos incompletos.
