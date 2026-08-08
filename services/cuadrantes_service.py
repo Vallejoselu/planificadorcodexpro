@@ -142,11 +142,15 @@ class CuadrantesService:
 
         if self.hay_demanda_multiciudad(demandas_multinivel):
 
+            contexto_planificacion = self.contexto_con_coberturas_generales(
+                contexto,
+                demandas_multinivel
+            )
             resultado = self.planning_engine.generar_multiciudad(
-                contexto["repartidores"],
-                contexto["ciudades"],
-                contexto["restaurantes"],
-                contexto["restaurante_turnos"],
+                contexto_planificacion["repartidores"],
+                contexto_planificacion["ciudades"],
+                contexto_planificacion["restaurantes"],
+                contexto_planificacion["restaurante_turnos"],
                 demandas_multinivel,
                 fecha_inicio=fecha_inicio
             )
@@ -207,9 +211,18 @@ class CuadrantesService:
 
             errores.append("No hay repartidores activos.")
 
-        if not restaurantes:
+        hay_cobertura_general = bool(demandas_zona or demandas_ciudad)
+
+        if not restaurantes and not hay_cobertura_general:
 
             errores.append("No hay restaurantes activos.")
+
+        elif not restaurantes and hay_cobertura_general:
+
+            advertencias.append(
+                "Sin restaurantes activos: se generara cobertura general "
+                "por zona o ciudad usando la demanda configurada."
+            )
 
         if not turnos and not restaurante_turnos:
 
@@ -350,9 +363,21 @@ class CuadrantesService:
 
             acciones.append("Abre Repartidores y crea al menos un empleado.")
 
-        if datos["restaurantes"] == 0:
+        if (
+            datos["restaurantes"] == 0
+            and datos["demandas_zona"] == 0
+            and datos["demandas_ciudad"] == 0
+        ):
 
             acciones.append("Abre Restaurantes y crea al menos un local.")
+
+        elif datos["restaurantes"] == 0:
+
+            acciones.append(
+                "Puedes generar con cobertura general por zona o ciudad. "
+                "Crea restaurantes reales solo si necesitas cuadrantes por "
+                "local concreto."
+            )
 
         if datos["turnos"] == 0 and datos["turnos_propios"] == 0:
 
@@ -559,7 +584,11 @@ class CuadrantesService:
 
             raise ValueError("No hay repartidores activos.")
 
-        if not contexto["restaurantes"]:
+        if (
+            not contexto["restaurantes"]
+            and not contexto.get("demandas_zona")
+            and not contexto.get("demandas_ciudad")
+        ):
 
             raise ValueError("No hay restaurantes activos.")
 
@@ -862,6 +891,222 @@ class CuadrantesService:
 
         return demandas
 
+    def contexto_con_coberturas_generales(self, contexto, demandas):
+
+        contexto_planificacion = dict(contexto)
+        restaurantes = list(contexto.get("restaurantes", []))
+        restaurante_turnos = list(contexto.get("restaurante_turnos", []))
+        turnos_globales = {
+            self.valor_campo(turno, "id", 0): turno
+            for turno in contexto.get("turnos", [])
+        }
+        ciudades = {
+            self.valor_campo(ciudad, "id", 0): ciudad
+            for ciudad in contexto.get("ciudades", [])
+        }
+        virtuales = {}
+        siguiente_restaurante = -100000
+        siguiente_turno = -200000
+
+        for demanda in demandas:
+
+            if not self.demanda_requiere_cobertura_general(
+                demanda,
+                restaurantes,
+                restaurante_turnos
+            ):
+
+                continue
+
+            turno_global = turnos_globales.get(demanda.get("turno_id"))
+
+            if not turno_global:
+
+                continue
+
+            clave = self.clave_cobertura_general(demanda)
+
+            if clave not in virtuales:
+
+                virtuales[clave] = self.crear_restaurante_virtual(
+                    demanda,
+                    ciudades,
+                    siguiente_restaurante
+                )
+                restaurantes.append(virtuales[clave])
+                siguiente_restaurante -= 1
+
+            restaurante_virtual = virtuales[clave]
+            restaurante_turnos.append(
+                self.crear_turno_virtual(
+                    restaurante_virtual,
+                    turno_global,
+                    demanda,
+                    siguiente_turno
+                )
+            )
+            siguiente_turno -= 1
+
+        contexto_planificacion["restaurantes"] = restaurantes
+        contexto_planificacion["restaurante_turnos"] = restaurante_turnos
+        return contexto_planificacion
+
+    def demanda_requiere_cobertura_general(
+        self,
+        demanda,
+        restaurantes,
+        restaurante_turnos
+    ):
+
+        if not demanda.get("activo", 1):
+
+            return False
+
+        if demanda.get("nivel") not in ("zona", "ciudad"):
+
+            return False
+
+        if int(demanda.get("repartidores_necesarios", 0) or 0) <= 0:
+
+            return False
+
+        return not self.demanda_tiene_slot_real(
+            demanda,
+            restaurantes,
+            restaurante_turnos
+        )
+
+    def demanda_tiene_slot_real(self, demanda, restaurantes, restaurante_turnos):
+
+        restaurantes_por_id = {
+            self.valor_campo(restaurante, "id", 0): restaurante
+            for restaurante in restaurantes
+        }
+
+        for turno in restaurante_turnos:
+
+            restaurante = restaurantes_por_id.get(
+                self.valor_campo(turno, "restaurante_id", 1)
+            )
+
+            if not restaurante:
+
+                continue
+
+            if not self.demanda_coincide_destino(demanda, restaurante):
+
+                continue
+
+            if self.demanda_coincide_turno_general(demanda, turno):
+
+                return True
+
+        return False
+
+    def demanda_coincide_destino(self, demanda, restaurante):
+
+        if demanda.get("nivel") == "zona":
+
+            return self.texto_normalizado(demanda.get("zona")) == (
+                self.texto_normalizado(
+                    self.valor_campo(restaurante, "zona", 3)
+                )
+            )
+
+        if demanda.get("nivel") == "ciudad":
+
+            return demanda.get("ciudad_id") == self.valor_campo(
+                restaurante,
+                "ciudad_id",
+                9
+            )
+
+        return False
+
+    def demanda_coincide_turno_general(self, demanda, turno):
+
+        nombre_demanda = demanda.get("turno_nombre")
+        nombre_turno = self.valor_campo(turno, "nombre", 2, "")
+
+        if not nombre_demanda:
+
+            return False
+
+        if self.texto_normalizado(nombre_demanda) == self.texto_normalizado(
+            nombre_turno
+        ):
+
+            return True
+
+        return categoria_turno({"nombre": nombre_demanda}) == categoria_turno({
+            "nombre": nombre_turno
+        })
+
+    def clave_cobertura_general(self, demanda):
+
+        if demanda.get("nivel") == "zona":
+
+            return ("zona", self.texto_normalizado(demanda.get("zona")))
+
+        return ("ciudad", demanda.get("ciudad_id"))
+
+    def crear_restaurante_virtual(self, demanda, ciudades, identificador):
+
+        if demanda.get("nivel") == "zona":
+
+            zona = demanda.get("zona") or "Zona"
+            nombre = f"Cobertura zona {zona}"
+            ciudad_id = demanda.get("ciudad_id")
+            ciudad = ""
+
+        else:
+
+            ciudad_id = demanda.get("ciudad_id")
+            ciudad_datos = ciudades.get(ciudad_id)
+            ciudad = self.valor_campo(ciudad_datos, "nombre", 1, "")
+            zona = ""
+            nombre = f"Cobertura ciudad {ciudad or ciudad_id}"
+
+        return {
+            "id": identificador,
+            "nombre": nombre,
+            "direccion": "",
+            "zona": zona,
+            "telefono": "",
+            "prioridad": 50,
+            "activo": 1,
+            "ciudad_id": ciudad_id,
+            "ciudad": ciudad,
+            "cobertura_general": True,
+            "cobertura_tipo": demanda.get("nivel")
+        }
+
+    def crear_turno_virtual(
+        self,
+        restaurante_virtual,
+        turno_global,
+        demanda,
+        identificador
+    ):
+
+        return {
+            "id": identificador,
+            "restaurante_id": restaurante_virtual["id"],
+            "nombre": demanda.get("turno_nombre")
+            or self.valor_campo(turno_global, "nombre", 2, "Turno"),
+            "hora_inicio": self.valor_campo(turno_global, "hora_inicio", 3),
+            "hora_fin": self.valor_campo(turno_global, "hora_fin", 4),
+            "cruza_medianoche": 0,
+            "duracion": self.valor_campo(turno_global, "duracion", 6, 0),
+            "activo": 1,
+            "turno_id": demanda.get("turno_id"),
+            "cobertura_general": True
+        }
+
+    def texto_normalizado(self, valor):
+
+        return str(valor or "").strip().casefold()
+
     def preparar_turnos_engine(self, turnos):
 
         turnos_engine = []
@@ -941,25 +1186,50 @@ class CuadrantesService:
                     turno_restaurante_id = elemento.get(
                         "turno_restaurante_id"
                     )
+                    turno_id = elemento.get("turno_id")
 
-                    if not turno_restaurante_id:
+                    if not turno_restaurante_id and not turno_id:
 
                         continue
 
-                    clave = (
-                        dia,
-                        ("restaurante_turno", turno_restaurante_id)
-                    )
+                    if turno_restaurante_id:
+
+                        clave = (
+                            dia,
+                            ("restaurante_turno", turno_restaurante_id)
+                        )
+
+                    else:
+
+                        clave = (dia, turno_id)
+
                     asignacion = {
                         "restaurante_id": elemento["restaurante_id"],
                         "repartidor_id": elemento.get("repartidor_id")
                     }
+                    if elemento.get("cobertura_general"):
+
+                        asignacion.update({
+                            "cobertura_general": True,
+                            "cobertura_tipo": elemento.get("cobertura_tipo"),
+                            "zona": elemento.get("zona"),
+                            "ciudad_id": elemento.get("ciudad_id"),
+                            "ciudad": elemento.get("ciudad")
+                        })
 
                     if asignacion not in asignaciones.setdefault(clave, []):
 
                         asignaciones[clave].append(asignacion)
 
         return asignaciones
+
+    def restaurantes_para_validacion(self):
+
+        if hasattr(self.restaurantes_repository, "listar_todos"):
+
+            return self.restaurantes_repository.listar_todos()
+
+        return self.restaurantes_repository.listar_activos()
 
     def guardar_cuadrante(self, fecha_inicio, asignaciones):
 
@@ -969,7 +1239,7 @@ class CuadrantesService:
             asignaciones,
             fecha_inicio,
             self.turnos_repository.listar_activos(),
-            self.restaurantes_repository.listar_activos(),
+            self.restaurantes_para_validacion(),
             self.repartidores_repository.listar_activos()
         )
         total = sum(
@@ -1146,9 +1416,70 @@ class CuadrantesService:
                     )
                 )
 
-            resueltas[(dia, turno_id)] = elementos
+            resueltas[(dia, turno_id)] = [
+                self.resolver_restaurante_cobertura_general(asignacion)
+                for asignacion in elementos
+            ]
 
         return resueltas
+
+    def resolver_restaurante_cobertura_general(self, asignacion):
+
+        datos = dict(asignacion)
+
+        if not datos.get("cobertura_general"):
+
+            return datos
+
+        datos["restaurante_id"] = self.obtener_o_crear_restaurante_cobertura(
+            datos
+        )
+        return datos
+
+    def obtener_o_crear_restaurante_cobertura(self, asignacion):
+
+        tipo = asignacion.get("cobertura_tipo") or "zona"
+        zona = asignacion.get("zona") or ""
+        ciudad_id = asignacion.get("ciudad_id")
+        ciudad = asignacion.get("ciudad") or ciudad_id or ""
+
+        if tipo == "ciudad":
+
+            nombre = f"Cobertura ciudad {ciudad}"
+
+        else:
+
+            nombre = f"Cobertura zona {zona}"
+
+        for restaurante in self.restaurantes_repository.listar_todos():
+
+            if self.texto_normalizado(restaurante[1]) != (
+                self.texto_normalizado(nombre)
+            ):
+
+                continue
+
+            if self.texto_normalizado(restaurante[3]) != (
+                self.texto_normalizado(zona)
+            ):
+
+                continue
+
+            return restaurante[0]
+
+        return self.restaurantes_repository.crear(
+            nombre,
+            "",
+            zona,
+            "",
+            50,
+            "Cobertura tecnica creada al guardar cuadrante por zona/ciudad.",
+            0,
+            "",
+            "",
+            [],
+            ciudad_id
+        )
 
     def cargar_semana(self, fecha_inicio):
 
@@ -2846,7 +3177,7 @@ class CuadrantesService:
                 propuestas,
                 fecha_inicio,
                 self.turnos_repository.listar_activos(),
-                self.restaurantes_repository.listar_activos(),
+                self.restaurantes_para_validacion(),
                 self.repartidores_repository.listar_activos()
             )
 

@@ -218,6 +218,10 @@ def motivos_rechazo_asistente(
 
 def autorizado_para_restaurante(repartidor, restaurante):
 
+    if restaurante.get("cobertura_general"):
+
+        return True
+
     restaurante_id = restaurante.get("id")
 
     if restaurante_id is None:

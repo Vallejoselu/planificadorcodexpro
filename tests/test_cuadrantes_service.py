@@ -887,6 +887,96 @@ class TestCuadrantesServicePorCapa(unittest.TestCase):
         self.assertIn("No hay repartidores activos.", precomprobacion["texto"])
         self.assertIn("No hay restaurantes activos.", precomprobacion["texto"])
 
+    def test_precomprobar_permite_cobertura_general_por_zona(self):
+
+        servicio = CuadrantesService()
+
+        precomprobacion = servicio.precomprobar_generacion(
+            {
+                "repartidores": [{
+                    "id": 1,
+                    "nombre": "Ana",
+                    "horas": 30,
+                    "zona": "Santiago Centro",
+                    "disponibilidad": {"lunes": ["comida"]}
+                }],
+                "restaurantes": [],
+                "turnos": [
+                    (5, "Comida", "Comida", "13:00", "16:00", "", 3, 1)
+                ],
+                "restaurante_turnos": [],
+                "demandas_restaurante": [],
+                "demandas_zona": [
+                    (1, "Santiago Centro", 5, None, "lunes", 1, 1)
+                ],
+                "demandas_ciudad": []
+            },
+            "2026-07-13"
+        )
+
+        self.assertTrue(precomprobacion["puede_generar"])
+        self.assertIn("cobertura general", precomprobacion["texto"])
+        self.assertNotIn("No hay restaurantes activos.", precomprobacion["texto"])
+
+    def test_contexto_crea_cobertura_virtual_por_zona_sin_restaurante(self):
+
+        servicio = CuadrantesService()
+        contexto = {
+            "ciudades": [],
+            "restaurantes": [],
+            "turnos": [
+                (5, "Comida", "Comida", "13:00", "16:00", "", 3, 1)
+            ],
+            "restaurante_turnos": [],
+            "demandas_restaurante": [],
+            "demandas_zona": [
+                (1, "Fonsillon", 5, None, "lunes", 2, 1)
+            ],
+            "demandas_ciudad": [],
+            "repartidores": []
+        }
+        demandas = servicio.preparar_demandas_multinivel(contexto)
+
+        preparado = servicio.contexto_con_coberturas_generales(
+            contexto,
+            demandas
+        )
+
+        self.assertEqual(len(preparado["restaurantes"]), 1)
+        self.assertEqual(
+            preparado["restaurantes"][0]["nombre"],
+            "Cobertura zona Fonsillon"
+        )
+        self.assertTrue(preparado["restaurantes"][0]["cobertura_general"])
+        self.assertEqual(len(preparado["restaurante_turnos"]), 1)
+        self.assertEqual(preparado["restaurante_turnos"][0]["turno_id"], 5)
+
+    def test_resolver_cobertura_general_crea_restaurante_tecnico_oculto(self):
+
+        restaurantes = FakeRestaurantesRepository()
+        servicio = self.crear_servicio_aislado(
+            restaurantes_repository=restaurantes
+        )
+        asignaciones = {
+            ("lunes", 5): [{
+                "restaurante_id": -100000,
+                "repartidor_id": 1,
+                "cobertura_general": True,
+                "cobertura_tipo": "zona",
+                "zona": "Santiago Centro"
+            }]
+        }
+
+        resueltas = servicio.resolver_turnos_asignaciones(asignaciones)
+
+        restaurante_id = resueltas[("lunes", 5)][0]["restaurante_id"]
+        self.assertGreater(restaurante_id, 0)
+        self.assertEqual(
+            restaurantes.restaurantes[0][1],
+            "Cobertura zona Santiago Centro"
+        )
+        self.assertEqual(restaurantes.restaurantes[0][6], 0)
+
     def test_precomprobar_generacion_avisa_sin_demanda(self):
 
         servicio = CuadrantesService()
