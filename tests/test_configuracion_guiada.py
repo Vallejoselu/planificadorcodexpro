@@ -86,7 +86,8 @@ class TestConfiguracionGuiadaService(unittest.TestCase):
         }
 
         self.assertFalse(diagnostico["listo"])
-        self.assertEqual(estados["restaurantes"], "pendiente")
+        self.assertEqual(estados["restaurantes"], "aviso")
+        self.assertEqual(estados["demanda"], "pendiente")
         self.assertEqual(estados["repartidores"], "pendiente")
         self.assertEqual(estados["generacion"], "pendiente")
         self.assertGreater(diagnostico["resumen"]["pendientes"], 0)
@@ -104,10 +105,38 @@ class TestConfiguracionGuiadaService(unittest.TestCase):
         demanda = self.paso(diagnostico, "demanda")
         generacion = self.paso(diagnostico, "generacion")
 
-        self.assertTrue(diagnostico["listo"])
-        self.assertEqual(demanda["estado"], "aviso")
+        self.assertFalse(diagnostico["listo"])
+        self.assertEqual(demanda["estado"], "pendiente")
         self.assertIn("No hay demanda", demanda["detalle"])
-        self.assertEqual(generacion["estado"], "aviso")
+        self.assertEqual(generacion["estado"], "pendiente")
+
+    def test_diagnostico_listo_con_demanda_por_zona_sin_restaurantes(self):
+
+        servicio = self.servicio(
+            ciudades=[(1, "Santiago", 1)],
+            restaurantes=[],
+            repartidores=[
+                self.repartidor(
+                    disponibilidad={"lunes": ["comida"]},
+                    ciudad_principal_id=1
+                )
+            ],
+            turnos=[self.turno()],
+            demandas_zona=[
+                self.demanda_zona()
+            ]
+        )
+
+        diagnostico = servicio.diagnosticar()
+        restaurantes = self.paso(diagnostico, "restaurantes")
+        demanda = self.paso(diagnostico, "demanda")
+        generacion = self.paso(diagnostico, "generacion")
+
+        self.assertTrue(diagnostico["listo"])
+        self.assertEqual(restaurantes["estado"], "ok")
+        self.assertIn("cobertura general", restaurantes["detalle"])
+        self.assertEqual(demanda["estado"], "ok")
+        self.assertEqual(generacion["estado"], "ok")
 
     def test_diagnostico_listo_con_datos_completos(self):
 
@@ -180,6 +209,10 @@ class TestConfiguracionGuiadaService(unittest.TestCase):
     def demanda_restaurante(self):
 
         return (1, 2, 5, None, "lunes", 1, 1)
+
+    def demanda_zona(self):
+
+        return (1, "Santiago Centro", 5, None, "lunes", 3, 1)
 
     def repartidor(
         self,

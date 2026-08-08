@@ -43,9 +43,10 @@ class VistaPuestaMarcha(QWidget):
         self.guia = QLabel(
             "Usa esta pantalla como asistente de arranque. Selecciona un paso "
             "pendiente y pulsa 'Abrir paso seleccionado' para ir a la pantalla "
-            "correcta. Para empezar sin datos ficticios, usa 'Crear datos "
-            "minimos'. Si quieres probar la app con datos de ejemplo, usa "
-            "'Cargar demo guiada'."
+            "correcta. Puedes organizar por restaurantes concretos o por "
+            "zonas generales cuando no quieras crear cada local. Para empezar "
+            "sin datos ficticios, usa 'Crear datos minimos'. Si quieres probar "
+            "la app con datos de ejemplo, usa 'Cargar demo guiada'."
         )
         self.guia.setWordWrap(True)
         self.guia.setObjectName("guia_operativa")
@@ -238,7 +239,9 @@ class VistaPuestaMarcha(QWidget):
                 "Se preparara una base minima real: una ciudad, un restaurante, "
                 "turnos de comida y cena, y demanda semanal base.\n\n"
                 "No se crearan repartidores ficticios. Despues solo tendras "
-                "que anadir tus repartidores reales. Quieres continuar?"
+                "que anadir tus repartidores reales. Si prefieres trabajar "
+                "por zonas, puedes configurar demanda por zona en "
+                "Configuracion.\n\nQuieres continuar?"
             )
         )
 

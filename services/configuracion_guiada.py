@@ -58,7 +58,11 @@ class ConfiguracionGuiadaService:
 
         pasos = [
             self.paso_ciudades(ciudades),
-            self.paso_restaurantes(restaurantes),
+            self.paso_restaurantes(
+                restaurantes,
+                demandas_zona,
+                demandas_ciudad
+            ),
             self.paso_turnos(turnos, restaurante_turnos),
             self.paso_demanda(
                 restaurantes,
@@ -117,16 +121,38 @@ class ConfiguracionGuiadaService:
             "ciudades"
         )
 
-    def paso_restaurantes(self, restaurantes):
+    def paso_restaurantes(
+        self,
+        restaurantes,
+        demandas_zona=None,
+        demandas_ciudad=None
+    ):
 
         if not restaurantes:
+
+            if demandas_zona or demandas_ciudad:
+
+                return self.paso(
+                    "restaurantes",
+                    "Restaurantes",
+                    self.ESTADO_OK,
+                    (
+                        "Sin restaurantes activos: se trabajara con "
+                        "cobertura general por zona o ciudad."
+                    ),
+                    "configuracion"
+                )
 
             return self.paso(
                 "restaurantes",
                 "Restaurantes",
-                self.ESTADO_PENDIENTE,
-                "No hay restaurantes activos.",
-                "restaurantes"
+                self.ESTADO_AVISO,
+                (
+                    "No hay restaurantes activos. Si trabajas por zonas, "
+                    "configura demanda por zona; si trabajas por local, "
+                    "crea restaurantes."
+                ),
+                "configuracion"
             )
 
         sin_ciudad = [
@@ -195,16 +221,6 @@ class ConfiguracionGuiadaService:
             + len(demandas_ciudad)
         )
 
-        if not restaurantes:
-
-            return self.paso(
-                "demanda",
-                "Demanda",
-                self.ESTADO_PENDIENTE,
-                "Crea restaurantes antes de configurar demanda.",
-                "restaurantes"
-            )
-
         if total:
 
             return self.paso(
@@ -222,8 +238,11 @@ class ConfiguracionGuiadaService:
         return self.paso(
             "demanda",
             "Demanda",
-            self.ESTADO_AVISO,
-            "No hay demanda configurada; la cobertura no sera realista.",
+            self.ESTADO_PENDIENTE,
+            (
+                "No hay demanda configurada. Define cuantos repartidores "
+                "hacen falta por restaurante, zona o ciudad."
+            ),
             "configuracion"
         )
 
@@ -342,9 +361,15 @@ class ConfiguracionGuiadaService:
 
             bloqueantes.append("repartidores")
 
-        if not restaurantes:
+        hay_cobertura_general = bool(demandas_zona or demandas_ciudad)
 
-            bloqueantes.append("restaurantes")
+        if not restaurantes and not hay_cobertura_general:
+
+            bloqueantes.append("restaurantes o demanda por zona/ciudad")
+
+        if not (demandas_restaurante or demandas_zona or demandas_ciudad):
+
+            bloqueantes.append("demanda")
 
         if bloqueantes:
 
@@ -361,10 +386,6 @@ class ConfiguracionGuiadaService:
         if not turnos and not restaurante_turnos:
 
             avisos.append("sin turnos configurados")
-
-        if not (demandas_restaurante or demandas_zona or demandas_ciudad):
-
-            avisos.append("sin demanda real")
 
         if avisos:
 
