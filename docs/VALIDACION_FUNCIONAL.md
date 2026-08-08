@@ -2,6 +2,24 @@
 
 Fase 10 de preparacion de Planificador Delivery Pro 2.0.
 
+## Release 2.2.1
+
+La release 2.2.1 consolida la claridad operativa, el arranque limpio y los
+flujos de generacion por zona general sin exigir crear cada restaurante.
+
+### Checklist 2.2.1
+
+| Paso | Estado | Evidencia |
+| --- | --- | --- |
+| Version de aplicacion | OK | `app_info.VERSION` actualizado a `2.2.1`. |
+| Instalador | OK | `installer/PlanificadorDeliveryPro.iss` apunta a `2.2.1`. |
+| README | OK | Documenta la version actual y el instalador `PlanificadorDeliveryPro-Setup-2.2.1.exe`. |
+| Arranque en blanco | OK | `scripts/validar_arranque_en_blanco.py` verifica que una base nueva no muestra datos operativos. |
+| Flujo por zona general | OK | `scripts/validar_flujo_zona_general.py` genera 14 plazas sin restaurantes activos visibles. |
+| Datos minimos y demo | OK | Los datos minimos y demo solo se cargan bajo accion explicita del usuario. |
+| Instalacion limpia | Pendiente manual | Instalar 2.2.1 en equipo/carpeta limpia y abrir la app. |
+| Actualizacion | Pendiente manual | Actualizar desde 2.2.0 o 2.1.x y comprobar que no se pierden datos. |
+
 ## Release 2.2.0
 
 La release 2.2.0 consolida las mejoras de datos locales, backups, diagnostico

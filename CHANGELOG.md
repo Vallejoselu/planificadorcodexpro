@@ -15,6 +15,11 @@
   avanzado.
 - Mejoras de textos y documentacion para explicar mejor datos locales,
   backups, diagnostico, colores y estados del cuadrante.
+- Validacion de arranque en blanco para garantizar que una instalacion nueva
+  no carga ciudades, restaurantes, repartidores, turnos, demandas ni
+  cuadrantes automaticamente.
+- Validacion del flujo por zona general para generar cuadrantes sin crear cada
+  restaurante como local activo visible.
 
 ### Corregido
 
@@ -27,6 +32,7 @@
 
 - Actualizacion de version a 2.2.1.
 - Instalador preparado como `PlanificadorDeliveryPro-Setup-2.2.1.exe`.
+- Documentacion de release y checklist pre-release alineados con 2.2.1.
 
 ## 2.2.0 - Datos locales y preparacion de release
 

@@ -21,7 +21,7 @@ class TestPreReleaseChecklist(unittest.TestCase):
             "contrato, total de horas y horas complementarias",
             "No se guardan vistas previas vacias",
             "exportar Excel",
-            "PlanificadorDeliveryPro-Setup-2.2.0.exe"
+            "PlanificadorDeliveryPro-Setup-2.2.1.exe"
         ):
 
             self.assertIn(texto, checklist)
