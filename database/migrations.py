@@ -113,7 +113,15 @@ def crear_esquema_inicial(cursor):
 
         activo INTEGER DEFAULT 1,
 
-        observaciones TEXT
+        observaciones TEXT,
+
+        tipo_cobertura TEXT DEFAULT 'normal',
+
+        hora_inicio_minima TEXT,
+
+        hora_fin_maxima TEXT,
+
+        restricciones_observaciones TEXT
     )
     """)
 
@@ -624,7 +632,11 @@ def aplicar_migraciones(cursor):
         ("apoyo_flexible", "INTEGER DEFAULT 0"),
         ("horas_complementarias", "INTEGER DEFAULT 0"),
         ("max_horas_diarias", "REAL DEFAULT 10"),
-        ("max_dias_consecutivos", "INTEGER DEFAULT 5")
+        ("max_dias_consecutivos", "INTEGER DEFAULT 5"),
+        ("tipo_cobertura", "TEXT DEFAULT 'normal'"),
+        ("hora_inicio_minima", "TEXT"),
+        ("hora_fin_maxima", "TEXT"),
+        ("restricciones_observaciones", "TEXT")
     ):
 
         agregar_columna_si_no_existe(

@@ -576,6 +576,13 @@ def normalizar_repartidor(repartidor, reglas_motor=None):
             datos["ciudades_autorizadas"] = repartidor[21]
             datos["restaurantes_autorizados"] = repartidor[22]
 
+        if len(repartidor) > 23:
+
+            datos["tipo_cobertura"] = repartidor[23]
+            datos["hora_inicio_minima"] = repartidor[24]
+            datos["hora_fin_maxima"] = repartidor[25]
+            datos["restricciones_observaciones"] = repartidor[26]
+
     reglas_motor = reglas_motor or obtener_reglas_motor()
     horas = int(datos.get("horas", 0) or 0)
     max_horas_semanales = float(
@@ -668,6 +675,10 @@ def normalizar_repartidor(repartidor, reglas_motor=None):
     datos.setdefault("apoyo_flexible", 0)
     datos.setdefault("ciudad_principal_id", None)
     datos.setdefault("restaurante_principal_id", None)
+    datos.setdefault("tipo_cobertura", "normal")
+    datos.setdefault("hora_inicio_minima", None)
+    datos.setdefault("hora_fin_maxima", None)
+    datos.setdefault("restricciones_observaciones", "")
     datos["vacaciones"] = [
         normalizar_rango(rango)
         for rango in datos.get("vacaciones", [])
