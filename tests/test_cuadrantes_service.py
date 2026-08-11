@@ -1207,6 +1207,78 @@ class TestCuadrantesServicePorCapa(unittest.TestCase):
         self.assertEqual(cambio["nuevo"], cambio["anterior"])
         self.assertEqual(len(cambio["nuevo"]), 1)
 
+    def test_vista_empleado_calcula_doble_total_y_complementarias(self):
+
+        servicio = CuadrantesService()
+        asignaciones = {
+            ("lunes", 1): [{"restaurante_id": 2, "repartidor_id": 10}],
+            ("lunes", 2): [{"restaurante_id": 2, "repartidor_id": 10}]
+        }
+        turnos = [
+            (1, "Comida", "Comida", "13:00", "16:00", "", 3, 1),
+            (2, "Cena", "Cena", "20:00", "23:30", "", 3.5, 1)
+        ]
+        restaurantes = [(2, "Ronda Centro", "", "Ronda", "", 50, 1)]
+        repartidores = [{
+            "id": 10,
+            "nombre": "Ana",
+            "horas": 5,
+            "zona": "Ronda",
+            "disponibilidad": {
+                dia: ["comida", "noche"]
+                for dia in (
+                    "lunes",
+                    "martes",
+                    "miercoles",
+                    "jueves",
+                    "viernes",
+                    "sabado",
+                    "domingo"
+                )
+            }
+        }]
+
+        filas = servicio.construir_filas_repartidores(
+            asignaciones,
+            turnos,
+            restaurantes,
+            repartidores,
+            "2026-08-10"
+        )
+
+        fila = filas[0]
+        lunes = fila["celdas"]["lunes"]
+        self.assertEqual(lunes["estado"], "doble")
+        self.assertIn("DOBLE", lunes["texto"])
+        self.assertIn("COMIDA 13:00-16:00 (3 h)", lunes["texto"])
+        self.assertIn("CENA 20:00-23:30 (3.5 h)", lunes["texto"])
+        self.assertEqual(fila["total_horas"], 6.5)
+        self.assertEqual(fila["complementarias"], 1.5)
+
+    def test_vista_empleado_expone_horas_cero_en_libres(self):
+
+        servicio = CuadrantesService()
+        repartidores = [{
+            "id": 10,
+            "nombre": "Ana",
+            "horas": 30,
+            "descanso": ["martes"],
+            "disponibilidad": {"lunes": ["comida", "noche"]}
+        }]
+
+        filas = servicio.construir_filas_repartidores(
+            {},
+            [],
+            [],
+            repartidores,
+            "2026-08-10"
+        )
+
+        martes = filas[0]["celdas"]["martes"]
+        self.assertEqual(martes["estado"], "libre")
+        self.assertEqual(martes["horas"], 0)
+        self.assertEqual(filas[0]["total_horas"], 0)
+
 
 if __name__ == "__main__":
 

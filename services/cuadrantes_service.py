@@ -2503,12 +2503,37 @@ class CuadrantesService:
             "repartidor_id": repartidor_normalizado["id"],
             "nombre": repartidor_normalizado["nombre"],
             "contrato": f"{repartidor_normalizado['horas_contratadas']}h",
+            "contrato_horas": repartidor_normalizado["horas_contratadas"],
+            "total_horas": self.total_horas_celdas(celdas),
+            "complementarias": self.horas_complementarias_celdas(
+                celdas,
+                repartidor_normalizado["horas_contratadas"]
+            ),
             "dias": {
                 dia: celdas[dia]["texto"]
                 for dia in DIAS_SEMANA
             },
             "celdas": celdas
         }
+
+    def total_horas_celdas(self, celdas):
+
+        return sum(
+            float(celda.get("horas", 0) or 0)
+            for celda in celdas.values()
+        )
+
+    def horas_complementarias_celdas(self, celdas, contrato):
+
+        try:
+
+            horas_contrato = float(contrato or 0)
+
+        except (TypeError, ValueError):
+
+            horas_contrato = 0
+
+        return max(0, self.total_horas_celdas(celdas) - horas_contrato)
 
     def repartidor_para_cuadrante(self, repartidor):
 
@@ -2583,13 +2608,15 @@ class CuadrantesService:
                 return {
                     "texto": "LIBRE",
                     "estado": "libre",
-                    "tooltip": self.motivo_libre_dia(repartidor, dia, fecha)
+                    "tooltip": self.motivo_libre_dia(repartidor, dia, fecha),
+                    "horas": 0
                 }
 
             return {
                 "texto": "-",
                 "estado": "disponible",
-                "tooltip": "Disponible sin turno asignado"
+                "tooltip": "Disponible sin turno asignado",
+                "horas": 0
             }
 
         comidas = [
@@ -2649,8 +2676,26 @@ class CuadrantesService:
         return {
             "texto": texto,
             "estado": estado,
-            "tooltip": texto
+            "tooltip": texto,
+            "horas": self.total_horas_asignaciones(asignaciones_dia)
         }
+
+    def total_horas_asignaciones(self, asignaciones):
+
+        return sum(
+            self.horas_turno(asignacion.get("turno"))
+            for asignacion in asignaciones
+        )
+
+    def horas_turno(self, turno):
+
+        try:
+
+            return float(self.valor_campo(turno, "duracion", 6, 0) or 0)
+
+        except (TypeError, ValueError):
+
+            return 0
 
     def asignaciones_repartidor_dia(
         self,
