@@ -161,6 +161,26 @@ class TestRobustezBaseDatos(unittest.TestCase):
         self.assertEqual(cursor.fetchone()[0], 1)
         conexion.close()
 
+    def test_migracion_anade_restricciones_avanzadas_repartidor(self):
+
+        self._crear_base_antigua_con_duplicados()
+
+        reparar_base_datos()
+        reparar_base_datos()
+
+        conexion = sqlite3.connect(database.RUTA_BD)
+        cursor = conexion.cursor()
+        cursor.execute("PRAGMA table_info(repartidores)")
+        columnas = {fila[1] for fila in cursor.fetchall()}
+
+        self.assertIn("tipo_cobertura", columnas)
+        self.assertIn("hora_inicio_minima", columnas)
+        self.assertIn("hora_fin_maxima", columnas)
+        self.assertIn("restricciones_observaciones", columnas)
+        cursor.execute("SELECT tipo_cobertura FROM repartidores WHERE nombre='Ana'")
+        self.assertEqual(cursor.fetchone()[0], "normal")
+        conexion.close()
+
     def test_diagnostico_detecta_clave_foranea_rota(self):
 
         crear_base_datos()

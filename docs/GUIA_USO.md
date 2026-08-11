@@ -79,6 +79,18 @@ Cada repartidor deberia tener:
 Si un repartidor tiene un dia como **No disponible**, no deberia asignarse ese
 dia.
 
+El formulario tiene **Opciones avanzadas** cerradas por defecto. Usalas solo
+para casos especiales, por ejemplo:
+
+- solo cubre horas valle;
+- solo cubre horas punta;
+- no puede empezar antes de una hora concreta;
+- no puede terminar despues de una hora concreta;
+- notas internas para el encargado.
+
+Las notas internas ayudan a recordar informacion, pero las reglas que entiende
+el generador son el tipo de cobertura y el rango horario.
+
 ## 5. Ciudades Y Restaurantes
 
 Cada restaurante pertenece a una ciudad. Esto permite ver cuadrantes por local

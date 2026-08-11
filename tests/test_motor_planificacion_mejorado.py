@@ -6,7 +6,12 @@ from services.planning_models import PuntuacionConfig
 from services.planning_preparation import preparar_datos_planificacion
 from services.planning_scoring import puntuacion_solucion
 from services.planning_validation import validar_planificacion
-from services.rules.candidatos import misma_zona, puntuacion_preferencia
+from services.rules.candidatos import (
+    motivo_no_puede_trabajar,
+    misma_zona,
+    puede_trabajar,
+    puntuacion_preferencia
+)
 from services.scheduler import construir_planificacion
 
 
@@ -421,6 +426,94 @@ class TestMotorPlanificacionMejorado(unittest.TestCase):
         self.assertTrue(asignaciones[0]["cobertura_general"])
         self.assertEqual(asignaciones[0]["turno_id"], 5)
 
+    def test_repartidor_solo_horas_valle_no_cubre_turno_normal(self):
+
+        repartidor = self.repartidor_para_restricciones()
+        repartidor["tipo_cobertura"] = "solo_valle"
+        turno_normal = self.turno()
+        turno_valle = {
+            "nombre": "Horas valle",
+            "horas": 3,
+            "hora_inicio": "16:00",
+            "hora_fin": "19:00"
+        }
+
+        self.assertEqual(
+            motivo_no_puede_trabajar(
+                repartidor,
+                self.restaurante(),
+                "lunes",
+                turno_normal,
+                None
+            ),
+            "solo cubre horas valle"
+        )
+        self.assertTrue(
+            puede_trabajar(
+                repartidor,
+                self.restaurante(),
+                "lunes",
+                turno_valle,
+                None
+            )
+        )
+
+    def test_repartidor_respeta_rango_horario_avanzado(self):
+
+        repartidor = self.repartidor_para_restricciones()
+        repartidor["hora_inicio_minima"] = "12:00"
+        repartidor["hora_fin_maxima"] = "23:30"
+
+        turno_temprano = {
+            "nombre": "Comida temprana",
+            "horas": 3,
+            "hora_inicio": "10:00",
+            "hora_fin": "13:00"
+        }
+        turno_tarde = {
+            "nombre": "Cena",
+            "horas": 4,
+            "hora_inicio": "20:00",
+            "hora_fin": "00:30",
+            "cruza_medianoche": 1
+        }
+        turno_valido = {
+            "nombre": "Comida",
+            "horas": 3,
+            "hora_inicio": "13:00",
+            "hora_fin": "16:00"
+        }
+
+        self.assertEqual(
+            motivo_no_puede_trabajar(
+                repartidor,
+                self.restaurante(),
+                "lunes",
+                turno_temprano,
+                None
+            ),
+            "restriccion horaria avanzada"
+        )
+        self.assertEqual(
+            motivo_no_puede_trabajar(
+                repartidor,
+                self.restaurante(),
+                "lunes",
+                turno_tarde,
+                None
+            ),
+            "restriccion horaria avanzada"
+        )
+        self.assertTrue(
+            puede_trabajar(
+                repartidor,
+                self.restaurante(),
+                "lunes",
+                turno_valido,
+                None
+            )
+        )
+
     def repartidor_multiciudad(self, identificador, autorizados):
 
         return {
@@ -441,6 +534,28 @@ class TestMotorPlanificacionMejorado(unittest.TestCase):
             "max_horas_diarias": 10,
             "max_dias_consecutivos": 5
         }
+
+    def repartidor_para_restricciones(self):
+
+        repartidor = self.repartidor_multiciudad(1, [1])
+        repartidor.update({
+            "horas_asignadas": 0,
+            "horas_contratadas": 30,
+            "maximo_horas": 40,
+            "permite_horas_complementarias": True,
+            "limite_horas_complementarias": 10,
+            "turnos_comida": 0,
+            "turnos_noche": 0,
+            "desplazamientos": 0,
+            "_dias_asignados": set(),
+            "_turnos_asignados": set(),
+            "_horas_por_dia": {},
+            "_restaurante_por_dia": {},
+            "_zona_por_dia": {},
+            "_intervalos_asignados": []
+        })
+
+        return repartidor
 
 
 if __name__ == "__main__":

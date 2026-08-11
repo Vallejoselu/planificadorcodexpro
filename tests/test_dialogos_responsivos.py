@@ -109,9 +109,32 @@ class TestDialogosResponsivos(unittest.TestCase):
 
         self.assert_dialogo_adaptado_a_pantalla(dialogo)
         self.assertIsInstance(dialogo.zona, QLineEdit)
+        self.assertFalse(dialogo.selector_avanzado.isChecked())
+        self.assertTrue(dialogo.bloque_avanzado.isHidden())
         self.assertIn("San Lazaro", dialogo.zona.placeholderText())
         dialogo.zona.setText("Fonsillon")
         self.assertEqual(dialogo.zona.text(), "Fonsillon")
+
+    def test_dialogo_repartidor_muestra_y_valida_opciones_avanzadas(self):
+
+        dialogo = NuevoRepartidor()
+
+        dialogo.selector_avanzado.setChecked(True)
+        dialogo.tipo_cobertura.setCurrentIndex(
+            dialogo.tipo_cobertura.findData("solo_valle")
+        )
+        dialogo.hora_inicio_minima.setText("12:00")
+        dialogo.hora_fin_maxima.setText("23:30")
+
+        self.assertFalse(dialogo.bloque_avanzado.isHidden())
+        self.assertEqual(dialogo.tipo_cobertura.currentData(), "solo_valle")
+        dialogo.validar_restricciones_avanzadas()
+
+        dialogo.hora_fin_maxima.setText("25:00")
+
+        with self.assertRaises(ValueError):
+
+            dialogo.validar_restricciones_avanzadas()
 
     def test_dialogo_restaurante_tiene_scroll_y_alto_limitado(self):
 

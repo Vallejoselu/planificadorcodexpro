@@ -44,7 +44,10 @@ class VistaGuiaUso(QWidget):
                 "Aqui defines personas, horas contratadas, disponibilidad, "
                 "descansos, ciudad principal, restaurante principal, "
                 "restaurantes autorizados y apoyo flexible. Si un repartidor "
-                "no esta disponible un dia, no debe asignarse ese dia."
+                "no esta disponible un dia, no debe asignarse ese dia. Las "
+                "opciones avanzadas quedan cerradas por defecto y sirven para "
+                "casos especiales como solo horas valle, solo horas punta o "
+                "limites de hora de inicio y fin."
             )
         ),
         (

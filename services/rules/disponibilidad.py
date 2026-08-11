@@ -94,6 +94,11 @@ def esta_disponible(repartidor, dia, turno):
         normalizar_texto(elemento)
         for elemento in valores
     }
+
+    if {"comida", "noche"}.issubset(valores_normalizados):
+
+        return True
+
     nombre = nombre_turno_disponibilidad(turno)
 
     return (

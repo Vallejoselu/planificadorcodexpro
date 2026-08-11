@@ -13,7 +13,8 @@ from PySide6.QtWidgets import (
     QListWidget,
     QListWidgetItem,
     QAbstractItemView,
-    QWidget
+    QWidget,
+    QGroupBox
 )
 
 from PySide6.QtCore import Qt
@@ -143,6 +144,44 @@ class NuevoRepartidor(QDialog):
         self.obs = QTextEdit()
         self.obs.setMaximumHeight(90)
 
+        self.selector_avanzado = QCheckBox(
+            "Mostrar opciones avanzadas"
+        )
+        self.tipo_cobertura = QComboBox()
+        self.tipo_cobertura.addItem("Normal", "normal")
+        self.tipo_cobertura.addItem("Solo horas valle", "solo_valle")
+        self.tipo_cobertura.addItem("Solo horas punta", "solo_punta")
+        self.tipo_cobertura.addItem("Flexible", "flexible")
+
+        self.hora_inicio_minima = QLineEdit()
+        self.hora_inicio_minima.setPlaceholderText("Opcional, ejemplo 12:00")
+        self.hora_fin_maxima = QLineEdit()
+        self.hora_fin_maxima.setPlaceholderText("Opcional, ejemplo 23:30")
+        self.restricciones_observaciones = QTextEdit()
+        self.restricciones_observaciones.setMaximumHeight(70)
+
+        self.bloque_avanzado = QGroupBox(
+            "Opciones avanzadas del repartidor"
+        )
+        formulario_avanzado = QFormLayout(self.bloque_avanzado)
+        formulario_avanzado.addRow("Tipo de cobertura", self.tipo_cobertura)
+        formulario_avanzado.addRow(
+            "No empezar antes de",
+            self.hora_inicio_minima
+        )
+        formulario_avanzado.addRow(
+            "No terminar despues de",
+            self.hora_fin_maxima
+        )
+        formulario_avanzado.addRow(
+            "Notas internas",
+            self.restricciones_observaciones
+        )
+        self.bloque_avanzado.hide()
+        self.selector_avanzado.toggled.connect(
+            self.bloque_avanzado.setVisible
+        )
+
         formulario.addRow("Nombre", self.nombre)
         formulario.addRow("Contrato semanal", self.horas)
         formulario.addRow(
@@ -176,6 +215,8 @@ class NuevoRepartidor(QDialog):
         formulario.addRow("Prioridad comida", self.prio_comida)
         formulario.addRow("Prioridad noche", self.prio_noche)
         formulario.addRow("Prioridad zona", self.prio_grela)
+        formulario.addRow("", self.selector_avanzado)
+        formulario.addRow("", self.bloque_avanzado)
         formulario.addRow("Observaciones", self.obs)
 
         layout.addWidget(create_scroll_area(contenedor_formulario), 1)
@@ -273,6 +314,26 @@ class NuevoRepartidor(QDialog):
         self.prio_noche.setValue(self.repartidor["prioridad_noche"])
         self.prio_grela.setValue(self.repartidor["prioridad_grela"])
         self.obs.setPlainText(self.repartidor["observaciones"])
+        self.seleccionar_combo(
+            self.tipo_cobertura,
+            self.repartidor.get("tipo_cobertura") or "normal"
+        )
+        self.hora_inicio_minima.setText(
+            self.repartidor.get("hora_inicio_minima") or ""
+        )
+        self.hora_fin_maxima.setText(
+            self.repartidor.get("hora_fin_maxima") or ""
+        )
+        self.restricciones_observaciones.setPlainText(
+            self.repartidor.get("restricciones_observaciones") or ""
+        )
+        tiene_avanzado = any((
+            self.tipo_cobertura.currentData() != "normal",
+            self.hora_inicio_minima.text().strip(),
+            self.hora_fin_maxima.text().strip(),
+            self.restricciones_observaciones.toPlainText().strip()
+        ))
+        self.selector_avanzado.setChecked(tiene_avanzado)
         self.apoyo_flexible.setChecked(
             bool(self.repartidor.get("apoyo_flexible"))
         )
@@ -362,6 +423,7 @@ class NuevoRepartidor(QDialog):
             repartidores_service.validar_descanso_no_necesario(
                 disponibilidad
             )
+            self.validar_restricciones_avanzadas()
             descanso_inicio = None
             descanso_fin = None
 
@@ -420,6 +482,16 @@ class NuevoRepartidor(QDialog):
                 ),
                 restaurantes_autorizados=self.obtener_ids_seleccionados(
                     self.restaurantes_autorizados
+                ),
+                tipo_cobertura=self.tipo_cobertura.currentData(),
+                hora_inicio_minima=self.valor_hora_opcional(
+                    self.hora_inicio_minima
+                ),
+                hora_fin_maxima=self.valor_hora_opcional(
+                    self.hora_fin_maxima
+                ),
+                restricciones_observaciones=(
+                    self.restricciones_observaciones.toPlainText().strip()
                 )
 
             )
@@ -474,3 +546,42 @@ class NuevoRepartidor(QDialog):
             disponibilidad[dia] = selector.currentText()
 
         return disponibilidad
+
+    def validar_restricciones_avanzadas(self):
+
+        for campo, etiqueta in (
+            (self.hora_inicio_minima, "No empezar antes de"),
+            (self.hora_fin_maxima, "No terminar despues de")
+        ):
+
+            valor = campo.text().strip()
+
+            if not valor:
+
+                continue
+
+            if not self.hora_valida(valor):
+
+                raise ValueError(
+                    f"{etiqueta} debe tener formato HH:MM, por ejemplo 12:00."
+                )
+
+    def valor_hora_opcional(self, campo):
+
+        valor = campo.text().strip()
+
+        return valor or None
+
+    def hora_valida(self, valor):
+
+        try:
+
+            hora, minuto = valor.split(":")[:2]
+            hora = int(hora)
+            minuto = int(minuto)
+
+        except ValueError:
+
+            return False
+
+        return 0 <= hora <= 23 and 0 <= minuto <= 59

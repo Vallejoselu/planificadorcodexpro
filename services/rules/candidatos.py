@@ -68,6 +68,12 @@ def motivo_no_puede_trabajar(repartidor, restaurante, dia, turno, fecha):
 
         return "no puede hacer ese horario"
 
+    motivo_cobertura = motivo_restriccion_avanzada(repartidor, turno)
+
+    if motivo_cobertura:
+
+        return motivo_cobertura
+
     if not autorizado_para_restaurante(repartidor, restaurante):
 
         return "restaurante no autorizado"
@@ -678,3 +684,110 @@ def es_turno_noche(turno):
     )
 
     return "cena" in texto or "noche" in texto
+
+
+def motivo_restriccion_avanzada(repartidor, turno):
+
+    tipo_cobertura = normalizar_texto(
+        repartidor.get("tipo_cobertura") or "normal"
+    )
+
+    if tipo_cobertura in ("solo_valle", "solo horas valle"):
+
+        if not turno_es_valle(turno):
+
+            return "solo cubre horas valle"
+
+    if tipo_cobertura in ("solo_punta", "solo horas punta"):
+
+        if not turno_es_punta(turno):
+
+            return "solo cubre horas punta"
+
+    if not cumple_rango_horario_repartidor(repartidor, turno):
+
+        return "restriccion horaria avanzada"
+
+    return None
+
+
+def turno_es_valle(turno):
+
+    texto = normalizar_texto(
+        f"{turno.get('tipo', '')} {turno.get('nombre', '')}"
+    )
+
+    return any(
+        palabra in texto
+        for palabra in ("valle", "apoyo", "baja demanda")
+    )
+
+
+def turno_es_punta(turno):
+
+    texto = normalizar_texto(
+        f"{turno.get('tipo', '')} {turno.get('nombre', '')}"
+    )
+
+    if "punta" in texto:
+
+        return True
+
+    return "comida" in texto or "cena" in texto or "noche" in texto
+
+
+def cumple_rango_horario_repartidor(repartidor, turno):
+
+    inicio = turno.get("hora_inicio")
+    fin = turno.get("hora_fin")
+
+    if not inicio or not fin:
+
+        return True
+
+    inicio_turno = minutos_hora(inicio)
+    fin_turno = minutos_hora(fin)
+
+    if inicio_turno is None or fin_turno is None:
+
+        return True
+
+    if turno.get("cruza_medianoche") or fin_turno <= inicio_turno:
+
+        fin_turno += 24 * 60
+
+    inicio_minimo = minutos_hora(repartidor.get("hora_inicio_minima"))
+
+    if inicio_minimo is not None and inicio_turno < inicio_minimo:
+
+        return False
+
+    fin_maximo = minutos_hora(repartidor.get("hora_fin_maxima"))
+
+    if fin_maximo is not None:
+
+        if fin_maximo <= inicio_turno:
+
+            fin_maximo += 24 * 60
+
+        if fin_turno > fin_maximo:
+
+            return False
+
+    return True
+
+
+def minutos_hora(valor):
+
+    if not valor:
+
+        return None
+
+    try:
+
+        hora, minuto = str(valor).strip().split(":")[:2]
+        return int(hora) * 60 + int(minuto)
+
+    except (TypeError, ValueError):
+
+        return None

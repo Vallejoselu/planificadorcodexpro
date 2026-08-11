@@ -1407,6 +1407,10 @@ def obtener_repartidores():
         r.horas_complementarias,
         r.max_horas_diarias,
         r.max_dias_consecutivos,
+        r.tipo_cobertura,
+        r.hora_inicio_minima,
+        r.hora_fin_maxima,
+        r.restricciones_observaciones,
         d.dia_inicio,
         d.dia_fin
     FROM repartidores r
@@ -1431,8 +1435,8 @@ def obtener_repartidores():
             repartidor[6],
             repartidor[7],
             repartidor[8],
-            repartidor[15],
-            repartidor[16]
+            repartidor[19],
+            repartidor[20]
         )
         extras_multiciudad = (
             repartidor[9],
@@ -1441,6 +1445,12 @@ def obtener_repartidores():
             repartidor[12],
             repartidor[13],
             repartidor[14]
+        )
+        restricciones_avanzadas = (
+            repartidor[15],
+            repartidor[16],
+            repartidor[17],
+            repartidor[18]
         )
 
         cursor.execute("""
@@ -1524,7 +1534,8 @@ def obtener_repartidores():
                 preferencias,
                 *extras_multiciudad,
                 obtener_repartidor_ciudades(repartidor[0]),
-                obtener_repartidor_restaurantes_autorizados(repartidor[0])
+                obtener_repartidor_restaurantes_autorizados(repartidor[0]),
+                *restricciones_avanzadas
             )
         )
 
@@ -1567,6 +1578,10 @@ def obtener_repartidor(id_repartidor):
         r.horas_complementarias,
         r.max_horas_diarias,
         r.max_dias_consecutivos,
+        r.tipo_cobertura,
+        r.hora_inicio_minima,
+        r.hora_fin_maxima,
+        r.restricciones_observaciones,
         d.dia_inicio,
         d.dia_fin
     FROM repartidores r
@@ -1621,8 +1636,12 @@ def obtener_repartidor(id_repartidor):
         "horas_complementarias": fila[13],
         "max_horas_diarias": fila[14],
         "max_dias_consecutivos": fila[15],
-        "descanso_inicio": fila[16],
-        "descanso_fin": fila[17],
+        "tipo_cobertura": fila[16] or "normal",
+        "hora_inicio_minima": fila[17],
+        "hora_fin_maxima": fila[18],
+        "restricciones_observaciones": fila[19] or "",
+        "descanso_inicio": fila[20],
+        "descanso_fin": fila[21],
         "disponibilidad": disponibilidad,
         "ciudades_autorizadas": obtener_repartidor_ciudades(id_repartidor),
         "restaurantes_autorizados": obtener_repartidor_restaurantes_autorizados(
@@ -1651,7 +1670,11 @@ def insertar_repartidor(
     max_horas_diarias=10,
     max_dias_consecutivos=5,
     ciudades_autorizadas=None,
-    restaurantes_autorizados=None
+    restaurantes_autorizados=None,
+    tipo_cobertura="normal",
+    hora_inicio_minima=None,
+    hora_fin_maxima=None,
+    restricciones_observaciones=""
 ):
 
     horas = validar_horas_contratadas(horas)
@@ -1676,9 +1699,13 @@ def insertar_repartidor(
             apoyo_flexible,
             horas_complementarias,
             max_horas_diarias,
-            max_dias_consecutivos
+            max_dias_consecutivos,
+            tipo_cobertura,
+            hora_inicio_minima,
+            hora_fin_maxima,
+            restricciones_observaciones
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
         nombre,
         horas,
@@ -1694,7 +1721,11 @@ def insertar_repartidor(
         int(apoyo_flexible),
         int(horas_complementarias or 0),
         float(max_horas_diarias or 0),
-        int(max_dias_consecutivos or 0)
+        int(max_dias_consecutivos or 0),
+        tipo_cobertura or "normal",
+        hora_inicio_minima or None,
+        hora_fin_maxima or None,
+        restricciones_observaciones or ""
     ))
 
     conexion.commit()
@@ -1753,7 +1784,11 @@ def actualizar_repartidor(
     max_horas_diarias=10,
     max_dias_consecutivos=5,
     ciudades_autorizadas=None,
-    restaurantes_autorizados=None
+    restaurantes_autorizados=None,
+    tipo_cobertura="normal",
+    hora_inicio_minima=None,
+    hora_fin_maxima=None,
+    restricciones_observaciones=""
 ):
 
     horas = validar_horas_contratadas(horas)
@@ -1779,7 +1814,11 @@ def actualizar_repartidor(
         apoyo_flexible=?,
         horas_complementarias=?,
         max_horas_diarias=?,
-        max_dias_consecutivos=?
+        max_dias_consecutivos=?,
+        tipo_cobertura=?,
+        hora_inicio_minima=?,
+        hora_fin_maxima=?,
+        restricciones_observaciones=?
     WHERE id=?
     """,(
         nombre,
@@ -1797,6 +1836,10 @@ def actualizar_repartidor(
         int(horas_complementarias or 0),
         float(max_horas_diarias or 0),
         int(max_dias_consecutivos or 0),
+        tipo_cobertura or "normal",
+        hora_inicio_minima or None,
+        hora_fin_maxima or None,
+        restricciones_observaciones or "",
         id_repartidor
     ))
 

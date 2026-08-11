@@ -28,6 +28,10 @@ class Repartidor:
     max_dias_consecutivos: int = 5
     ciudades_autorizadas: list[int] = field(default_factory=list)
     restaurantes_autorizados: list[int] = field(default_factory=list)
+    tipo_cobertura: str = "normal"
+    hora_inicio_minima: str | None = None
+    hora_fin_maxima: str | None = None
+    restricciones_observaciones: str = ""
     activo: bool = True
     observaciones: str = ""
 
@@ -57,7 +61,11 @@ class Repartidor:
             max_horas_diarias=float(fila[19] or 0) if len(fila) > 19 else 10,
             max_dias_consecutivos=int(fila[20] or 0) if len(fila) > 20 else 5,
             ciudades_autorizadas=list(fila[21]) if len(fila) > 21 and fila[21] else [],
-            restaurantes_autorizados=list(fila[22]) if len(fila) > 22 and fila[22] else []
+            restaurantes_autorizados=list(fila[22]) if len(fila) > 22 and fila[22] else [],
+            tipo_cobertura=fila[23] if len(fila) > 23 and fila[23] else "normal",
+            hora_inicio_minima=fila[24] if len(fila) > 24 else None,
+            hora_fin_maxima=fila[25] if len(fila) > 25 else None,
+            restricciones_observaciones=fila[26] if len(fila) > 26 and fila[26] else ""
         )
 
     def to_dict(self):
