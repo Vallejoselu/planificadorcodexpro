@@ -169,6 +169,23 @@ class TestUxClaridadOperativa(unittest.TestCase):
         self.assertEqual(vista.aviso_modo_simple.objectName(), "infoPanel")
         self.assertEqual(vista.tabla_alertas.maximumHeight(), 150)
 
+    def test_vista_por_empleado_incluye_resumen_y_filas_legibles(self):
+
+        vista = VistaCuadrantes()
+
+        self.assertEqual(vista.selector_vista.currentData(), "empleado")
+        self.assertFalse(vista.panel_empleados.isHidden())
+        self.assertEqual(vista.tabla_resumen_empleados.columnCount(), 4)
+        self.assertIn(
+            "Complementarias",
+            vista.tabla_resumen_empleados.horizontalHeaderItem(3).text()
+        )
+        self.assertTrue(vista.tabla_empleados.wordWrap())
+        self.assertGreaterEqual(
+            vista.tabla_empleados.verticalHeader().minimumSectionSize(),
+            70
+        )
+
     def test_cuadrantes_oculta_herramientas_avanzadas_por_defecto(self):
 
         vista = VistaCuadrantes()

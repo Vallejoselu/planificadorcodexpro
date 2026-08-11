@@ -51,6 +51,7 @@ class VistaCuadrantes(QWidget):
         self.celdas_semana = {}
         self.filas_locales = []
         self.filas_repartidores = []
+        self.resumen_repartidores = []
         self.plantillas = []
         self.portapapeles = None
         self.undo_stack = QUndoStack(self)
@@ -237,9 +238,54 @@ class VistaCuadrantes(QWidget):
         self.tabla_empleados.verticalHeader().setVisible(False)
         self.tabla_empleados.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.tabla_empleados.setSelectionBehavior(QTableWidget.SelectRows)
-        self.tabla_empleados.hide()
+        self.tabla_empleados.setWordWrap(True)
+        self.tabla_empleados.horizontalHeader().setMinimumSectionSize(104)
+        self.tabla_empleados.verticalHeader().setMinimumSectionSize(70)
 
-        self.layout.addWidget(self.tabla_empleados)
+        self.tabla_resumen_empleados = QTableWidget(self)
+        configure_table(self.tabla_resumen_empleados)
+        self.tabla_resumen_empleados.setColumnCount(4)
+        self.tabla_resumen_empleados.setHorizontalHeaderLabels([
+            "Empleado",
+            "Contrato",
+            "Total",
+            "Complementarias"
+        ])
+        self.tabla_resumen_empleados.horizontalHeader().setSectionResizeMode(
+            0,
+            QHeaderView.Stretch
+        )
+        self.tabla_resumen_empleados.horizontalHeader().setSectionResizeMode(
+            1,
+            QHeaderView.ResizeToContents
+        )
+        self.tabla_resumen_empleados.horizontalHeader().setSectionResizeMode(
+            2,
+            QHeaderView.ResizeToContents
+        )
+        self.tabla_resumen_empleados.horizontalHeader().setSectionResizeMode(
+            3,
+            QHeaderView.ResizeToContents
+        )
+        self.tabla_resumen_empleados.verticalHeader().setVisible(False)
+        self.tabla_resumen_empleados.setEditTriggers(
+            QAbstractItemView.NoEditTriggers
+        )
+        self.tabla_resumen_empleados.setSelectionMode(
+            QAbstractItemView.NoSelection
+        )
+        self.tabla_resumen_empleados.setMinimumWidth(340)
+        self.tabla_resumen_empleados.setMaximumWidth(430)
+
+        self.panel_empleados = QWidget(self)
+        layout_empleados = QHBoxLayout(self.panel_empleados)
+        layout_empleados.setContentsMargins(0, 0, 0, 0)
+        layout_empleados.setSpacing(12)
+        layout_empleados.addWidget(self.tabla_empleados, 4)
+        layout_empleados.addWidget(self.tabla_resumen_empleados, 1)
+        self.panel_empleados.hide()
+
+        self.layout.addWidget(self.panel_empleados)
 
         self.titulo_alertas = QLabel("Alertas del cuadrante")
         self.titulo_alertas.setStyleSheet("font-weight:bold;")
@@ -453,7 +499,7 @@ class VistaCuadrantes(QWidget):
         vista_empleado = vista == "empleado"
         self.tabla.setVisible(vista == "semana")
         self.tabla_locales.setVisible(vista_local)
-        self.tabla_empleados.setVisible(vista_empleado)
+        self.panel_empleados.setVisible(vista_empleado)
         self.actualizar_estado_herramientas_celda()
 
     # ======================================
@@ -844,6 +890,7 @@ class VistaCuadrantes(QWidget):
         self.celdas_semana = estado["celdas_semana"]
         self.filas_locales = estado["filas_locales"]
         self.filas_repartidores = estado["filas_repartidores"]
+        self.resumen_repartidores = estado["filas_repartidores"]
         self.estado_semana.setText(estado["estado_texto"])
         self.estado_semana.setToolTip(estado["estado_texto"])
         self.actualizar_diagnostico(estado["diagnostico"])
@@ -1229,6 +1276,9 @@ class VistaCuadrantes(QWidget):
     def pintar_tabla_empleados(self):
 
         self.tabla_empleados.clearContents()
+        self.tabla_empleados.setHorizontalHeaderLabels(
+            self.cabeceras_empleados()
+        )
         self.tabla_empleados.setRowCount(len(self.filas_repartidores))
 
         for fila, repartidor in enumerate(self.filas_repartidores):
@@ -1263,6 +1313,79 @@ class VistaCuadrantes(QWidget):
                 self.tabla_empleados.setItem(fila, columna, item)
 
         self.tabla_empleados.resizeRowsToContents()
+        self.asegurar_altura_filas_empleados()
+        self.pintar_resumen_empleados()
+
+    # ======================================
+
+    def cabeceras_empleados(self):
+
+        inicio = self.selector_semana.date()
+        cabeceras = ["Empleado", "Contrato"]
+
+        for indice, dia in enumerate(DIAS_SEMANA):
+
+            fecha = inicio.addDays(indice).toString("dd/MM")
+            cabeceras.append(f"{dia}\n{fecha}")
+
+        return cabeceras
+
+    # ======================================
+
+    def asegurar_altura_filas_empleados(self):
+
+        for fila in range(self.tabla_empleados.rowCount()):
+
+            altura_actual = self.tabla_empleados.rowHeight(fila)
+            self.tabla_empleados.setRowHeight(fila, max(altura_actual, 74))
+
+    # ======================================
+
+    def pintar_resumen_empleados(self):
+
+        self.tabla_resumen_empleados.clearContents()
+        self.tabla_resumen_empleados.setRowCount(len(self.resumen_repartidores))
+
+        for fila, repartidor in enumerate(self.resumen_repartidores):
+
+            valores = [
+                repartidor.get("nombre", ""),
+                self.formatear_horas(repartidor.get("contrato_horas", 0)),
+                self.formatear_horas(repartidor.get("total_horas", 0)),
+                self.formatear_horas(repartidor.get("complementarias", 0))
+            ]
+
+            for columna, valor in enumerate(valores):
+
+                item = QTableWidgetItem(valor)
+                item.setTextAlignment(
+                    Qt.AlignLeft | Qt.AlignVCenter
+                    if columna == 0
+                    else Qt.AlignCenter
+                )
+
+                if columna == 3 and repartidor.get("complementarias", 0) > 0:
+
+                    item.setBackground(QBrush(QColor("#FEF3C7")))
+                    item.setForeground(QBrush(QColor("#78350F")))
+
+                self.tabla_resumen_empleados.setItem(fila, columna, item)
+
+        self.tabla_resumen_empleados.resizeRowsToContents()
+
+    # ======================================
+
+    def formatear_horas(self, valor):
+
+        try:
+
+            numero = float(valor or 0)
+
+        except (TypeError, ValueError):
+
+            numero = 0
+
+        return f"{numero:g} h"
 
     # ======================================
 
