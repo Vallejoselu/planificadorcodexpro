@@ -52,6 +52,18 @@ def responder(pregunta, contexto=None, fecha_referencia=None):
         es_pregunta_simulacion,
         responder_simulacion
     )
+    from services.asistente_optimizacion import (
+        es_pregunta_optimizacion,
+        responder_optimizacion
+    )
+
+    if es_pregunta_optimizacion(texto):
+
+        return responder_optimizacion(
+            texto,
+            contexto,
+            fecha_referencia
+        )
 
     if es_pregunta_simulacion(texto):
 
@@ -94,6 +106,14 @@ def responder(pregunta, contexto=None, fecha_referencia=None):
     if intencion == "analizar_cuadrante":
 
         return texto_analisis_cuadrante(contexto)
+
+    if intencion == "optimizar_cuadrante":
+
+        return responder_optimizacion(
+            texto,
+            contexto,
+            fecha_referencia
+        )
 
     if intencion == "resumen_cuadrante":
 
@@ -144,6 +164,19 @@ def detectar_intencion(texto):
     if "sin cubrir" in texto:
 
         return "turnos_sin_cubrir"
+
+    if (
+        "cuadrante" in texto
+        and (
+            "optimiza" in texto
+            or "optimizar" in texto
+            or "mejora" in texto
+            or "mejorar" in texto
+            or "cambios" in texto
+        )
+    ):
+
+        return "optimizar_cuadrante"
 
     if (
         "cuadrante" in texto

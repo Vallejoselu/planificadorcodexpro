@@ -134,6 +134,8 @@ docs\FLUJO_GIT_SEGURO.md
 - Analizador interno de cuadrantes en el asistente para revisar plazas sin
   repartidor, horas pendientes, horas extra, descansos, disponibilidad y
   solapamientos sin modificar datos.
+- Optimizacion sugerida desde el asistente para proponer coberturas,
+  cambios de repartidor y balance de horas sin guardar cambios automaticos.
 - Exportacion a Excel, PDF y CSV.
 - Copia de cuadrantes entre semanas y plantillas reutilizables.
 - Demanda configurable por restaurante, zona y ciudad con prioridad documentada.
