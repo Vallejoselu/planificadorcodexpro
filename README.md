@@ -136,6 +136,8 @@ docs\FLUJO_GIT_SEGURO.md
   solapamientos sin modificar datos.
 - Optimizacion sugerida desde el asistente para proponer coberturas,
   cambios de repartidor y balance de horas sin guardar cambios automaticos.
+- Simulador de cambios desde el asistente para probar asignaciones o cambios
+  de repartidor antes de aplicarlos manualmente en el cuadrante.
 - Exportacion a Excel, PDF y CSV.
 - Copia de cuadrantes entre semanas y plantillas reutilizables.
 - Demanda configurable por restaurante, zona y ciudad con prioridad documentada.
