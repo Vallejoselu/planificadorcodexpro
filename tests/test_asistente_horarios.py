@@ -149,6 +149,10 @@ class TestAsistenteHorarios(unittest.TestCase):
             detectar_intencion("Analiza el cuadrante actual"),
             "analizar_cuadrante"
         )
+        self.assertEqual(
+            detectar_intencion("Que cambios recomiendas en el cuadrante?"),
+            "optimizar_cuadrante"
+        )
 
     def test_horas_pendientes(self):
 
@@ -330,6 +334,41 @@ class TestAsistenteHorarios(unittest.TestCase):
 
         self.assertIn("Ana aparece asignado en descanso el lunes", respuesta)
         self.assertIn("corrige las asignaciones en dias de libranza", respuesta)
+
+    def test_optimiza_cuadrante_propone_cubrir_plaza_vacia(self):
+
+        contexto = self.contexto_base()
+        contexto["calendario"].append({
+            "dia": "sabado",
+            "turno_id": 1,
+            "turno": "Cena",
+            "restaurante_id": 1,
+            "restaurante": "Ronda Centro",
+            "repartidor_id": None
+        })
+
+        respuesta = responder(
+            "Optimiza el cuadrante",
+            contexto
+        )
+
+        self.assertIn("Optimizacion sugerida", respuesta)
+        self.assertIn("Cubrir sabado Cena en Ronda Centro", respuesta)
+        self.assertIn("No he guardado", respuesta)
+
+    def test_optimiza_cuadrante_propone_reducir_horas_extra(self):
+
+        contexto = self.contexto_base()
+        contexto["asignaciones_repartidor"][1]["duracion"] = 12
+
+        respuesta = responder(
+            "Que cambios recomiendas en el cuadrante?",
+            contexto
+        )
+
+        self.assertIn("Cambiar viernes Cena en Ronda Centro", respuesta)
+        self.assertIn("Luis a Ana", respuesta)
+        self.assertIn("reducir", respuesta)
 
     def test_explica_por_que_no_puede_cubrir_turno(self):
 
