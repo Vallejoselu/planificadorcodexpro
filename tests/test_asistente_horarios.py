@@ -145,6 +145,10 @@ class TestAsistenteHorarios(unittest.TestCase):
             detectar_intencion("Quien puede cubrir la cena?"),
             "candidatos"
         )
+        self.assertEqual(
+            detectar_intencion("Analiza el cuadrante actual"),
+            "analizar_cuadrante"
+        )
 
     def test_horas_pendientes(self):
 
@@ -274,6 +278,58 @@ class TestAsistenteHorarios(unittest.TestCase):
         self.assertIn("Resumen del cuadrante", respuesta)
         self.assertIn("2 asignaciones", respuesta)
         self.assertIn("horas pendientes", respuesta)
+
+    def test_analiza_cuadrante_con_horas_pendientes(self):
+
+        respuesta = responder(
+            "Analiza el cuadrante actual",
+            self.contexto_base()
+        )
+
+        self.assertIn("Analisis del cuadrante", respuesta)
+        self.assertIn("horas pendientes", respuesta)
+        self.assertIn("Recomendaciones", respuesta)
+
+    def test_analiza_cuadrante_detecta_plazas_sin_repartidor(self):
+
+        contexto = self.contexto_base()
+        contexto["calendario"].append({
+            "dia": "sabado",
+            "turno_id": 1,
+            "turno": "Cena",
+            "restaurante_id": 1,
+            "restaurante": "Ronda Centro",
+            "repartidor_id": None
+        })
+
+        respuesta = responder(
+            "Revisa el cuadrante",
+            contexto
+        )
+
+        self.assertIn("1 plaza sin repartidor", respuesta)
+        self.assertIn("sabado Cena Ronda Centro", respuesta)
+
+    def test_analiza_cuadrante_detecta_asignacion_en_descanso(self):
+
+        contexto = self.contexto_base()
+        contexto["asignaciones_repartidor"].append({
+            "repartidor_id": 1,
+            "dia": "lunes",
+            "turno_id": 2,
+            "restaurante_id": 1,
+            "duracion": 3,
+            "hora_inicio": "13:00",
+            "hora_fin": "16:00"
+        })
+
+        respuesta = responder(
+            "Audita el cuadrante",
+            contexto
+        )
+
+        self.assertIn("Ana aparece asignado en descanso el lunes", respuesta)
+        self.assertIn("corrige las asignaciones en dias de libranza", respuesta)
 
     def test_explica_por_que_no_puede_cubrir_turno(self):
 

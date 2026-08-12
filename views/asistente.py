@@ -60,6 +60,7 @@ class VistaAsistente(QWidget):
             "Quien esta disponible el viernes?",
             "Quien tiene contrato de 20 horas?",
             "Que turnos estan sin cubrir?",
+            "Analiza el cuadrante actual",
             "Quien puede cubrir la cena del viernes?",
             "Que ocurre si Juan esta de vacaciones el jueves?",
             "Quien podria sustituir a Maria manana?",

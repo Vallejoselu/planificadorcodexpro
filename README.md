@@ -130,6 +130,9 @@ docs\FLUJO_GIT_SEGURO.md
   restaurantes, turnos, demandas ni otras semanas.
 - Generador de horarios con restricciones de contrato, descanso, disponibilidad, vacaciones y bajas.
 - Asistente local para consultas sobre horas, descansos, disponibilidad, cobertura y simulaciones.
+- Analizador interno de cuadrantes en el asistente para revisar plazas sin
+  repartidor, horas pendientes, horas extra, descansos, disponibilidad y
+  solapamientos sin modificar datos.
 - Exportacion a Excel, PDF y CSV.
 - Copia de cuadrantes entre semanas y plantillas reutilizables.
 - Demanda configurable por restaurante, zona y ciudad con prioridad documentada.

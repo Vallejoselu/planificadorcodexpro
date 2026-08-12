@@ -7,6 +7,7 @@ from repositories.calendario_repository import CalendarioRepository
 from repositories.repartidores_repository import RepartidoresRepository
 from repositories.restaurantes_repository import RestaurantesRepository
 from repositories.turnos_repository import TurnosRepository
+from services.analizador_cuadrante import texto_analisis_cuadrante
 from services.rules.candidatos import (
     buscar_candidatos,
     motivos_rechazo_asistente,
@@ -90,6 +91,10 @@ def responder(pregunta, contexto=None, fecha_referencia=None):
 
         return responder_turnos_sin_cubrir(contexto)
 
+    if intencion == "analizar_cuadrante":
+
+        return texto_analisis_cuadrante(contexto)
+
     if intencion == "resumen_cuadrante":
 
         return responder_resumen_cuadrante(contexto)
@@ -139,6 +144,20 @@ def detectar_intencion(texto):
     if "sin cubrir" in texto:
 
         return "turnos_sin_cubrir"
+
+    if (
+        "cuadrante" in texto
+        and (
+            "analiza" in texto
+            or "analizar" in texto
+            or "audita" in texto
+            or "auditar" in texto
+            or "revisa" in texto
+            or "revisar" in texto
+        )
+    ):
+
+        return "analizar_cuadrante"
 
     if (
         "por que" in texto
