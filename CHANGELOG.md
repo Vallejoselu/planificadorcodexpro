@@ -1,5 +1,20 @@
 # CHANGELOG
 
+## 2.2.3 - Asistente de cuadrantes mas practico
+
+### Incluido
+
+- Optimizacion asistida del cuadrante con propuestas de cobertura y balance
+  de horas.
+- Simulacion de cambios de repartidor y nuevas asignaciones sin guardar datos.
+- Prioridad de acciones para saber que corregir primero antes de publicar.
+- Mejoras de asistente alineadas con el flujo real de revision de cuadrantes.
+
+### Preparacion
+
+- Actualizacion de version a 2.2.3.
+- Instalador preparado como `PlanificadorDeliveryPro-Setup-2.2.3.exe`.
+
 ## 2.2.2 - Analizador interno de cuadrantes
 
 ### Incluido
