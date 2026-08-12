@@ -138,6 +138,8 @@ docs\FLUJO_GIT_SEGURO.md
   cambios de repartidor y balance de horas sin guardar cambios automaticos.
 - Simulador de cambios desde el asistente para probar asignaciones o cambios
   de repartidor antes de aplicarlos manualmente en el cuadrante.
+- Priorizacion de acciones desde el asistente para saber que corregir primero
+  antes de publicar un cuadrante.
 - Exportacion a Excel, PDF y CSV.
 - Copia de cuadrantes entre semanas y plantillas reutilizables.
 - Demanda configurable por restaurante, zona y ciudad con prioridad documentada.

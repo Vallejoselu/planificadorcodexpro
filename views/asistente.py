@@ -62,6 +62,7 @@ class VistaAsistente(QWidget):
             "Que turnos estan sin cubrir?",
             "Analiza el cuadrante actual",
             "Optimiza el cuadrante actual",
+            "Que hago primero en el cuadrante?",
             "Cambiar Luis por Ana el viernes cena",
             "Quien puede cubrir la cena del viernes?",
             "Que ocurre si Juan esta de vacaciones el jueves?",
