@@ -17,6 +17,7 @@ from services.asistente_horarios import (
     restaurantes_activos,
     turnos_activos
 )
+from services.rules.candidatos import motivos_rechazo_asistente
 
 
 def es_pregunta_simulacion(texto):
@@ -31,6 +32,9 @@ def es_pregunta_simulacion(texto):
         or "adicional" in texto
         or "elimino" in texto
         or "eliminar" in texto
+        or "asignar" in texto
+        or "cambiar" in texto
+        or "cambio" in texto
     )
 
 
@@ -53,6 +57,24 @@ def responder_simulacion(pregunta, contexto=None, fecha_referencia=None):
     if "elimino" in texto or "eliminar" in texto:
 
         return simular_eliminar_turno(
+            texto,
+            contexto_original,
+            contexto_simulado,
+            fecha_referencia
+        )
+
+    if "cambiar" in texto or "cambio" in texto:
+
+        return simular_cambio_repartidor(
+            texto,
+            contexto_original,
+            contexto_simulado,
+            fecha_referencia
+        )
+
+    if "asignar" in texto:
+
+        return simular_asignacion_repartidor(
             texto,
             contexto_original,
             contexto_simulado,
@@ -86,7 +108,8 @@ def responder_simulacion(pregunta, contexto=None, fecha_referencia=None):
 
     return (
         "Puedo simular vacaciones, sustituciones, eliminacion de turnos, "
-        "cobertura sin horas complementarias o repartidores adicionales."
+        "cambios de repartidor, asignaciones, cobertura sin horas "
+        "complementarias o repartidores adicionales."
     )
 
 
@@ -220,6 +243,154 @@ def simular_sustitucion(texto, contexto_original, contexto_simulado, fecha_refer
     )
 
 
+def simular_asignacion_repartidor(texto, contexto_original, contexto_simulado, fecha_referencia):
+
+    repartidor = extraer_nombre_repartidor(
+        texto,
+        repartidores_activos(contexto_simulado)
+    )
+    dia, fecha = extraer_dia(texto, fecha_referencia)
+    turno = extraer_turno(texto, contexto_simulado)
+    restaurante = extraer_restaurante(texto, contexto_simulado)
+
+    if not repartidor or not dia or not turno:
+
+        return (
+            "Indica repartidor, dia y turno para simular la asignacion. "
+            "Ejemplo: asignar Ana a la cena del viernes."
+        )
+
+    motivos = motivos_no_valido_para_asignacion(
+        contexto_simulado,
+        repartidor,
+        dia,
+        turno,
+        restaurante,
+        fecha
+    )
+
+    if motivos:
+
+        return construir_respuesta_cambio_no_viable(
+            "Simulacion: asignacion no recomendable.",
+            repartidor,
+            dia,
+            turno,
+            restaurante,
+            motivos
+        )
+
+    contexto_simulado["asignaciones_repartidor"].append(
+        crear_asignacion_simulada(repartidor, dia, turno, restaurante)
+    )
+
+    return construir_respuesta_simulacion(
+        (
+            f"Simulacion: asignar a {repartidor['nombre']} "
+            f"a {descripcion_turno(dia, turno, restaurante)}."
+        ),
+        contexto_original,
+        contexto_simulado,
+        [],
+        "El cambio parece viable con las reglas actuales."
+    )
+
+
+def simular_cambio_repartidor(texto, contexto_original, contexto_simulado, fecha_referencia):
+
+    repartidores = extraer_repartidores_mencionados(
+        texto,
+        repartidores_activos(contexto_simulado)
+    )
+    dia, fecha = extraer_dia(texto, fecha_referencia)
+    turno = extraer_turno(texto, contexto_simulado)
+    restaurante = extraer_restaurante(texto, contexto_simulado)
+
+    if len(repartidores) < 2 or not dia:
+
+        return (
+            "Indica repartidor origen, repartidor destino y dia para simular "
+            "el cambio. Ejemplo: cambiar Luis por Ana el viernes cena."
+        )
+
+    origen, destino = repartidores[0], repartidores[1]
+    asignaciones = asignaciones_de_repartidor(
+        contexto_simulado,
+        origen,
+        dia,
+        turno,
+        restaurante
+    )
+
+    if not asignaciones:
+
+        return (
+            f"No he encontrado un turno de {origen['nombre']} el {dia} "
+            "con esos filtros. No se modifica ningun dato real."
+        )
+
+    if len(asignaciones) > 1 and not turno:
+
+        return (
+            f"{origen['nombre']} tiene varios turnos el {dia}. Indica si "
+            "quieres simular comida, cena o el nombre exacto del turno."
+        )
+
+    asignacion = asignaciones[0]
+    turno_objetivo = buscar_turno(
+        contexto_simulado,
+        asignacion.get("turno_id")
+    )
+    restaurante_objetivo = buscar_restaurante(
+        contexto_simulado,
+        asignacion.get("restaurante_id")
+    )
+    contexto_sin_origen = deepcopy(contexto_simulado)
+    contexto_sin_origen["asignaciones_repartidor"] = [
+        actual
+        for actual in contexto_simulado.get("asignaciones_repartidor", [])
+        if not misma_asignacion(actual, asignacion)
+    ]
+
+    motivos = motivos_no_valido_para_asignacion(
+        contexto_sin_origen,
+        destino,
+        dia,
+        turno_objetivo,
+        restaurante_objetivo,
+        fecha
+    )
+
+    if motivos:
+
+        return construir_respuesta_cambio_no_viable(
+            (
+                f"Simulacion: cambiar {origen['nombre']} por "
+                f"{destino['nombre']} no es recomendable."
+            ),
+            destino,
+            dia,
+            turno_objetivo,
+            restaurante_objetivo,
+            motivos
+        )
+
+    nueva = dict(asignacion)
+    nueva["repartidor_id"] = destino["id"]
+    contexto_sin_origen["asignaciones_repartidor"].append(nueva)
+
+    return construir_respuesta_simulacion(
+        (
+            f"Simulacion: cambiar {descripcion_turno(dia, turno_objetivo, restaurante_objetivo)} "
+            f"de {origen['nombre']} a {destino['nombre']}."
+        ),
+        contexto_original,
+        contexto_sin_origen,
+        [],
+        "El cambio parece viable con las reglas actuales."
+    )
+
+
 def simular_cobertura_sin_complementarias(texto, contexto_original, fecha_referencia):
 
     dia, fecha = extraer_dia(texto, fecha_referencia)
@@ -313,6 +484,133 @@ def simular_repartidor_adicional(texto, contexto_original, fecha_referencia):
         contexto_original,
         [descubierto],
         "Se muestran candidatos para cubrir esa necesidad extra."
+    )
+
+
+def motivos_no_valido_para_asignacion(
+    contexto,
+    repartidor,
+    dia,
+    turno,
+    restaurante,
+    fecha
+):
+
+    if not turno:
+
+        return ["no hay turno valido para simular"]
+
+    return motivos_rechazo_asistente(
+        contexto,
+        repartidor,
+        dia,
+        turno,
+        restaurante,
+        fecha,
+        horas_por_repartidor(contexto)
+    )
+
+
+def crear_asignacion_simulada(repartidor, dia, turno, restaurante):
+
+    return {
+        "repartidor_id": repartidor["id"],
+        "dia": dia,
+        "turno_id": turno.get("id"),
+        "restaurante_id": restaurante.get("id") if restaurante else None,
+        "duracion": turno.get("duracion", 0),
+        "hora_inicio": turno.get("hora_inicio"),
+        "hora_fin": turno.get("hora_fin")
+    }
+
+
+def asignaciones_de_repartidor(contexto, repartidor, dia, turno, restaurante):
+
+    asignaciones = []
+
+    for asignacion in contexto.get("asignaciones_repartidor", []):
+
+        if asignacion.get("repartidor_id") != repartidor["id"]:
+
+            continue
+
+        if asignacion.get("dia") != dia:
+
+            continue
+
+        if turno and asignacion.get("turno_id") != turno.get("id"):
+
+            continue
+
+        if restaurante and asignacion.get("restaurante_id") != restaurante.get("id"):
+
+            continue
+
+        asignaciones.append(asignacion)
+
+    return asignaciones
+
+
+def extraer_repartidores_mencionados(texto, repartidores):
+
+    texto_normalizado = normalizar_texto(texto)
+    encontrados = []
+
+    for repartidor in repartidores:
+
+        nombre = normalizar_texto(repartidor.get("nombre"))
+        posicion = texto_normalizado.find(nombre)
+
+        if posicion >= 0:
+
+            encontrados.append((posicion, repartidor))
+
+    encontrados.sort(key=lambda item: item[0])
+
+    return [
+        repartidor
+        for _, repartidor in encontrados
+    ]
+
+
+def construir_respuesta_cambio_no_viable(
+    titulo,
+    repartidor,
+    dia,
+    turno,
+    restaurante,
+    motivos
+):
+
+    return (
+        f"{titulo}\n"
+        f"{repartidor['nombre']} no deberia cubrir "
+        f"{descripcion_turno(dia, turno, restaurante)}.\n"
+        "Motivos: "
+        + ", ".join(motivos)
+        + ".\n\nNo se ha guardado ningun cambio."
+    )
+
+
+def descripcion_turno(dia, turno, restaurante):
+
+    restaurante_nombre = (
+        restaurante.get("nombre")
+        if restaurante
+        else "sin restaurante"
+    )
+    turno_nombre = turno.get("nombre", "turno") if turno else "turno"
+
+    return f"{dia} {turno_nombre} en {restaurante_nombre}"
+
+
+def misma_asignacion(primera, segunda):
+
+    return (
+        primera.get("repartidor_id") == segunda.get("repartidor_id")
+        and primera.get("dia") == segunda.get("dia")
+        and primera.get("turno_id") == segunda.get("turno_id")
+        and primera.get("restaurante_id") == segunda.get("restaurante_id")
     )
 
 

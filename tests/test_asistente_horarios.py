@@ -435,6 +435,52 @@ class TestAsistenteHorarios(unittest.TestCase):
         self.assertIn("asignar a Ana", respuesta)
         self.assertIn("editando el cuadrante", respuesta)
 
+    def test_simulacion_cambio_repartidor_viable_no_modifica_contexto(self):
+
+        contexto = self.contexto_base()
+        asignaciones_antes = list(contexto["asignaciones_repartidor"])
+
+        respuesta = responder(
+            "Cambiar Luis por Ana el viernes cena",
+            contexto
+        )
+
+        self.assertIn("Simulacion: cambiar viernes Cena", respuesta)
+        self.assertIn("Luis a Ana", respuesta)
+        self.assertIn("El cambio parece viable", respuesta)
+        self.assertIn("No se ha guardado", respuesta)
+        self.assertEqual(
+            contexto["asignaciones_repartidor"],
+            asignaciones_antes
+        )
+
+    def test_simulacion_asignacion_invalida_explica_motivos(self):
+
+        respuesta = responder(
+            "Asignar Luis a la comida del viernes",
+            self.contexto_base()
+        )
+
+        self.assertIn("asignacion no recomendable", respuesta)
+        self.assertIn("Luis no deberia cubrir viernes Comida", respuesta)
+        self.assertIn("no tienen disponibilidad", respuesta)
+        self.assertIn("No se ha guardado", respuesta)
+
+    def test_simulacion_asignacion_viable_muestra_horas_resultantes(self):
+
+        contexto = self.contexto_base()
+        contexto["asignaciones_repartidor"] = []
+
+        respuesta = responder(
+            "Asignar Ana a la cena del viernes",
+            contexto
+        )
+
+        self.assertIn("Simulacion: asignar a Ana", respuesta)
+        self.assertIn("El cambio parece viable", respuesta)
+        self.assertIn("Horas resultantes", respuesta)
+        self.assertIn("Ana: 3.5 h", respuesta)
+
     def test_simulacion_no_modifica_base_real(self):
 
         original = database.RUTA_BD
