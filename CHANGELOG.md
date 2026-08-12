@@ -1,5 +1,22 @@
 # CHANGELOG
 
+## 2.2.2 - Analizador interno de cuadrantes
+
+### Incluido
+
+- Analizador interno en el asistente para revisar el cuadrante actual sin
+  modificar datos.
+- Deteccion de plazas sin repartidor, horas pendientes, horas extra,
+  asignaciones en descanso, incompatibilidades de disponibilidad y
+  solapamientos.
+- Ejemplo visible en el asistente para consultar el analisis del cuadrante.
+
+### Preparacion
+
+- Actualizacion de version a 2.2.2.
+- Instalador preparado como `PlanificadorDeliveryPro-Setup-2.2.2.exe`.
+- README alineado con la nueva version operativa.
+
 ## 2.2.1 - Claridad de uso y modo simple
 
 ### Incluido
