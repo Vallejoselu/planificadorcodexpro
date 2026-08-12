@@ -171,6 +171,64 @@ class TestDialogosResponsivos(unittest.TestCase):
         self.assertEqual(len(dialogo.turnos_propios), 2)
         self.assertEqual(len(dialogo.demandas), 14)
 
+    def test_dialogo_restaurante_agrega_horas_valle_configurables(self):
+
+        dialogo = NuevoRestaurante()
+
+        dialogo.horario_valle.setText("16:00 - 20:00")
+        dialogo.demanda_valle.setValue(2)
+
+        resultado = dialogo.agregar_horas_valle(silencioso=True)
+
+        self.assertEqual(resultado["turnos"], 1)
+        self.assertEqual(resultado["demandas"], 7)
+        self.assertEqual(len(dialogo.turnos_propios), 3)
+        valle = dialogo.turnos_propios[-1]
+        self.assertEqual(valle["nombre"], "Valle")
+        self.assertEqual(valle["hora_inicio"], "16:00")
+        self.assertEqual(valle["hora_fin"], "20:00")
+        self.assertEqual(valle["duracion"], 4)
+        self.assertTrue(all(
+            demanda["repartidores_necesarios"] == 2
+            for demanda in dialogo.demandas
+            if demanda.get("indice_turno") == 2
+        ))
+
+        resultado = dialogo.agregar_horas_valle(silencioso=True)
+
+        self.assertEqual(resultado["turnos"], 0)
+        self.assertEqual(resultado["demandas"], 0)
+        self.assertEqual(len(dialogo.turnos_propios), 3)
+        self.assertEqual(len(dialogo.demandas), 21)
+
+    def test_dialogo_restaurante_horas_valle_aceptan_madrugada(self):
+
+        dialogo = NuevoRestaurante()
+
+        dialogo.horario_valle.setText("00:30 - 04:30")
+
+        dialogo.agregar_horas_valle(silencioso=True)
+
+        valle = dialogo.turnos_propios[-1]
+        self.assertEqual(valle["hora_inicio"], "00:30")
+        self.assertEqual(valle["hora_fin"], "04:30")
+        self.assertEqual(valle["cruza_medianoche"], 0)
+        self.assertEqual(valle["duracion"], 4)
+
+    def test_dialogo_restaurante_horas_valle_pueden_cruzar_medianoche(self):
+
+        dialogo = NuevoRestaurante()
+
+        dialogo.horario_valle.setText("23:30 - 02:30")
+
+        dialogo.agregar_horas_valle(silencioso=True)
+
+        valle = dialogo.turnos_propios[-1]
+        self.assertEqual(valle["hora_inicio"], "23:30")
+        self.assertEqual(valle["hora_fin"], "02:30")
+        self.assertEqual(valle["cruza_medianoche"], 1)
+        self.assertEqual(valle["duracion"], 3)
+
     def test_dialogo_restaurante_muestra_avanzado_solo_si_se_pide(self):
 
         dialogo = NuevoRestaurante()

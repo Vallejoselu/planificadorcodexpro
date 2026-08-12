@@ -83,6 +83,18 @@ class NuevoRestaurante(QDialog):
         self.horario_cena = QLineEdit()
         self.horario_cena.setPlaceholderText("20:00 - 23:30")
 
+        self.horario_valle = QLineEdit()
+        self.horario_valle.setPlaceholderText("16:00 - 20:00")
+        self.demanda_valle = QSpinBox()
+        self.demanda_valle.setRange(0, 200)
+        self.demanda_valle.setValue(1)
+        self.btn_agregar_valle = QPushButton("Agregar horas valle")
+        self.btn_agregar_valle.setProperty("variant", "secondary")
+        self.btn_agregar_valle.setToolTip(
+            "Anade un turno Valle con demanda semanal para cubrir horas de "
+            "menor actividad sin entrar en opciones avanzadas."
+        )
+
         self.repartidores = QListWidget()
         self.repartidores.setSelectionMode(
             QAbstractItemView.MultiSelection
@@ -160,6 +172,9 @@ class NuevoRestaurante(QDialog):
         formulario_basico.addRow("Zona", self.zona)
         formulario_basico.addRow("Horario comida", self.horario_comida)
         formulario_basico.addRow("Horario cena", self.horario_cena)
+        formulario_basico.addRow("Horario valle", self.horario_valle)
+        formulario_basico.addRow("Repartidores valle", self.demanda_valle)
+        formulario_basico.addRow("", self.btn_agregar_valle)
         formulario_basico.addRow("", self.btn_configuracion_recomendada)
         contenido.addWidget(self.seccion_basica)
 
@@ -215,6 +230,7 @@ class NuevoRestaurante(QDialog):
         self.btn_configuracion_recomendada.clicked.connect(
             self.aplicar_configuracion_recomendada
         )
+        self.btn_agregar_valle.clicked.connect(self.agregar_horas_valle)
         self.selector_avanzado.toggled.connect(
             self.seccion_avanzada.setVisible
         )
@@ -249,6 +265,13 @@ class NuevoRestaurante(QDialog):
             3.5
         )
         demandas_creadas = self.asegurar_demanda_semanal_base()
+
+        if self.horario_valle.text().strip():
+
+            valle = self.agregar_horas_valle(silencioso=True)
+            turnos_creados += valle["turnos"]
+            demandas_creadas += valle["demandas"]
+
         self.refrescar_turnos()
         self.refrescar_demanda()
 
@@ -331,6 +354,172 @@ class NuevoRestaurante(QDialog):
                 creadas += 1
 
         return creadas
+
+    def asegurar_demanda_semanal_turno(self, indice_turno, necesarios=1):
+
+        creadas = 0
+
+        for dia in (
+            "lunes",
+            "martes",
+            "miercoles",
+            "jueves",
+            "viernes",
+            "sabado",
+            "domingo"
+        ):
+
+            if self.demanda_duplicada(indice_turno, "", dia):
+
+                continue
+
+            self.demandas.append({
+                "indice_turno": indice_turno,
+                "turno_restaurante_id": (
+                    self.turnos_propios[indice_turno].get("id")
+                ),
+                "fecha": "",
+                "dia_semana": dia,
+                "repartidores_necesarios": necesarios,
+                "activo": 1
+            })
+            creadas += 1
+
+        return creadas
+
+    def agregar_horas_valle(self, silencioso=False):
+
+        horario = self.horario_valle.text().strip()
+
+        if not horario:
+
+            if not silencioso:
+
+                QMessageBox.warning(
+                    self,
+                    "Horas valle",
+                    "Introduce el horario valle, por ejemplo 16:00 - 20:00."
+                )
+
+            return {"turnos": 0, "demandas": 0}
+
+        try:
+
+            inicio, fin, cruza_medianoche, duracion = self.parsear_horario(
+                horario
+            )
+
+        except ValueError as error:
+
+            if not silencioso:
+
+                QMessageBox.warning(self, "Horas valle", str(error))
+
+            return {"turnos": 0, "demandas": 0}
+
+        turnos_creados = self.asegurar_turno_base(
+            "Valle",
+            inicio,
+            fin,
+            cruza_medianoche,
+            duracion
+        )
+        indice_valle = self.indice_turno_por_nombre("Valle")
+        demandas_creadas = 0
+
+        if indice_valle is not None:
+
+            demandas_creadas = self.asegurar_demanda_semanal_turno(
+                indice_valle,
+                self.demanda_valle.value()
+            )
+
+        self.refrescar_turnos()
+        self.refrescar_demanda()
+
+        if not silencioso:
+
+            QMessageBox.information(
+                self,
+                "Horas valle",
+                (
+                    "Horas valle configuradas.\n\n"
+                    f"Turnos nuevos: {turnos_creados}\n"
+                    f"Demandas nuevas: {demandas_creadas}"
+                )
+            )
+
+        return {
+            "turnos": turnos_creados,
+            "demandas": demandas_creadas
+        }
+
+    def indice_turno_por_nombre(self, nombre):
+
+        for indice, turno in enumerate(self.turnos_propios):
+
+            if turno["nombre"].casefold() == nombre.casefold():
+
+                return indice
+
+        return None
+
+    def parsear_horario(self, horario):
+
+        partes = (
+            horario
+            .replace("–", "-")
+            .replace("—", "-")
+            .split("-")
+        )
+
+        if len(partes) != 2:
+
+            raise ValueError(
+                "El horario debe tener formato inicio - fin, por ejemplo "
+                "16:00 - 20:00."
+            )
+
+        inicio = partes[0].strip()
+        fin = partes[1].strip()
+        inicio_minutos = self.minutos_hora(inicio)
+        fin_minutos = self.minutos_hora(fin)
+
+        cruza_medianoche = int(fin_minutos <= inicio_minutos)
+
+        if cruza_medianoche:
+
+            fin_minutos += 24 * 60
+
+        duracion = round((fin_minutos - inicio_minutos) / 60, 2)
+
+        if duracion <= 0:
+
+            raise ValueError("El horario valle debe tener duracion positiva.")
+
+        return inicio, fin, cruza_medianoche, duracion
+
+    def minutos_hora(self, valor):
+
+        try:
+
+            hora, minuto = valor.split(":")
+            hora = int(hora)
+            minuto = int(minuto)
+
+        except ValueError as error:
+
+            raise ValueError(
+                "La hora debe tener formato HH:MM, por ejemplo 16:00."
+            ) from error
+
+        if hora < 0 or hora > 23 or minuto < 0 or minuto > 59:
+
+            raise ValueError(
+                "La hora debe estar entre 00:00 y 23:59."
+            )
+
+        return hora * 60 + minuto
 
     def cargar_ciudades(self):
 
@@ -421,8 +610,37 @@ class NuevoRestaurante(QDialog):
             )
             if demanda[6]
         ]
+        self.cargar_horas_valle_existentes()
         self.refrescar_turnos()
         self.refrescar_demanda()
+
+    def cargar_horas_valle_existentes(self):
+
+        indice_valle = self.indice_turno_por_nombre("Valle")
+
+        if indice_valle is None:
+
+            return
+
+        turno = self.turnos_propios[indice_valle]
+        self.horario_valle.setText(
+            f"{turno['hora_inicio']} - {turno['hora_fin']}"
+        )
+
+        for demanda in self.demandas:
+
+            mismo_turno = (
+                demanda.get("turno_restaurante_id") == turno.get("id")
+                if turno.get("id")
+                else demanda.get("indice_turno") == indice_valle
+            )
+
+            if mismo_turno:
+
+                self.demanda_valle.setValue(
+                    int(demanda["repartidores_necesarios"])
+                )
+                return
 
     def agregar_turno(self):
 
