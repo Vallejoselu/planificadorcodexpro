@@ -56,6 +56,18 @@ def responder(pregunta, contexto=None, fecha_referencia=None):
         es_pregunta_optimizacion,
         responder_optimizacion
     )
+    from services.asistente_prioridad import (
+        es_pregunta_prioridad,
+        responder_prioridad
+    )
+
+    if es_pregunta_prioridad(texto):
+
+        return responder_prioridad(
+            texto,
+            contexto,
+            fecha_referencia
+        )
 
     if es_pregunta_optimizacion(texto):
 

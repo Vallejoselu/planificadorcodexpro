@@ -154,6 +154,69 @@ class TestAsistenteHorarios(unittest.TestCase):
             "optimizar_cuadrante"
         )
 
+    def test_prioridad_acciones_ordena_problemas_criticos(self):
+
+        contexto = self.contexto_base()
+        contexto["calendario"].append({
+            "dia": "sabado",
+            "turno_id": 1,
+            "turno": "Cena",
+            "restaurante_id": 1,
+            "restaurante": "Ronda Centro",
+            "repartidor_id": None
+        })
+        contexto["asignaciones_repartidor"].append({
+            "repartidor_id": 1,
+            "dia": "lunes",
+            "turno_id": 2,
+            "restaurante_id": 1,
+            "duracion": 3,
+            "hora_inicio": "13:00",
+            "hora_fin": "16:00"
+        })
+        contexto["asignaciones_repartidor"].append({
+            "repartidor_id": 2,
+            "dia": "viernes",
+            "turno_id": 2,
+            "restaurante_id": 1,
+            "duracion": 3,
+            "hora_inicio": "21:00",
+            "hora_fin": "23:00"
+        })
+
+        respuesta = responder(
+            "Que hago primero en el cuadrante?",
+            contexto
+        )
+
+        self.assertIn("Prioridad de acciones", respuesta)
+        self.assertLess(
+            respuesta.index("Cubrir plazas sin repartidor"),
+            respuesta.index("Corregir descansos")
+        )
+        self.assertLess(
+            respuesta.index("Corregir descansos"),
+            respuesta.index("Eliminar solapamientos")
+        )
+        self.assertIn("Revisar horas extra", respuesta)
+        self.assertIn("Balancear horas pendientes", respuesta)
+        self.assertIn("No he guardado", respuesta)
+
+    def test_prioridad_acciones_sin_bloqueos(self):
+
+        contexto = self.contexto_base()
+        contexto["repartidores"][0]["horas"] = 3
+        contexto["repartidores"][1]["horas"] = 8
+        contexto["repartidores"][2]["horas"] = 0
+
+        respuesta = responder(
+            "Por donde empiezo con el cuadrante?",
+            contexto
+        )
+
+        self.assertIn("no veo bloqueos importantes", respuesta)
+        self.assertIn("publica solo si la cobertura", respuesta)
+
     def test_horas_pendientes(self):
 
         respuesta = responder(
