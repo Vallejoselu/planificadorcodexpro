@@ -88,8 +88,9 @@ docs\FLUJO_GIT_SEGURO.md
 - Libranza semanal simple: marca los dias que el repartidor libra como
   `No disponible`; la app exige dos dias consecutivos antes de guardar.
 - Disponibilidad semanal por comidas, cenas, ambos o no disponible.
-- Gestion de restaurantes con formulario simple, turnos comida/cena y demanda
-  semanal recomendada para empezar sin configurar cada campo manualmente.
+- Gestion de restaurantes con formulario simple, turnos comida/cena, horas
+  valle configurables y demanda semanal recomendada para empezar sin
+  configurar cada campo manualmente.
 - Gestion de turnos de comida, cena, turno partido y personalizados.
 - Listados de gestion centrados en datos activos para no mezclar elementos desactivados.
 - Calendario semanal con varias coberturas por dia y turno.
