@@ -1384,6 +1384,135 @@ def obtener_repartidor_restaurantes_autorizados(repartidor_id):
     return datos
 
 
+def normalizar_preferencias_repartidor(preferencias):
+
+    preferencias_normalizadas = []
+    dias_usados = set()
+
+    for preferencia in preferencias or []:
+
+        if not isinstance(preferencia, dict):
+
+            continue
+
+        dia_semana = preferencia.get("dia_semana")
+
+        if dia_semana:
+
+            dia_semana = str(dia_semana).strip().lower()
+
+            if dia_semana not in DIAS_SEMANA:
+
+                raise ValueError(f"Dia de preferencia invalido: {dia_semana}")
+
+            if dia_semana in dias_usados:
+
+                raise ValueError(
+                    f"Preferencia duplicada para {dia_semana}."
+                )
+
+            dias_usados.add(dia_semana)
+
+        preferencias_normalizadas.append({
+            "restaurante_id": preferencia.get("restaurante_id"),
+            "zona": preferencia.get("zona"),
+            "turno": preferencia.get("turno"),
+            "dia_semana": dia_semana,
+            "prioridad": int(preferencia.get("prioridad") or 50),
+            "observaciones": preferencia.get("observaciones") or ""
+        })
+
+    return preferencias_normalizadas
+
+
+def guardar_repartidor_preferencias(repartidor_id, preferencias):
+
+    crear_base_datos()
+    preferencias = normalizar_preferencias_repartidor(preferencias)
+    conexion = conectar()
+    cursor = conexion.cursor()
+
+    cursor.execute("""
+    DELETE FROM preferencias
+    WHERE repartidor_id=?
+    AND dia_semana IS NOT NULL
+    """,(repartidor_id,))
+
+    for preferencia in preferencias:
+
+        if not preferencia.get("dia_semana"):
+
+            continue
+
+        cursor.execute("""
+        INSERT INTO preferencias(
+            repartidor_id,
+            restaurante_id,
+            zona,
+            turno,
+            dia_semana,
+            prioridad,
+            observaciones
+        )
+        VALUES(?,?,?,?,?,?,?)
+        """,(
+            repartidor_id,
+            preferencia.get("restaurante_id"),
+            preferencia.get("zona"),
+            preferencia.get("turno"),
+            preferencia.get("dia_semana"),
+            preferencia.get("prioridad"),
+            preferencia.get("observaciones")
+        ))
+
+    conexion.commit()
+    conexion.close()
+
+
+def obtener_repartidor_preferencias(repartidor_id):
+
+    crear_base_datos()
+    conexion = conectar()
+    cursor = conexion.cursor()
+    cursor.execute("""
+    SELECT
+        restaurante_id,
+        zona,
+        turno,
+        dia_semana,
+        prioridad,
+        observaciones
+    FROM preferencias
+    WHERE repartidor_id=?
+    ORDER BY
+        CASE dia_semana
+            WHEN 'lunes' THEN 1
+            WHEN 'martes' THEN 2
+            WHEN 'miercoles' THEN 3
+            WHEN 'jueves' THEN 4
+            WHEN 'viernes' THEN 5
+            WHEN 'sabado' THEN 6
+            WHEN 'domingo' THEN 7
+            ELSE 8
+        END,
+        id
+    """,(repartidor_id,))
+    datos = [
+        {
+            "restaurante_id": fila[0],
+            "zona": fila[1],
+            "turno": fila[2],
+            "dia_semana": fila[3],
+            "prioridad": fila[4],
+            "observaciones": fila[5] or ""
+        }
+        for fila in cursor.fetchall()
+    ]
+    conexion.close()
+
+    return datos
+
+
 def obtener_repartidores():
 
     conexion = conectar()
@@ -1511,7 +1640,9 @@ def obtener_repartidores():
             restaurante_id,
             zona,
             turno,
-            prioridad
+            dia_semana,
+            prioridad,
+            observaciones
         FROM preferencias
         WHERE repartidor_id=?
         """,(repartidor[0],))
@@ -1521,7 +1652,9 @@ def obtener_repartidores():
                 "restaurante_id": fila[0],
                 "zona": fila[1],
                 "turno": fila[2],
-                "prioridad": fila[3]
+                "dia_semana": fila[3],
+                "prioridad": fila[4],
+                "observaciones": fila[5] or ""
             }
             for fila in cursor.fetchall()
         ]
@@ -1646,7 +1779,8 @@ def obtener_repartidor(id_repartidor):
         "ciudades_autorizadas": obtener_repartidor_ciudades(id_repartidor),
         "restaurantes_autorizados": obtener_repartidor_restaurantes_autorizados(
             id_repartidor
-        )
+        ),
+        "preferencias": obtener_repartidor_preferencias(id_repartidor)
     }
 
 
@@ -1674,7 +1808,8 @@ def insertar_repartidor(
     tipo_cobertura="normal",
     hora_inicio_minima=None,
     hora_fin_maxima=None,
-    restricciones_observaciones=""
+    restricciones_observaciones="",
+    preferencias=None
 ):
 
     horas = validar_horas_contratadas(horas)
@@ -1760,6 +1895,10 @@ def insertar_repartidor(
         restaurantes_autorizados
     )
 
+    if preferencias is not None:
+
+        guardar_repartidor_preferencias(id_repartidor, preferencias)
+
     return id_repartidor
 
 
@@ -1788,7 +1927,8 @@ def actualizar_repartidor(
     tipo_cobertura="normal",
     hora_inicio_minima=None,
     hora_fin_maxima=None,
-    restricciones_observaciones=""
+    restricciones_observaciones="",
+    preferencias=None
 ):
 
     horas = validar_horas_contratadas(horas)
@@ -1873,6 +2013,10 @@ def actualizar_repartidor(
         id_repartidor,
         restaurantes_autorizados
     )
+
+    if preferencias is not None:
+
+        guardar_repartidor_preferencias(id_repartidor, preferencias)
 
 
 def eliminar_repartidor(id_repartidor):

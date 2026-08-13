@@ -32,7 +32,8 @@ def puntuacion_solucion(
     preferencia = puntuacion_preferencia(
         repartidor,
         restaurante,
-        turno
+        turno,
+        dia
     )
     desplazamiento = coste_desplazamiento(
         repartidor,

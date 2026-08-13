@@ -103,6 +103,63 @@ class TestMotorPlanificacionMejorado(unittest.TestCase):
         self.assertLess(con_preferencia.valores[5], sin_preferencia.valores[5])
         self.assertIn("preferencia", con_preferencia.detalle)
 
+    def test_preferencia_de_restaurante_por_dia_solo_aplica_ese_dia(self):
+
+        repartidor = self.repartidor(1)
+        repartidor["preferencias"] = [{
+            "restaurante_id": 1,
+            "dia_semana": "lunes",
+            "prioridad": 90
+        }]
+        restaurante = self.restaurante()
+        turno = self.turno()
+
+        lunes = puntuacion_preferencia(
+            repartidor,
+            restaurante,
+            turno,
+            "lunes"
+        )
+        martes = puntuacion_preferencia(
+            repartidor,
+            restaurante,
+            turno,
+            "martes"
+        )
+
+        self.assertEqual(lunes - martes, 90)
+
+    def test_puntuacion_solucion_usa_preferencia_de_restaurante_por_dia(self):
+
+        repartidor = self.repartidor(1)
+        repartidor["preferencias"] = [{
+            "restaurante_id": 1,
+            "dia_semana": "martes",
+            "prioridad": 90
+        }]
+        restaurante = self.restaurante()
+        turno = self.turno()
+
+        lunes = puntuacion_solucion(
+            repartidor,
+            restaurante,
+            "lunes",
+            turno,
+            devolver_detalle=True
+        )
+        martes = puntuacion_solucion(
+            repartidor,
+            restaurante,
+            "martes",
+            turno,
+            devolver_detalle=True
+        )
+
+        self.assertLess(
+            martes.detalle["preferencia"],
+            lunes.detalle["preferencia"]
+        )
+
     def test_puntuacion_aplica_penalizacion_desplazamiento_configurada(self):
 
         repartidor = self.repartidor(1)

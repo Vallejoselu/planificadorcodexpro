@@ -24,10 +24,12 @@ from database.database import (
     obtener_demanda_restaurante,
     obtener_repartidor,
     obtener_repartidor_ciudades,
+    obtener_repartidor_preferencias,
     obtener_repartidor_restaurantes_autorizados,
     obtener_restaurante_turnos,
     obtener_restaurantes,
-    obtener_zonas_restaurantes
+    obtener_zonas_restaurantes,
+    guardar_repartidor_preferencias
 )
 from database.schema import SCHEMA_VERSION_ACTUAL
 
@@ -352,6 +354,123 @@ class TestModeloMulticiudad(unittest.TestCase):
             obtener_repartidor_restaurantes_autorizados(repartidor_id),
             [restaurante]
         )
+
+    def test_preferencias_semanales_de_restaurante_por_repartidor(self):
+
+        crear_base_datos()
+        ciudad = insertar_ciudad("Santiago")
+        fonsillon = insertar_restaurante(
+            "Fonsillon",
+            "",
+            "Ourense",
+            "",
+            50,
+            ciudad_id=ciudad
+        )
+        san_lazaro = insertar_restaurante(
+            "San Lazaro",
+            "",
+            "Ourense",
+            "",
+            50,
+            ciudad_id=ciudad
+        )
+        repartidor_id = insertar_repartidor(
+            "Ana",
+            30,
+            "Ourense",
+            1,
+            1,
+            50,
+            50,
+            50,
+            restaurante_principal_id=fonsillon,
+            restaurantes_autorizados=[fonsillon, san_lazaro],
+            preferencias=[
+                {
+                    "dia_semana": "lunes",
+                    "restaurante_id": fonsillon,
+                    "prioridad": 90
+                },
+                {
+                    "dia_semana": "martes",
+                    "restaurante_id": san_lazaro,
+                    "prioridad": 90
+                }
+            ]
+        )
+
+        preferencias = obtener_repartidor_preferencias(repartidor_id)
+        self.assertEqual(
+            [(p["dia_semana"], p["restaurante_id"]) for p in preferencias],
+            [("lunes", fonsillon), ("martes", san_lazaro)]
+        )
+        self.assertEqual(
+            obtener_repartidor(repartidor_id)["preferencias"][1]["dia_semana"],
+            "martes"
+        )
+
+        guardar_repartidor_preferencias(
+            repartidor_id,
+            [{
+                "dia_semana": "lunes",
+                "restaurante_id": san_lazaro,
+                "prioridad": 90
+            }]
+        )
+
+        preferencias = obtener_repartidor_preferencias(repartidor_id)
+        self.assertEqual(len(preferencias), 1)
+        self.assertEqual(preferencias[0]["restaurante_id"], san_lazaro)
+
+    def test_preferencias_semanales_validan_dia_y_duplicados(self):
+
+        crear_base_datos()
+        ciudad = insertar_ciudad("Santiago")
+        restaurante = insertar_restaurante(
+            "Fonsillon",
+            "",
+            "Ourense",
+            "",
+            50,
+            ciudad_id=ciudad
+        )
+        repartidor_id = insertar_repartidor(
+            "Ana",
+            30,
+            "Ourense",
+            1,
+            1,
+            50,
+            50,
+            50
+        )
+
+        with self.assertRaises(ValueError):
+
+            guardar_repartidor_preferencias(
+                repartidor_id,
+                [{
+                    "dia_semana": "festivo",
+                    "restaurante_id": restaurante
+                }]
+            )
+
+        with self.assertRaises(ValueError):
+
+            guardar_repartidor_preferencias(
+                repartidor_id,
+                [
+                    {
+                        "dia_semana": "lunes",
+                        "restaurante_id": restaurante
+                    },
+                    {
+                        "dia_semana": "lunes",
+                        "restaurante_id": restaurante
+                    }
+                ]
+            )
 
     def test_demanda_admite_fecha_valida_sin_dia_semana(self):
 

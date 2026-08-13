@@ -155,7 +155,8 @@ def buscar_candidatos(contexto, dia, turno, restaurante=None, fecha=None):
             "preferencia": puntuacion_preferencia_asistente(
                 repartidor,
                 turno,
-                restaurante
+                restaurante,
+                dia
             ),
             "consecutivos": turnos_consecutivos(contexto, repartidor, dia)
         })
@@ -459,7 +460,7 @@ def misma_zona(repartidor, restaurante):
     )
 
 
-def puntuacion_preferencia(repartidor, restaurante, turno):
+def puntuacion_preferencia(repartidor, restaurante, turno, dia=None):
 
     puntuacion = prioridad_repartidor(
         repartidor,
@@ -469,7 +470,7 @@ def puntuacion_preferencia(repartidor, restaurante, turno):
 
     for preferencia in repartidor.get("preferencias", []):
 
-        if not preferencia_aplica(preferencia, restaurante, turno):
+        if not preferencia_aplica(preferencia, restaurante, turno, dia):
 
             continue
 
@@ -484,7 +485,7 @@ def puntuacion_preferencia(repartidor, restaurante, turno):
     return puntuacion
 
 
-def preferencia_aplica(preferencia, restaurante, turno):
+def preferencia_aplica(preferencia, restaurante, turno, dia=None):
 
     if isinstance(preferencia, dict):
 
@@ -492,6 +493,11 @@ def preferencia_aplica(preferencia, restaurante, turno):
         restaurante_nombre = preferencia.get("restaurante")
         zona = normalizar_texto(preferencia.get("zona"))
         turno_preferido = preferencia.get("turno")
+        dia_preferido = normalizar_texto(preferencia.get("dia_semana"))
+
+        if dia_preferido and dia_preferido != normalizar_texto(dia):
+
+            return False
 
         if restaurante_id and str(restaurante_id) != str(restaurante.get("id")):
 
@@ -640,11 +646,17 @@ def cumple_restaurante_o_zona(repartidor, restaurante):
     return not zona_repartidor or not zona_restaurante or zona_repartidor == zona_restaurante
 
 
-def puntuacion_preferencia_asistente(repartidor, turno, restaurante):
+def puntuacion_preferencia_asistente(repartidor, turno, restaurante, dia=None):
 
     puntuacion = 0
 
     for preferencia in repartidor.get("preferencias", []):
+
+        dia_preferido = normalizar_texto(preferencia.get("dia_semana"))
+
+        if dia_preferido and dia_preferido != normalizar_texto(dia):
+
+            continue
 
         if restaurante:
 
