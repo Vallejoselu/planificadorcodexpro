@@ -2,6 +2,21 @@
 
 Fase 10 de preparacion de Planificador Delivery Pro 2.0.
 
+## Release 2.2.4
+
+La release 2.2.4 deja preparada una entrega con autoria visible, derechos
+reservados documentados y version de instalador alineada.
+
+### Checklist 2.2.4
+
+| Paso | Estado | Evidencia |
+| --- | --- | --- |
+| Version de aplicacion | OK | `app_info.VERSION` actualizado a `2.2.4`. |
+| Instalador | OK | `installer/PlanificadorDeliveryPro.iss` apunta a `2.2.4`. |
+| README | OK | Documenta autoria, uso permitido y el instalador `PlanificadorDeliveryPro-Setup-2.2.4.exe`. |
+| Copyright | OK | `COPYRIGHT.md` declara autor, derechos reservados y uso autorizado. |
+| Instalacion limpia | Pendiente manual | Instalar 2.2.4 en equipo/carpeta limpia y abrir la app. |
+
 ## Release 2.2.1
 
 La release 2.2.1 consolida la claridad operativa, el arranque limpio y los

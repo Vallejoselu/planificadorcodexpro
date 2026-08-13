@@ -1,5 +1,20 @@
 # CHANGELOG
 
+## 2.2.4 - Autoria y entrega protegida
+
+### Incluido
+
+- Metadatos de autoria en la aplicacion.
+- Aviso discreto de autoria y uso permitido en Configuracion.
+- Documento `COPYRIGHT.md` con derechos reservados y uso autorizado.
+- Instalador actualizado con editor Valle y version 2.2.4.
+- README actualizado con autoria, uso permitido e instalador 2.2.4.
+
+### Preparacion
+
+- Actualizacion de version a 2.2.4.
+- Instalador preparado como `PlanificadorDeliveryPro-Setup-2.2.4.exe`.
+
 ## 2.2.3 - Asistente de cuadrantes mas practico
 
 ### Incluido
