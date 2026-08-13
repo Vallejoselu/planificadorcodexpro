@@ -125,8 +125,9 @@ docs\FLUJO_GIT_SEGURO.md
   cenas, dobles y plazas pendientes sin confusiones.
 - Vista de cuadrante por empleado con contrato, libres, comidas, cenas,
   dobles y horarios visibles.
-- Hoja semanal por empleado con fechas, colores suaves y resumen de horas
-  totales/complementarias para revisar la cobertura de un vistazo.
+- Hoja semanal por empleado con fechas reales, colores suaves, horas valle,
+  total semanal y complementarias en una misma tabla para revisar la cobertura
+  de un vistazo.
 - Asignacion opcional de repartidor en calendario.
 - Vaciado seguro del cuadrante de una semana sin borrar empleados,
   restaurantes, turnos, demandas ni otras semanas.
