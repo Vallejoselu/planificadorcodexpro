@@ -40,7 +40,8 @@ from services.rules.descansos import (
     descanso_es_consecutivo,
     dias_no_disponibles,
     disponibilidad_aporta_descanso,
-    tiene_dias_consecutivos
+    tiene_dias_consecutivos,
+    tiene_minimo_dias_libres
 )
 from services.rules.demanda import (
     NIVEL_CIUDAD,
@@ -121,6 +122,7 @@ __all__ = [
     "solapa_con_asignacion",
     "solapa_turno",
     "tiene_dias_consecutivos",
+    "tiene_minimo_dias_libres",
     "turno_por_id",
     "turno_tiene_horario",
     "turnos_consecutivos"

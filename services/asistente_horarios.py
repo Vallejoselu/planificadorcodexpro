@@ -16,7 +16,7 @@ from services.rules.candidatos import (
 from services.rules.descansos import (
     descanso_valido,
     dias_no_disponibles,
-    tiene_dias_consecutivos
+    tiene_minimo_dias_libres
 )
 from services.rules.disponibilidad import (
     esta_disponible,
@@ -660,7 +660,7 @@ def responder_disponibilidad_repartidor(repartidor):
     ]
     no_laborables = dias_no_disponibles(repartidor)
 
-    if tiene_dias_consecutivos(no_laborables):
+    if tiene_minimo_dias_libres(no_laborables):
 
         descanso = (
             "tiene la libranza cubierta porque ya tiene "
@@ -676,7 +676,7 @@ def responder_disponibilidad_repartidor(repartidor):
 
     else:
 
-        descanso = "necesita marcar dos dias consecutivos como no disponibles"
+        descanso = "necesita marcar al menos dos dias como no disponibles"
 
     return (
         f"{repartidor['nombre']} puede trabajar de "

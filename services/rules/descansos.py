@@ -75,9 +75,7 @@ def calcular_descanso(repartidor):
 
 def disponibilidad_aporta_descanso(repartidor):
 
-    return tiene_dias_consecutivos(
-        dias_no_disponibles(repartidor)
-    )
+    return tiene_minimo_dias_libres(dias_no_disponibles(repartidor))
 
 
 def dias_no_disponibles(repartidor):
@@ -108,3 +106,8 @@ def tiene_dias_consecutivos(dias):
             return True
 
     return False
+
+
+def tiene_minimo_dias_libres(dias, minimo=2):
+
+    return len(set(dias or [])) >= minimo

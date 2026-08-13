@@ -548,9 +548,9 @@ class TestServiciosAplicacion(unittest.TestCase):
         servicio = RepartidoresService()
         disponibilidad = {
             "lunes": "No disponible",
-            "martes": "No disponible",
+            "martes": "Ambos",
             "miercoles": "Ambos",
-            "jueves": "Ambos",
+            "jueves": "No disponible",
             "viernes": "Ambos",
             "sabado": "Ambos",
             "domingo": "Ambos"
@@ -560,12 +560,12 @@ class TestServiciosAplicacion(unittest.TestCase):
 
         self.assertEqual(
             estado["dias_no_laborables"],
-            ["lunes", "martes"]
+            ["lunes", "jueves"]
         )
         self.assertTrue(estado["descanso_cubierto"])
         servicio.validar_descanso_no_necesario(disponibilidad)
 
-        with self.assertRaisesRegex(ValueError, "dos dias consecutivos"):
+        with self.assertRaisesRegex(ValueError, "dos dias"):
 
             servicio.validar_descanso_no_necesario({
                 "lunes": "No disponible",

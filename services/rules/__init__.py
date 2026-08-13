@@ -13,7 +13,8 @@ from services.rules.descansos import (
     descanso_valido,
     dias_no_disponibles,
     disponibilidad_aporta_descanso,
-    tiene_dias_consecutivos
+    tiene_dias_consecutivos,
+    tiene_minimo_dias_libres
 )
 from services.rules.demanda import (
     NIVEL_CIUDAD,
@@ -71,5 +72,6 @@ __all__ = [
     "puede_trabajar",
     "puntuacion_preferencia",
     "seleccionar_demanda_prioritaria",
-    "tiene_dias_consecutivos"
+    "tiene_dias_consecutivos",
+    "tiene_minimo_dias_libres"
 ]

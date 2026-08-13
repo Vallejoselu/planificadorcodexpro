@@ -6,7 +6,8 @@ from services.rules.descansos import (
     descanso_es_consecutivo,
     dias_no_disponibles,
     disponibilidad_aporta_descanso,
-    tiene_dias_consecutivos
+    tiene_dias_consecutivos,
+    tiene_minimo_dias_libres
 )
 
 
@@ -66,6 +67,7 @@ class TestRulesDescansos(unittest.TestCase):
 
         self.assertTrue(tiene_dias_consecutivos(["domingo", "lunes"]))
         self.assertFalse(tiene_dias_consecutivos(["lunes", "miercoles"]))
+        self.assertTrue(tiene_minimo_dias_libres(["lunes", "miercoles"]))
 
 
 if __name__ == "__main__":
