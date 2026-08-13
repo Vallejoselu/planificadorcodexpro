@@ -1380,6 +1380,65 @@ class TestCuadrantesServicePorCapa(unittest.TestCase):
         self.assertEqual(filas[0]["total_horas"], 4)
         self.assertEqual(filas[0]["complementarias"], 0)
 
+    def test_vista_cobertura_muestra_plazas_pendientes_por_franja(self):
+
+        servicio = CuadrantesService()
+        asignaciones = {
+            ("lunes", 1): [
+                {"restaurante_id": 2, "repartidor_id": 10},
+                {"restaurante_id": 2, "repartidor_id": None}
+            ],
+            ("martes", 9): [
+                {"restaurante_id": 2, "repartidor_id": 11}
+            ]
+        }
+        turnos = [
+            (1, "Comida", "Comida", "13:00", "16:00", "", 3, 1),
+            (9, "Horas valle", "Horas valle", "00:30", "04:30", "", 4, 1)
+        ]
+        restaurantes = [(2, "Zona Santiago", "", "Santiago", "", 50, 1)]
+
+        filas = servicio.construir_filas_cobertura(
+            asignaciones,
+            turnos,
+            restaurantes,
+            "2026-08-10"
+        )
+
+        self.assertEqual(len(filas), 2)
+        lunes = filas[0]
+        martes = filas[1]
+        self.assertEqual(lunes["dia"], "lunes")
+        self.assertEqual(lunes["fecha"], "10/08")
+        self.assertEqual(lunes["franja"], "Comida")
+        self.assertEqual(lunes["horario"], "13:00-16:00 (3 h)")
+        self.assertEqual(lunes["necesarios"], 2)
+        self.assertEqual(lunes["asignados"], 1)
+        self.assertEqual(lunes["faltan"], 1)
+        self.assertEqual(lunes["estado"], "Faltan 1")
+        self.assertEqual(lunes["accion"], "Asignar repartidor compatible")
+        self.assertEqual(martes["franja"], "Horas valle")
+        self.assertEqual(martes["estado"], "Cubierto")
+
+    def test_preparar_estado_semana_incluye_vista_cobertura(self):
+
+        servicio = CuadrantesService()
+        servicio.cargar_semana = lambda _fecha: [
+            (1, "lunes", 1, "13:00", "16:00", None, 2, None, 3, None)
+        ]
+        turnos = [(1, "Comida", "Comida", "13:00", "16:00", "", 3, 1)]
+        restaurantes = [(2, "Centro", "", "Ronda", "", 50, 1)]
+
+        estado = servicio.preparar_estado_semana(
+            "2026-08-10",
+            turnos,
+            restaurantes,
+            []
+        )
+
+        self.assertIn("filas_cobertura", estado)
+        self.assertEqual(estado["filas_cobertura"][0]["estado"], "Faltan 1")
+
 
 if __name__ == "__main__":
 
