@@ -3,7 +3,7 @@ from services.descansos import descanso_es_valido, siguiente_descanso_valido
 from services.importacion_ausencias import ImportadorAusencias
 from services.importacion_disponibilidad import ImportadorDisponibilidad
 from services.importacion_repartidores import ImportadorRepartidores
-from services.rules.descansos import dias_no_disponibles, tiene_dias_consecutivos
+from services.rules.descansos import dias_no_disponibles, tiene_minimo_dias_libres
 
 
 class RepartidoresService:
@@ -53,7 +53,7 @@ class RepartidoresService:
         no_laborables = dias_no_disponibles({
             "disponibilidad": disponibilidad
         })
-        descanso_cubierto = tiene_dias_consecutivos(no_laborables)
+        descanso_cubierto = tiene_minimo_dias_libres(no_laborables)
 
         return {
             "dias_no_laborables": no_laborables,
@@ -64,10 +64,10 @@ class RepartidoresService:
             ),
             "descanso_cubierto": descanso_cubierto,
             "explicacion": (
-                "Libranza cubierta: hay al menos dos dias consecutivos sin trabajo."
+                "Libranza cubierta: hay al menos dos dias sin trabajo."
                 if descanso_cubierto
                 else (
-                    "Marca al menos dos dias consecutivos como No disponible "
+                    "Marca al menos dos dias como No disponible "
                     "para guardar la libranza."
                 )
             )
@@ -84,7 +84,7 @@ class RepartidoresService:
         if not self.descanso_cubierto_por_disponibilidad(disponibilidad):
 
             raise ValueError(
-                "Marca al menos dos dias consecutivos como No disponible."
+                "Marca al menos dos dias como No disponible."
             )
 
     def formatear_descanso(self, repartidor):
@@ -95,7 +95,7 @@ class RepartidoresService:
                 "disponibilidad": repartidor[11] if len(repartidor) > 11 else {}
             })
 
-            if tiene_dias_consecutivos(no_laborables):
+            if tiene_minimo_dias_libres(no_laborables):
 
                 return "No necesario por disponibilidad semanal"
 

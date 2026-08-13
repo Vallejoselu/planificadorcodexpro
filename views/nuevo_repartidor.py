@@ -14,7 +14,8 @@ from PySide6.QtWidgets import (
     QListWidgetItem,
     QAbstractItemView,
     QWidget,
-    QGroupBox
+    QGroupBox,
+    QHBoxLayout
 )
 
 from PySide6.QtCore import Qt
@@ -70,11 +71,35 @@ class NuevoRepartidor(QDialog):
             QAbstractItemView.MultiSelection
         )
         self.ciudades_autorizadas.setMaximumHeight(90)
+        self.restaurante_autorizado_selector = QComboBox()
+        self.boton_agregar_restaurante_autorizado = QPushButton("Anadir")
+        self.boton_quitar_restaurante_autorizado = QPushButton("Quitar")
         self.restaurantes_autorizados = QListWidget()
         self.restaurantes_autorizados.setSelectionMode(
-            QAbstractItemView.MultiSelection
+            QAbstractItemView.SingleSelection
         )
         self.restaurantes_autorizados.setMaximumHeight(90)
+        self.restaurantes_autorizados.setAlternatingRowColors(True)
+        contenedor_restaurantes_autorizados = QWidget()
+        layout_restaurantes_autorizados = QVBoxLayout(
+            contenedor_restaurantes_autorizados
+        )
+        layout_restaurantes_autorizados.setContentsMargins(0, 0, 0, 0)
+        fila_selector_restaurante = QHBoxLayout()
+        fila_selector_restaurante.addWidget(
+            self.restaurante_autorizado_selector,
+            1
+        )
+        fila_selector_restaurante.addWidget(
+            self.boton_agregar_restaurante_autorizado
+        )
+        fila_selector_restaurante.addWidget(
+            self.boton_quitar_restaurante_autorizado
+        )
+        layout_restaurantes_autorizados.addLayout(fila_selector_restaurante)
+        layout_restaurantes_autorizados.addWidget(
+            self.restaurantes_autorizados
+        )
         self.cargar_ubicaciones()
 
         self.zona = QLineEdit()
@@ -197,7 +222,10 @@ class NuevoRepartidor(QDialog):
         formulario.addRow("Ciudad principal", self.ciudad_principal)
         formulario.addRow("Restaurante principal", self.restaurante_principal)
         formulario.addRow("Ciudades autorizadas", self.ciudades_autorizadas)
-        formulario.addRow("Restaurantes autorizados", self.restaurantes_autorizados)
+        formulario.addRow(
+            "Restaurantes autorizados",
+            contenedor_restaurantes_autorizados
+        )
         formulario.addRow("Apoyo flexible", self.apoyo_flexible)
         formulario.addRow("Zona", self.zona)
         formulario.addRow("Dias que libra", self.dias_no_laborables)
@@ -231,6 +259,12 @@ class NuevoRepartidor(QDialog):
         layout.addWidget(self.boton)
 
         self.boton.clicked.connect(self.guardar)
+        self.boton_agregar_restaurante_autorizado.clicked.connect(
+            self.agregar_restaurante_autorizado
+        )
+        self.boton_quitar_restaurante_autorizado.clicked.connect(
+            self.quitar_restaurante_autorizado
+        )
         self.descanso_inicio.currentTextChanged.connect(
             self.actualizar_descanso_fin
         )
@@ -266,14 +300,36 @@ class NuevoRepartidor(QDialog):
 
         self.restaurante_principal.clear()
         self.restaurante_principal.addItem("Sin restaurante principal", None)
+        self.restaurante_autorizado_selector.clear()
         self.restaurantes_autorizados.clear()
+        self.restaurante_autorizado_selector.addItem(
+            "Selecciona restaurante creado",
+            None
+        )
 
         for restaurante in restaurantes_repository.listar_activos():
 
             self.restaurante_principal.addItem(restaurante[1], restaurante[0])
-            item = QListWidgetItem(restaurante[1])
-            item.setData(Qt.UserRole, restaurante[0])
-            self.restaurantes_autorizados.addItem(item)
+            self.restaurante_autorizado_selector.addItem(
+                restaurante[1],
+                restaurante[0]
+            )
+
+        if self.restaurante_autorizado_selector.count() == 1:
+
+            self.restaurante_autorizado_selector.setItemText(
+                0,
+                "Crea restaurantes antes de autorizar"
+            )
+            self.restaurante_autorizado_selector.setEnabled(False)
+            self.boton_agregar_restaurante_autorizado.setEnabled(False)
+            self.boton_quitar_restaurante_autorizado.setEnabled(False)
+
+        else:
+
+            self.restaurante_autorizado_selector.setEnabled(True)
+            self.boton_agregar_restaurante_autorizado.setEnabled(True)
+            self.boton_quitar_restaurante_autorizado.setEnabled(True)
 
     def actualizar_descanso_fin(self):
 
@@ -525,6 +581,20 @@ class NuevoRepartidor(QDialog):
 
         valores = set(valores or [])
 
+        if lista is self.restaurantes_autorizados:
+
+            lista.clear()
+
+            for valor in valores:
+
+                texto = self.texto_restaurante_por_id(valor)
+
+                if texto:
+
+                    self.agregar_item_restaurante_autorizado(valor, texto)
+
+            return
+
         for indice in range(lista.count()):
 
             item = lista.item(indice)
@@ -534,8 +604,55 @@ class NuevoRepartidor(QDialog):
 
         return [
             item.data(Qt.UserRole)
-            for item in lista.selectedItems()
+            for item in (
+                lista.selectedItems()
+                if lista is not self.restaurantes_autorizados
+                else [lista.item(indice) for indice in range(lista.count())]
+            )
         ]
+
+    def agregar_restaurante_autorizado(self):
+
+        restaurante_id = self.restaurante_autorizado_selector.currentData()
+
+        if restaurante_id is None:
+
+            return
+
+        self.agregar_item_restaurante_autorizado(
+            restaurante_id,
+            self.restaurante_autorizado_selector.currentText()
+        )
+
+    def agregar_item_restaurante_autorizado(self, restaurante_id, nombre):
+
+        if restaurante_id in self.obtener_ids_seleccionados(
+            self.restaurantes_autorizados
+        ):
+
+            return
+
+        item = QListWidgetItem(nombre)
+        item.setData(Qt.UserRole, restaurante_id)
+        self.restaurantes_autorizados.addItem(item)
+
+    def quitar_restaurante_autorizado(self):
+
+        fila = self.restaurantes_autorizados.currentRow()
+
+        if fila >= 0:
+
+            self.restaurantes_autorizados.takeItem(fila)
+
+    def texto_restaurante_por_id(self, restaurante_id):
+
+        indice = self.restaurante_autorizado_selector.findData(restaurante_id)
+
+        if indice >= 0:
+
+            return self.restaurante_autorizado_selector.itemText(indice)
+
+        return ""
 
     def obtener_disponibilidad(self):
 

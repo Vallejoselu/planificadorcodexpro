@@ -20,7 +20,8 @@ from services.asistente_horarios import responder
 from services.planificador import generar_horarios
 from services.rule_engine import (
     dias_no_disponibles,
-    tiene_dias_consecutivos
+    tiene_dias_consecutivos,
+    tiene_minimo_dias_libres
 )
 from views.nuevo_repartidor import DESCANSO_NO_NECESARIO_TEXTO
 from views.nuevo_repartidor import NuevoRepartidor
@@ -82,7 +83,7 @@ class TestReglasDescansos(unittest.TestCase):
 
         self.assertFalse(formulario.descanso_inicio.isVisible())
         self.assertFalse(formulario.descanso_fin.isVisible())
-        self.assertIn("Marca al menos dos dias consecutivos", formulario.explicacion_descanso.text())
+        self.assertIn("Marca al menos dos dias", formulario.explicacion_descanso.text())
 
         formulario.disponibilidad["lunes"].setCurrentText("No disponible")
         formulario.disponibilidad["martes"].setCurrentText("No disponible")
@@ -154,7 +155,7 @@ class TestReglasDescansos(unittest.TestCase):
 
         with self.assertRaisesRegex(
             ValueError,
-            "dos dias consecutivos"
+            "dos dias"
         ):
 
             repartidores_service.validar_descanso_no_necesario(
@@ -213,6 +214,24 @@ class TestReglasDescansos(unittest.TestCase):
             ["viernes", "sabado", "domingo"]
         )
         self.assertTrue(tiene_dias_consecutivos(no_laborables))
+        self.assertTrue(tiene_minimo_dias_libres(no_laborables))
+
+    def test_dias_alternos_cuentan_como_libranza_suficiente(self):
+
+        no_laborables = ["lunes", "jueves"]
+
+        self.assertFalse(tiene_dias_consecutivos(no_laborables))
+        self.assertTrue(tiene_minimo_dias_libres(no_laborables))
+
+        repartidores_service.validar_descanso_no_necesario({
+            "lunes": "No disponible",
+            "martes": "Ambos",
+            "miercoles": "Ambos",
+            "jueves": "No disponible",
+            "viernes": "Ambos",
+            "sabado": "Ambos",
+            "domingo": "Ambos"
+        })
 
     def test_repartidor_disponible_siete_dias_necesita_descanso_adicional(self):
 
@@ -330,7 +349,7 @@ class TestReglasDescansos(unittest.TestCase):
             DESCANSO_NO_NECESARIO_TEXTO
         )
         self.assertIn(
-            "Marca al menos dos dias consecutivos",
+            "Marca al menos dos dias",
             formulario.explicacion_descanso.text()
         )
 

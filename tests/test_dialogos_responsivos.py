@@ -136,6 +136,33 @@ class TestDialogosResponsivos(unittest.TestCase):
 
             dialogo.validar_restricciones_avanzadas()
 
+    def test_dialogo_repartidor_autoriza_restaurantes_desde_desplegable(self):
+
+        dialogo = NuevoRepartidor()
+
+        self.assertEqual(
+            dialogo.restaurante_autorizado_selector.itemText(1),
+            "BK Santiago Centro"
+        )
+        self.assertEqual(dialogo.restaurantes_autorizados.count(), 0)
+
+        dialogo.restaurante_autorizado_selector.setCurrentIndex(1)
+        dialogo.agregar_restaurante_autorizado()
+        dialogo.agregar_restaurante_autorizado()
+
+        self.assertEqual(dialogo.restaurantes_autorizados.count(), 1)
+        self.assertEqual(
+            dialogo.obtener_ids_seleccionados(
+                dialogo.restaurantes_autorizados
+            ),
+            [1]
+        )
+
+        dialogo.restaurantes_autorizados.setCurrentRow(0)
+        dialogo.quitar_restaurante_autorizado()
+
+        self.assertEqual(dialogo.restaurantes_autorizados.count(), 0)
+
     def test_dialogo_restaurante_tiene_scroll_y_alto_limitado(self):
 
         dialogo = NuevoRestaurante()

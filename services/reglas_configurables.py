@@ -10,8 +10,8 @@ class ReglasConfigurablesService:
     CATALOGO = [
         {
             "clave": "descanso_consecutivo",
-            "nombre": "Descanso de dos dias consecutivos",
-            "valor": "Obligatorio",
+            "nombre": "Libranza semanal minima",
+            "valor": "Al menos dos dias no disponibles",
             "origen": "services.rules.descansos",
             "editable": False,
             "tipo": "texto"

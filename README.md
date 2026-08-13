@@ -86,7 +86,8 @@ docs\FLUJO_GIT_SEGURO.md
   horas valle, solo horas punta, hora minima de inicio, hora maxima de fin y
   notas internas sin cargar el formulario principal.
 - Libranza semanal simple: marca los dias que el repartidor libra como
-  `No disponible`; la app exige dos dias consecutivos antes de guardar.
+  `No disponible`; la app exige al menos dos dias libres por semana antes de
+  guardar, aunque no sean consecutivos.
 - Disponibilidad semanal por comidas, cenas, ambos o no disponible.
 - Gestion de restaurantes con formulario simple, turnos comida/cena, horas
   valle configurables y demanda semanal recomendada para empezar sin
