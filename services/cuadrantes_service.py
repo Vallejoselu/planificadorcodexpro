@@ -1561,6 +1561,12 @@ class CuadrantesService:
                 restaurantes,
                 repartidores,
                 fecha_inicio
+            ),
+            "filas_cobertura": self.construir_filas_cobertura(
+                asignaciones,
+                turnos,
+                restaurantes,
+                fecha_inicio
             )
         }
 
@@ -2617,6 +2623,98 @@ class CuadrantesService:
             )
             for repartidor in repartidores
         ]
+
+    def construir_filas_cobertura(
+        self,
+        asignaciones,
+        turnos,
+        restaurantes,
+        fecha_inicio=None
+    ):
+
+        restaurantes_por_id = self.indexar_por_id(restaurantes)
+        turnos_por_id = self.indexar_por_id(turnos)
+        fechas = self.fechas_semana(fecha_inicio)
+        filas = []
+
+        for clave, elementos in sorted(
+            asignaciones.items(),
+            key=lambda item: (
+                DIAS_SEMANA.index(item[0][0])
+                if item[0][0] in DIAS_SEMANA
+                else 99,
+                self.nombre_turno(turnos_por_id.get(item[0][1]))
+            )
+        ):
+
+            dia, turno_id = clave
+            turno = turnos_por_id.get(turno_id)
+            por_restaurante = {}
+
+            for asignacion in elementos:
+
+                restaurante_id = asignacion.get("restaurante_id")
+                por_restaurante.setdefault(restaurante_id, []).append(
+                    asignacion
+                )
+
+            for restaurante_id, plazas in sorted(
+                por_restaurante.items(),
+                key=lambda item: self.nombre_restaurante_cobertura(
+                    restaurantes_por_id.get(item[0])
+                )
+            ):
+
+                necesarios = len(plazas)
+                asignados = sum(
+                    1
+                    for plaza in plazas
+                    if plaza.get("repartidor_id") is not None
+                )
+                faltan = max(0, necesarios - asignados)
+                estado = "Cubierto" if faltan == 0 else f"Faltan {faltan}"
+                restaurante = restaurantes_por_id.get(restaurante_id)
+
+                filas.append({
+                    "dia": dia,
+                    "fecha": (
+                        fechas[dia].strftime("%d/%m")
+                        if dia in fechas
+                        else ""
+                    ),
+                    "franja": self.nombre_turno(turno),
+                    "horario": self.texto_horario_turno(turno),
+                    "restaurante": self.nombre_restaurante_cobertura(
+                        restaurante
+                    ),
+                    "zona": self.valor_campo(restaurante, "zona", 3, ""),
+                    "necesarios": necesarios,
+                    "asignados": asignados,
+                    "faltan": faltan,
+                    "estado": estado,
+                    "accion": (
+                        "Asignar repartidor compatible"
+                        if faltan
+                        else "Sin accion"
+                    )
+                })
+
+        return filas
+
+    def nombre_restaurante_cobertura(self, restaurante):
+
+        if not restaurante:
+
+            return "Sin restaurante"
+
+        nombre = self.valor_campo(restaurante, "nombre", 1, "")
+        zona = self.valor_campo(restaurante, "zona", 3, "")
+
+        if zona and zona not in nombre:
+
+            return f"{nombre} ({zona})"
+
+        return nombre or zona or "Sin restaurante"
 
     def fila_repartidor_cuadrante(
         self,

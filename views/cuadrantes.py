@@ -51,6 +51,7 @@ class VistaCuadrantes(QWidget):
         self.celdas_semana = {}
         self.filas_locales = []
         self.filas_repartidores = []
+        self.filas_cobertura = []
         self.resumen_repartidores = []
         self.plantillas = []
         self.portapapeles = None
@@ -166,6 +167,7 @@ class VistaCuadrantes(QWidget):
         self.selector_vista.addItem("Semana", "semana")
         self.selector_vista.addItem("Por local", "local")
         self.selector_vista.addItem("Por empleado", "empleado")
+        self.selector_vista.addItem("Cobertura", "cobertura")
         self.selector_vista.setCurrentIndex(2)
 
         self.btn_copiar.setShortcut("Ctrl+C")
@@ -312,6 +314,60 @@ class VistaCuadrantes(QWidget):
 
         self.layout.addWidget(self.panel_empleados)
 
+        self.tabla_cobertura = QTableWidget(self)
+        configure_table(self.tabla_cobertura)
+        self.tabla_cobertura.setColumnCount(9)
+        self.tabla_cobertura.setHorizontalHeaderLabels([
+            "Dia",
+            "Fecha",
+            "Franja",
+            "Horario",
+            "Zona / local",
+            "Neces.",
+            "Asign.",
+            "Estado",
+            "Accion"
+        ])
+        self.tabla_cobertura.horizontalHeader().setSectionResizeMode(
+            0,
+            QHeaderView.ResizeToContents
+        )
+        self.tabla_cobertura.horizontalHeader().setSectionResizeMode(
+            1,
+            QHeaderView.ResizeToContents
+        )
+        self.tabla_cobertura.horizontalHeader().setSectionResizeMode(
+            2,
+            QHeaderView.ResizeToContents
+        )
+        self.tabla_cobertura.horizontalHeader().setSectionResizeMode(
+            3,
+            QHeaderView.ResizeToContents
+        )
+        self.tabla_cobertura.horizontalHeader().setSectionResizeMode(
+            4,
+            QHeaderView.Stretch
+        )
+        for columna in (5, 6, 7):
+
+            self.tabla_cobertura.horizontalHeader().setSectionResizeMode(
+                columna,
+                QHeaderView.ResizeToContents
+            )
+
+        self.tabla_cobertura.horizontalHeader().setSectionResizeMode(
+            8,
+            QHeaderView.Stretch
+        )
+        self.tabla_cobertura.verticalHeader().setVisible(False)
+        self.tabla_cobertura.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.tabla_cobertura.setSelectionBehavior(QTableWidget.SelectRows)
+        self.tabla_cobertura.setWordWrap(True)
+        self.tabla_cobertura.setMinimumHeight(320)
+        self.tabla_cobertura.hide()
+
+        self.layout.addWidget(self.tabla_cobertura)
+
         self.titulo_alertas = QLabel("Alertas del cuadrante")
         self.titulo_alertas.setStyleSheet("font-weight:bold;")
         self.layout.addWidget(self.titulo_alertas)
@@ -367,7 +423,7 @@ class VistaCuadrantes(QWidget):
     def configurar_controles_barra(self):
 
         self.selector_semana.setFixedWidth(112)
-        self.selector_vista.setFixedWidth(125)
+        self.selector_vista.setFixedWidth(145)
         self.selector_restaurante.setMinimumWidth(160)
         self.selector_turno.setMinimumWidth(130)
         self.selector_repartidor.setMinimumWidth(150)
@@ -522,9 +578,11 @@ class VistaCuadrantes(QWidget):
         vista = self.selector_vista.currentData()
         vista_local = vista == "local"
         vista_empleado = vista == "empleado"
+        vista_cobertura = vista == "cobertura"
         self.tabla.setVisible(vista == "semana")
         self.tabla_locales.setVisible(vista_local)
         self.panel_empleados.setVisible(vista_empleado)
+        self.tabla_cobertura.setVisible(vista_cobertura)
         self.actualizar_estado_herramientas_celda()
 
     # ======================================
@@ -915,6 +973,7 @@ class VistaCuadrantes(QWidget):
         self.celdas_semana = estado["celdas_semana"]
         self.filas_locales = estado["filas_locales"]
         self.filas_repartidores = estado["filas_repartidores"]
+        self.filas_cobertura = estado["filas_cobertura"]
         self.resumen_repartidores = estado["filas_repartidores"]
         self.estado_semana.setText(estado["estado_texto"])
         self.estado_semana.setToolTip(estado["estado_texto"])
@@ -925,6 +984,7 @@ class VistaCuadrantes(QWidget):
         self.pintar_tabla()
         self.pintar_tabla_locales()
         self.pintar_tabla_empleados()
+        self.pintar_tabla_cobertura()
         self.actualizar_panel_alertas(self.alertas)
         self.cambiar_vista()
         self.actualizar_detalle_seleccion()
@@ -1298,6 +1358,45 @@ class VistaCuadrantes(QWidget):
 
     # ======================================
 
+    def pintar_tabla_cobertura(self):
+
+        self.tabla_cobertura.clearContents()
+        self.tabla_cobertura.setRowCount(len(self.filas_cobertura))
+
+        columnas = [
+            "dia",
+            "fecha",
+            "franja",
+            "horario",
+            "restaurante",
+            "necesarios",
+            "asignados",
+            "estado",
+            "accion"
+        ]
+
+        for fila, cobertura in enumerate(self.filas_cobertura):
+
+            fondo, texto = self.color_fila_cobertura(cobertura)
+
+            for columna, clave in enumerate(columnas):
+
+                valor = cobertura.get(clave, "")
+                item = QTableWidgetItem(str(valor))
+                item.setTextAlignment(
+                    Qt.AlignLeft | Qt.AlignVCenter
+                    if clave in ("restaurante", "accion")
+                    else Qt.AlignCenter
+                )
+                item.setBackground(QBrush(QColor(fondo)))
+                item.setForeground(QBrush(QColor(texto)))
+                item.setToolTip(self.tooltip_cobertura(cobertura))
+                self.tabla_cobertura.setItem(fila, columna, item)
+
+        self.tabla_cobertura.resizeRowsToContents()
+
+    # ======================================
+
     def pintar_tabla_empleados(self):
 
         self.tabla_empleados.clearContents()
@@ -1542,6 +1641,31 @@ class VistaCuadrantes(QWidget):
             "media": ("#FEF3C7", "#78350F"),
             "ok": ("#DCFCE7", "#14532D")
         }
+
+    # ======================================
+
+    def color_fila_cobertura(self, cobertura):
+
+        if int(cobertura.get("faltan", 0) or 0) > 0:
+
+            return "#FEF3C7", "#78350F"
+
+        return "#DCFCE7", "#14532D"
+
+    # ======================================
+
+    def tooltip_cobertura(self, cobertura):
+
+        return (
+            f"{cobertura.get('dia', '').capitalize()} "
+            f"{cobertura.get('fecha', '')}\n"
+            f"{cobertura.get('franja', '')} "
+            f"{cobertura.get('horario', '')}\n"
+            f"{cobertura.get('restaurante', '')}\n"
+            f"Necesarios: {cobertura.get('necesarios', 0)} | "
+            f"Asignados: {cobertura.get('asignados', 0)} | "
+            f"Faltan: {cobertura.get('faltan', 0)}"
+        )
 
     # ======================================
 
