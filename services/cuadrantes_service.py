@@ -2052,6 +2052,13 @@ class CuadrantesService:
             self.problema_desde_alerta(alerta)
             for alerta in alertas
         ]
+        revision = self.resumen_revision_semana(
+            indicadores,
+            asignaciones,
+            turnos,
+            repartidores,
+            alertas
+        )
 
         if not calendario and not indicadores.get("asignaciones"):
 
@@ -2095,11 +2102,73 @@ class CuadrantesService:
             "asignaciones": indicadores.get("asignaciones", 0),
             "con_repartidor": indicadores.get("con_repartidor", 0),
             "sin_repartidor": indicadores.get("sin_repartidor", 0),
+            "revision": revision,
             "problemas": problemas,
             "texto": self.texto_diagnostico(
                 resumen,
                 indicadores,
-                problemas
+                problemas,
+                revision
+            )
+        }
+
+    def resumen_revision_semana(
+        self,
+        indicadores,
+        asignaciones,
+        turnos,
+        repartidores,
+        alertas
+    ):
+
+        horas_asignadas = self.horas_por_repartidor_asignado(
+            asignaciones,
+            turnos
+        )
+        repartidores_por_id = self.indexar_por_id(repartidores or [])
+        total_horas = sum(horas_asignadas.values())
+        empleados_con_horas_extra = 0
+        empleados_con_horas_pendientes = 0
+        horas_complementarias = 0
+
+        for repartidor_id, trabajadas in horas_asignadas.items():
+
+            repartidor = repartidores_por_id.get(repartidor_id)
+            contratadas = float(
+                self.valor_campo(repartidor, "horas", 2, 0) or 0
+            )
+            extra = max(0, trabajadas - contratadas)
+            pendientes = max(0, contratadas - trabajadas)
+
+            if extra > 0:
+
+                empleados_con_horas_extra += 1
+                horas_complementarias += extra
+
+            if pendientes > 0:
+
+                empleados_con_horas_pendientes += 1
+
+        return {
+            "plazas": indicadores.get("asignaciones", 0),
+            "cubiertas": indicadores.get("con_repartidor", 0),
+            "pendientes": indicadores.get("sin_repartidor", 0),
+            "empleados_asignados": len(horas_asignadas),
+            "horas_totales": total_horas,
+            "horas_complementarias": horas_complementarias,
+            "empleados_con_horas_extra": empleados_con_horas_extra,
+            "empleados_con_horas_pendientes": (
+                empleados_con_horas_pendientes
+            ),
+            "alertas_criticas": sum(
+                1
+                for alerta in (alertas or [])
+                if alerta.get("severidad") == "alta"
+            ),
+            "alertas_medias": sum(
+                1
+                for alerta in (alertas or [])
+                if alerta.get("severidad") == "media"
             )
         }
 
@@ -2149,26 +2218,100 @@ class CuadrantesService:
             "Revisa la configuracion relacionada con esta alerta."
         )
 
-    def texto_diagnostico(self, resumen, indicadores, problemas):
+    def acciones_revision_semana(self, revision, problemas):
+
+        acciones = []
+
+        if not revision.get("plazas", 0):
+
+            acciones.append(
+                "Genera un cuadrante o crea demanda antes de revisarlo."
+            )
+
+        if revision.get("pendientes", 0):
+
+            acciones.append(
+                f"Completa {revision['pendientes']} plaza(s) sin repartidor "
+                "antes de publicar."
+            )
+
+        if revision.get("empleados_con_horas_extra", 0):
+
+            acciones.append(
+                "Revisa las horas complementarias usadas y confirma que "
+                "estan permitidas."
+            )
+
+        if revision.get("empleados_con_horas_pendientes", 0):
+
+            acciones.append(
+                "Valora ajustar turnos de empleados con horas pendientes."
+            )
+
+        if revision.get("alertas_criticas", 0) and not acciones:
+
+            acciones.append(
+                "Resuelve las alertas criticas antes de marcarlo como listo."
+            )
+
+        for problema in problemas[:5]:
+
+            accion = problema["accion"]
+
+            if accion not in acciones:
+
+                acciones.append(accion)
+
+        if not acciones:
+
+            acciones.append(
+                "Puedes marcar listo y publicar si la revision visual encaja."
+            )
+
+        return acciones[:6]
+
+    def texto_diagnostico(self, resumen, indicadores, problemas, revision=None):
+
+        revision = revision or {
+            "empleados_asignados": 0,
+            "horas_totales": 0,
+            "horas_complementarias": 0,
+            "empleados_con_horas_extra": 0,
+            "empleados_con_horas_pendientes": 0
+        }
 
         lineas = [
+            "Revision del cuadrante",
             resumen,
             (
                 f"Asignaciones: {indicadores.get('asignaciones', 0)} | "
                 f"Cubiertas: {indicadores.get('con_repartidor', 0)} | "
                 f"Pendientes: {indicadores.get('sin_repartidor', 0)}"
+            ),
+            (
+                f"Empleados: {revision.get('empleados_asignados', 0)} | "
+                f"Horas: {revision.get('horas_totales', 0):g} h | "
+                "Complementarias: "
+                f"{revision.get('horas_complementarias', 0):g} h"
+            ),
+            (
+                "Revision de horas: "
+                f"{revision.get('empleados_con_horas_pendientes', 0)} "
+                "con horas pendientes | "
+                f"{revision.get('empleados_con_horas_extra', 0)} "
+                "con horas extra"
             )
         ]
 
-        if problemas:
+        acciones = self.acciones_revision_semana(revision, problemas)
+
+        if acciones:
 
             lineas.append("Acciones recomendadas:")
 
-            for problema in problemas[:5]:
+            for accion in acciones:
 
-                lineas.append(
-                    f"- {problema['tipo']}: {problema['accion']}"
-                )
+                lineas.append(f"- {accion}")
 
         return "\n".join(lineas)
 

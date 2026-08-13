@@ -761,6 +761,70 @@ class TestCuadrantesServicePorCapa(unittest.TestCase):
         self.assertIn("Asignaciones sin repartidor", tipos)
         self.assertIn("Conflictos por vacaciones/bajas", tipos)
 
+    def test_diagnostico_semana_resume_revision_operativa(self):
+
+        servicio = CuadrantesService()
+        asignaciones = {
+            ("lunes", 1): [{"restaurante_id": 2, "repartidor_id": 10}],
+            ("martes", 2): [{"restaurante_id": 2, "repartidor_id": 10}],
+            ("miercoles", 1): [{"restaurante_id": 2, "repartidor_id": None}]
+        }
+        turnos = [
+            (1, "Comida", "Comida", "13:00", "16:00", "", 3, 1),
+            (2, "Cena", "Cena", "20:00", "00:30", "", 4, 1)
+        ]
+        repartidores = [{
+            "id": 10,
+            "nombre": "Ana",
+            "horas": 5
+        }]
+        indicadores = servicio.indicadores_semana(asignaciones)
+        alertas = [
+            servicio.crear_alerta(
+                "Turnos sin cubrir",
+                "Miercoles / Comida: falta 1 repartidor.",
+                "alta"
+            )
+        ]
+
+        diagnostico = servicio.diagnosticar_semana(
+            "2026-08-10",
+            calendario=[(1, "lunes", 1, "Comida", "", "", 2, "", "", 10)],
+            asignaciones=asignaciones,
+            indicadores=indicadores,
+            alertas=alertas,
+            turnos=turnos,
+            restaurantes=[],
+            repartidores=repartidores
+        )
+
+        self.assertEqual(diagnostico["revision"]["plazas"], 3)
+        self.assertEqual(diagnostico["revision"]["cubiertas"], 2)
+        self.assertEqual(diagnostico["revision"]["pendientes"], 1)
+        self.assertEqual(diagnostico["revision"]["empleados_asignados"], 1)
+        self.assertEqual(diagnostico["revision"]["horas_totales"], 7)
+        self.assertEqual(
+            diagnostico["revision"]["horas_complementarias"],
+            2
+        )
+        self.assertEqual(
+            diagnostico["revision"]["empleados_con_horas_extra"],
+            1
+        )
+        self.assertIn("Revision del cuadrante", diagnostico["texto"])
+        self.assertIn(
+            "Asignaciones: 3 | Cubiertas: 2 | Pendientes: 1",
+            diagnostico["texto"]
+        )
+        self.assertIn(
+            "Empleados: 1 | Horas: 7 h | Complementarias: 2 h",
+            diagnostico["texto"]
+        )
+        self.assertIn(
+            "Completa 1 plaza(s) sin repartidor",
+            diagnostico["texto"]
+        )
+
     def test_texto_resumen_generacion_muestra_resultado_y_advertencias(self):
 
         servicio = CuadrantesService()
