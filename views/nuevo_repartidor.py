@@ -72,6 +72,8 @@ class NuevoRepartidor(QDialog):
         )
         self.ciudades_autorizadas.setMaximumHeight(90)
         self.restaurante_autorizado_selector = QComboBox()
+        self.restaurantes_activos = []
+        self.preferencia_restaurante_dia = {}
         self.boton_agregar_restaurante_autorizado = QPushButton("Anadir")
         self.boton_quitar_restaurante_autorizado = QPushButton("Quitar")
         self.restaurantes_autorizados = QListWidget()
@@ -185,6 +187,20 @@ class NuevoRepartidor(QDialog):
         self.restricciones_observaciones = QTextEdit()
         self.restricciones_observaciones.setMaximumHeight(70)
 
+        self.bloque_plan_restaurantes = QGroupBox(
+            "Preferencia semanal por restaurante"
+        )
+        formulario_plan_restaurantes = QFormLayout(
+            self.bloque_plan_restaurantes
+        )
+
+        for dia in DIAS_SEMANA:
+
+            selector = QComboBox()
+            selector.setMinimumWidth(260)
+            self.preferencia_restaurante_dia[dia] = selector
+            formulario_plan_restaurantes.addRow(dia.capitalize(), selector)
+
         self.bloque_avanzado = QGroupBox(
             "Opciones avanzadas del repartidor"
         )
@@ -201,6 +217,10 @@ class NuevoRepartidor(QDialog):
         formulario_avanzado.addRow(
             "Notas internas",
             self.restricciones_observaciones
+        )
+        formulario_avanzado.addRow(
+            "",
+            self.bloque_plan_restaurantes
         )
         self.bloque_avanzado.hide()
         self.selector_avanzado.toggled.connect(
@@ -265,9 +285,17 @@ class NuevoRepartidor(QDialog):
         self.boton_quitar_restaurante_autorizado.clicked.connect(
             self.quitar_restaurante_autorizado
         )
+        self.restaurante_principal.currentIndexChanged.connect(
+            self.actualizar_opciones_preferencia_restaurante
+        )
+        self.apoyo_flexible.stateChanged.connect(
+            self.actualizar_opciones_preferencia_restaurante
+        )
         self.descanso_inicio.currentTextChanged.connect(
             self.actualizar_descanso_fin
         )
+
+        self.actualizar_opciones_preferencia_restaurante()
 
         for selector in self.disponibilidad.values():
 
@@ -307,7 +335,9 @@ class NuevoRepartidor(QDialog):
             None
         )
 
-        for restaurante in restaurantes_repository.listar_activos():
+        self.restaurantes_activos = restaurantes_repository.listar_activos()
+
+        for restaurante in self.restaurantes_activos:
 
             self.restaurante_principal.addItem(restaurante[1], restaurante[0])
             self.restaurante_autorizado_selector.addItem(
@@ -387,9 +417,9 @@ class NuevoRepartidor(QDialog):
             self.tipo_cobertura.currentData() != "normal",
             self.hora_inicio_minima.text().strip(),
             self.hora_fin_maxima.text().strip(),
-            self.restricciones_observaciones.toPlainText().strip()
+            self.restricciones_observaciones.toPlainText().strip(),
+            self.repartidor.get("preferencias")
         ))
-        self.selector_avanzado.setChecked(tiene_avanzado)
         self.apoyo_flexible.setChecked(
             bool(self.repartidor.get("apoyo_flexible"))
         )
@@ -422,6 +452,11 @@ class NuevoRepartidor(QDialog):
             self.restaurantes_autorizados,
             self.repartidor.get("restaurantes_autorizados", [])
         )
+        self.actualizar_opciones_preferencia_restaurante()
+        self.cargar_preferencias_restaurante_dia(
+            self.repartidor.get("preferencias", [])
+        )
+        self.selector_avanzado.setChecked(tiene_avanzado)
 
         for dia, turnos in self.repartidor["disponibilidad"].items():
 
@@ -548,7 +583,8 @@ class NuevoRepartidor(QDialog):
                 ),
                 restricciones_observaciones=(
                     self.restricciones_observaciones.toPlainText().strip()
-                )
+                ),
+                preferencias=self.obtener_preferencias_restaurante_dia()
 
             )
 
@@ -635,6 +671,7 @@ class NuevoRepartidor(QDialog):
         item = QListWidgetItem(nombre)
         item.setData(Qt.UserRole, restaurante_id)
         self.restaurantes_autorizados.addItem(item)
+        self.actualizar_opciones_preferencia_restaurante()
 
     def quitar_restaurante_autorizado(self):
 
@@ -643,6 +680,7 @@ class NuevoRepartidor(QDialog):
         if fila >= 0:
 
             self.restaurantes_autorizados.takeItem(fila)
+            self.actualizar_opciones_preferencia_restaurante()
 
     def texto_restaurante_por_id(self, restaurante_id):
 
@@ -653,6 +691,100 @@ class NuevoRepartidor(QDialog):
             return self.restaurante_autorizado_selector.itemText(indice)
 
         return ""
+
+    def restaurantes_permitidos_para_preferencia(self):
+
+        if self.apoyo_flexible.isChecked():
+
+            return [
+                restaurante[0]
+                for restaurante in self.restaurantes_activos
+            ]
+
+        permitidos = set(self.obtener_ids_seleccionados(
+            self.restaurantes_autorizados
+        ))
+        restaurante_principal = self.restaurante_principal.currentData()
+
+        if restaurante_principal is not None:
+
+            permitidos.add(restaurante_principal)
+
+        return permitidos
+
+    def actualizar_opciones_preferencia_restaurante(self, *_):
+
+        if not self.preferencia_restaurante_dia:
+
+            return
+
+        permitidos = self.restaurantes_permitidos_para_preferencia()
+
+        for selector in self.preferencia_restaurante_dia.values():
+
+            valor_actual = selector.currentData()
+            selector.blockSignals(True)
+            selector.clear()
+            selector.addItem("Sin preferencia", None)
+
+            for restaurante in self.restaurantes_activos:
+
+                if restaurante[0] not in permitidos:
+
+                    continue
+
+                selector.addItem(restaurante[1], restaurante[0])
+
+            indice = selector.findData(valor_actual)
+
+            if indice >= 0:
+
+                selector.setCurrentIndex(indice)
+
+            else:
+
+                selector.setCurrentIndex(0)
+
+            selector.blockSignals(False)
+
+    def cargar_preferencias_restaurante_dia(self, preferencias):
+
+        for preferencia in preferencias or []:
+
+            dia = preferencia.get("dia_semana")
+            restaurante_id = preferencia.get("restaurante_id")
+
+            if dia not in self.preferencia_restaurante_dia:
+
+                continue
+
+            selector = self.preferencia_restaurante_dia[dia]
+            indice = selector.findData(restaurante_id)
+
+            if indice >= 0:
+
+                selector.setCurrentIndex(indice)
+
+    def obtener_preferencias_restaurante_dia(self):
+
+        preferencias = []
+
+        for dia, selector in self.preferencia_restaurante_dia.items():
+
+            restaurante_id = selector.currentData()
+
+            if restaurante_id is None:
+
+                continue
+
+            preferencias.append({
+                "dia_semana": dia,
+                "restaurante_id": restaurante_id,
+                "prioridad": 90,
+                "observaciones": "Preferencia semanal de restaurante"
+            })
+
+        return preferencias
 
     def obtener_disponibilidad(self):
 

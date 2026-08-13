@@ -391,6 +391,8 @@ def crear_esquema_inicial(cursor):
 
         turno TEXT,
 
+        dia_semana TEXT,
+
         prioridad INTEGER DEFAULT 50,
 
         observaciones TEXT,
@@ -645,6 +647,19 @@ def aplicar_migraciones(cursor):
             columna,
             definicion
         )
+
+    agregar_columna_si_no_existe(
+        cursor,
+        "preferencias",
+        "dia_semana",
+        "TEXT"
+    )
+
+    cursor.execute("""
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_preferencias_repartidor_dia_unica
+    ON preferencias(repartidor_id, dia_semana)
+    WHERE dia_semana IS NOT NULL
+    """)
 
     agregar_columna_si_no_existe(
         cursor,

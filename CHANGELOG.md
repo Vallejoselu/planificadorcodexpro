@@ -1,5 +1,15 @@
 # CHANGELOG
 
+## Proxima version
+
+### Incluido
+
+- Preferencias semanales de restaurante por repartidor dentro de opciones
+  avanzadas.
+- El motor de planificacion prioriza el restaurante configurado para cada dia
+  sin convertirlo en una restriccion absoluta.
+- Migracion idempotente para guardar `dia_semana` en preferencias.
+
 ## 2.2.4 - Autoria y entrega protegida
 
 ### Incluido

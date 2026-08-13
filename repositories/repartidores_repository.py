@@ -49,3 +49,11 @@ class RepartidoresRepository:
     def obtener_restaurantes_autorizados(self, repartidor_id):
 
         return db.obtener_repartidor_restaurantes_autorizados(repartidor_id)
+
+    def guardar_preferencias(self, repartidor_id, preferencias):
+
+        return db.guardar_repartidor_preferencias(repartidor_id, preferencias)
+
+    def obtener_preferencias(self, repartidor_id):
+
+        return db.obtener_repartidor_preferencias(repartidor_id)
