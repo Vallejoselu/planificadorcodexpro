@@ -20,6 +20,13 @@ from PySide6.QtWidgets import (
     QWidget
 )
 
+from app_info import (
+    APP_NAME,
+    AUTHOR,
+    COPYRIGHT_NOTICE,
+    USAGE_NOTICE,
+    VERSION
+)
 from database.schema import DIAS_SEMANA
 from models.integracion import ConfiguracionIntegracion
 from repositories.ciudades_repository import CiudadesRepository
@@ -95,6 +102,8 @@ class VistaConfiguracion(QWidget):
         tema_layout.addRow("Tema", self.selector_tema)
 
         self.contenido_layout.addWidget(self.panel_tema)
+
+        self.crear_panel_autoria()
 
         self.panel_actualizaciones = QFrame()
         self.panel_actualizaciones.setObjectName("card")
@@ -203,6 +212,32 @@ class VistaConfiguracion(QWidget):
 
         self.cargar_datos()
         self.actualizar_modo_visual()
+
+    # ======================================
+
+    def crear_panel_autoria(self):
+
+        self.panel_autoria = QFrame()
+        self.panel_autoria.setObjectName("card")
+        layout = QVBoxLayout(self.panel_autoria)
+        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSpacing(6)
+
+        titulo = QLabel("Acerca de la aplicacion")
+        titulo.setObjectName("cardTitle")
+        layout.addWidget(titulo)
+
+        texto = QLabel(
+            f"{APP_NAME} {VERSION}\n"
+            f"Creado por {AUTHOR}.\n"
+            f"{COPYRIGHT_NOTICE}\n"
+            f"{USAGE_NOTICE}"
+        )
+        texto.setWordWrap(True)
+        texto.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        layout.addWidget(texto)
+
+        self.contenido_layout.addWidget(self.panel_autoria)
 
     # ======================================
 

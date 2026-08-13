@@ -1,12 +1,12 @@
 ; Script de instalacion para Inno Setup
-; Planificador Delivery Pro 2.2.3
+; Planificador Delivery Pro 2.2.4
 ;
 ; Compilar desde Inno Setup con:
 ;   ISCC.exe installer\PlanificadorDeliveryPro.iss
 
 #define MyAppName "Planificador Delivery Pro"
-#define MyAppPublisher "Planificador Delivery Pro"
-#define MyAppVersion "2.2.3"
+#define MyAppPublisher "Valle"
+#define MyAppVersion "2.2.4"
 #define MyAppExeName "PlanificadorDeliveryPro.exe"
 #define MyAppId "{{7A927C7D-51FD-4B78-A3C0-1F35A02F3B7D}"
 #define SourceDir "..\dist\PlanificadorDeliveryPro"
@@ -17,6 +17,7 @@ AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 AppVerName={#MyAppName} {#MyAppVersion}
 AppPublisher={#MyAppPublisher}
+AppCopyright=(c) 2026 Valle. Todos los derechos reservados.
 DefaultDirName={autopf}\{#MyAppName}
 DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes

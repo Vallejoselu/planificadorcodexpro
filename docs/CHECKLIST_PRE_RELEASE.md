@@ -117,7 +117,7 @@ Solo despues de completar la validacion:
 El instalador debe generarse en:
 
 ```text
-installer_output\PlanificadorDeliveryPro-Setup-2.2.1.exe
+installer_output\PlanificadorDeliveryPro-Setup-2.2.4.exe
 ```
 
 Antes de publicarlo en GitHub Releases, instalarlo en una base limpia y repetir
