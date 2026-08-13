@@ -1,5 +1,6 @@
 import unittest
 
+from database.schema import DIAS_SEMANA
 from services.cuadrantes_service import CuadrantesService
 from tests.test_servicios_aplicacion import (
     FakeCalendarioRepository,
@@ -1278,6 +1279,42 @@ class TestCuadrantesServicePorCapa(unittest.TestCase):
         self.assertEqual(martes["estado"], "libre")
         self.assertEqual(martes["horas"], 0)
         self.assertEqual(filas[0]["total_horas"], 0)
+
+    def test_vista_empleado_muestra_horas_valle_y_total(self):
+
+        servicio = CuadrantesService()
+        asignaciones = {
+            ("viernes", 9): [{"restaurante_id": 2, "repartidor_id": 10}]
+        }
+        turnos = [
+            (9, "Horas valle", "Horas valle", "00:30", "04:30", "", 4, 1)
+        ]
+        restaurantes = [(2, "Zona Santiago", "", "Santiago", "", 50, 1)]
+        repartidores = [{
+            "id": 10,
+            "nombre": "Ana",
+            "horas": 30,
+            "zona": "Santiago",
+            "disponibilidad": {
+                dia: ["comida", "noche"]
+                for dia in DIAS_SEMANA
+            }
+        }]
+
+        filas = servicio.construir_filas_repartidores(
+            asignaciones,
+            turnos,
+            restaurantes,
+            repartidores,
+            "2026-08-10"
+        )
+
+        viernes = filas[0]["celdas"]["viernes"]
+        self.assertEqual(viernes["estado"], "valle")
+        self.assertIn("VALLE", viernes["texto"])
+        self.assertIn("00:30-04:30 (4 h)", viernes["texto"])
+        self.assertEqual(filas[0]["total_horas"], 4)
+        self.assertEqual(filas[0]["complementarias"], 0)
 
 
 if __name__ == "__main__":

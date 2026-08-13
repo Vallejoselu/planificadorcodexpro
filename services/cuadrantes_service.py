@@ -2619,18 +2619,18 @@ class CuadrantesService:
                 "horas": 0
             }
 
-        comidas = [
-            asignacion
+        categorias = {
+            categoria_turno(asignacion["turno"])
             for asignacion in asignaciones_dia
-            if categoria_turno(asignacion["turno"]) == "comida"
-        ]
-        cenas = [
-            asignacion
-            for asignacion in asignaciones_dia
-            if categoria_turno(asignacion["turno"]) == "noche"
-        ]
+        }
+        comidas = "comida" in categorias
+        cenas = "noche" in categorias
+        valle = any(
+            "valle" in str(categoria or "")
+            for categoria in categorias
+        )
 
-        if comidas and cenas:
+        if len(asignaciones_dia) > 1:
 
             estado = "doble"
             cabecera = "DOBLE"
@@ -2644,6 +2644,11 @@ class CuadrantesService:
 
             estado = "cena"
             cabecera = "CENA"
+
+        elif valle:
+
+            estado = "valle"
+            cabecera = "VALLE"
 
         else:
 

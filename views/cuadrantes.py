@@ -76,7 +76,8 @@ class VistaCuadrantes(QWidget):
 
         self.leyenda_cuadrante = QLabel(
             "Leyenda: LIBRE = no trabaja | COMIDA = turno de comida | "
-            "CENA = turno de cena | DOBLE = comida y cena | "
+            "CENA = turno de cena | VALLE = horas valle | "
+            "DOBLE = varios turnos el mismo dia | "
             "- = disponible sin turno | Sin repartidor = plaza pendiente "
             "sin cubrir"
         )
@@ -218,21 +219,35 @@ class VistaCuadrantes(QWidget):
 
         self.tabla_empleados = QTableWidget(self)
         configure_table(self.tabla_empleados)
-        self.tabla_empleados.setColumnCount(len(DIAS_SEMANA) + 2)
+        self.tabla_empleados.setColumnCount(len(DIAS_SEMANA) + 4)
         self.tabla_empleados.setHorizontalHeaderLabels([
             "Empleado",
             "Contrato",
-            *DIAS_SEMANA
+            *DIAS_SEMANA,
+            "Total",
+            "Complementarias"
         ])
-        self.tabla_empleados.horizontalHeader().setSectionResizeMode(
-            QHeaderView.Stretch
-        )
         self.tabla_empleados.horizontalHeader().setSectionResizeMode(
             0,
             QHeaderView.ResizeToContents
         )
         self.tabla_empleados.horizontalHeader().setSectionResizeMode(
             1,
+            QHeaderView.ResizeToContents
+        )
+        for columna in range(2, len(DIAS_SEMANA) + 2):
+
+            self.tabla_empleados.horizontalHeader().setSectionResizeMode(
+                columna,
+                QHeaderView.Stretch
+            )
+
+        self.tabla_empleados.horizontalHeader().setSectionResizeMode(
+            len(DIAS_SEMANA) + 2,
+            QHeaderView.ResizeToContents
+        )
+        self.tabla_empleados.horizontalHeader().setSectionResizeMode(
+            len(DIAS_SEMANA) + 3,
             QHeaderView.ResizeToContents
         )
         self.tabla_empleados.verticalHeader().setVisible(False)
@@ -281,8 +296,8 @@ class VistaCuadrantes(QWidget):
         layout_empleados = QHBoxLayout(self.panel_empleados)
         layout_empleados.setContentsMargins(0, 0, 0, 0)
         layout_empleados.setSpacing(12)
-        layout_empleados.addWidget(self.tabla_empleados, 4)
-        layout_empleados.addWidget(self.tabla_resumen_empleados, 1)
+        layout_empleados.addWidget(self.tabla_empleados, 1)
+        self.tabla_resumen_empleados.hide()
         self.panel_empleados.hide()
 
         self.layout.addWidget(self.panel_empleados)
@@ -1312,6 +1327,34 @@ class VistaCuadrantes(QWidget):
                 )
                 self.tabla_empleados.setItem(fila, columna, item)
 
+            columna_total = len(DIAS_SEMANA) + 2
+            columna_complementarias = len(DIAS_SEMANA) + 3
+            total = repartidor.get("total_horas", 0)
+            complementarias = repartidor.get("complementarias", 0)
+
+            item_total = QTableWidgetItem(self.formatear_horas(total))
+            item_total.setTextAlignment(Qt.AlignCenter)
+            item_total.setToolTip("Total de horas asignadas en la semana")
+            self.tabla_empleados.setItem(fila, columna_total, item_total)
+
+            item_complementarias = QTableWidgetItem(
+                self.formatear_horas(complementarias)
+            )
+            item_complementarias.setTextAlignment(Qt.AlignCenter)
+            item_complementarias.setToolTip(
+                "Horas por encima del contrato semanal"
+            )
+            if complementarias > 0:
+
+                item_complementarias.setBackground(QBrush(QColor("#FEF3C7")))
+                item_complementarias.setForeground(QBrush(QColor("#78350F")))
+
+            self.tabla_empleados.setItem(
+                fila,
+                columna_complementarias,
+                item_complementarias
+            )
+
         self.tabla_empleados.resizeRowsToContents()
         self.asegurar_altura_filas_empleados()
         self.pintar_resumen_empleados()
@@ -1327,6 +1370,8 @@ class VistaCuadrantes(QWidget):
 
             fecha = inicio.addDays(indice).toString("dd/MM")
             cabeceras.append(f"{dia}\n{fecha}")
+
+        cabeceras.extend(["Total", "Complementarias"])
 
         return cabeceras
 
@@ -1412,6 +1457,7 @@ class VistaCuadrantes(QWidget):
             "doble": ("#FEF3C7", "#78350F"),
             "comida": ("#DBEAFE", "#1E3A8A"),
             "cena": ("#EDE9FE", "#4C1D95"),
+            "valle": ("#D1FAE5", "#065F46"),
             "disponible": ("#F9FAFB", "#374151"),
             "turno": ("#DCFCE7", "#14532D")
         }

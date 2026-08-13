@@ -152,6 +152,8 @@ class TestUxClaridadOperativa(unittest.TestCase):
         self.assertEqual(vista.color_texto_celda_empleado("cena"), "#4C1D95")
         self.assertEqual(vista.color_celda_empleado("doble"), "#FEF3C7")
         self.assertEqual(vista.color_texto_celda_empleado("doble"), "#78350F")
+        self.assertEqual(vista.color_celda_empleado("valle"), "#D1FAE5")
+        self.assertEqual(vista.color_texto_celda_empleado("valle"), "#065F46")
         self.assertEqual(vista.color_celda_empleado("disponible"), "#F9FAFB")
         self.assertEqual(
             vista.color_texto_celda_empleado("disponible"),
@@ -175,16 +177,20 @@ class TestUxClaridadOperativa(unittest.TestCase):
 
         self.assertEqual(vista.selector_vista.currentData(), "empleado")
         self.assertFalse(vista.panel_empleados.isHidden())
-        self.assertEqual(vista.tabla_resumen_empleados.columnCount(), 4)
+        self.assertEqual(vista.tabla_empleados.columnCount(), 11)
         self.assertIn(
             "Complementarias",
-            vista.tabla_resumen_empleados.horizontalHeaderItem(3).text()
+            vista.tabla_empleados.horizontalHeaderItem(10).text()
         )
+        self.assertTrue(vista.tabla_resumen_empleados.isHidden())
         self.assertTrue(vista.tabla_empleados.wordWrap())
         self.assertGreaterEqual(
             vista.tabla_empleados.verticalHeader().minimumSectionSize(),
             70
         )
+        cabeceras = vista.cabeceras_empleados()
+        self.assertIn("/", cabeceras[2])
+        self.assertEqual(cabeceras[-2:], ["Total", "Complementarias"])
 
     def test_cuadrantes_oculta_herramientas_avanzadas_por_defecto(self):
 
