@@ -225,7 +225,7 @@ class VistaCuadrantes(QWidget):
             "Contrato",
             *DIAS_SEMANA,
             "Total",
-            "Complementarias"
+            "Horas comp."
         ])
         self.tabla_empleados.horizontalHeader().setSectionResizeMode(
             0,
@@ -254,8 +254,9 @@ class VistaCuadrantes(QWidget):
         self.tabla_empleados.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.tabla_empleados.setSelectionBehavior(QTableWidget.SelectRows)
         self.tabla_empleados.setWordWrap(True)
-        self.tabla_empleados.horizontalHeader().setMinimumSectionSize(104)
-        self.tabla_empleados.verticalHeader().setMinimumSectionSize(70)
+        self.tabla_empleados.horizontalHeader().setMinimumSectionSize(96)
+        self.tabla_empleados.verticalHeader().setMinimumSectionSize(84)
+        self.tabla_empleados.setMinimumHeight(360)
 
         self.tabla_resumen_empleados = QTableWidget(self)
         configure_table(self.tabla_resumen_empleados)
@@ -264,7 +265,7 @@ class VistaCuadrantes(QWidget):
             "Empleado",
             "Contrato",
             "Total",
-            "Complementarias"
+            "Horas comp."
         ])
         self.tabla_resumen_empleados.horizontalHeader().setSectionResizeMode(
             0,
@@ -291,13 +292,22 @@ class VistaCuadrantes(QWidget):
         )
         self.tabla_resumen_empleados.setMinimumWidth(340)
         self.tabla_resumen_empleados.setMaximumWidth(430)
+        self.tabla_resumen_empleados.setMinimumHeight(240)
+        self.titulo_resumen_empleados = QLabel("Resumen de horas")
+        self.titulo_resumen_empleados.setStyleSheet("font-weight:bold;")
 
         self.panel_empleados = QWidget(self)
         layout_empleados = QHBoxLayout(self.panel_empleados)
         layout_empleados.setContentsMargins(0, 0, 0, 0)
         layout_empleados.setSpacing(12)
         layout_empleados.addWidget(self.tabla_empleados, 1)
-        self.tabla_resumen_empleados.hide()
+        panel_resumen = QWidget(self.panel_empleados)
+        layout_resumen = QVBoxLayout(panel_resumen)
+        layout_resumen.setContentsMargins(0, 0, 0, 0)
+        layout_resumen.setSpacing(6)
+        layout_resumen.addWidget(self.titulo_resumen_empleados)
+        layout_resumen.addWidget(self.tabla_resumen_empleados)
+        layout_empleados.addWidget(panel_resumen)
         self.panel_empleados.hide()
 
         self.layout.addWidget(self.panel_empleados)
@@ -1313,7 +1323,7 @@ class VistaCuadrantes(QWidget):
 
                 celda = repartidor["celdas"].get(dia, {})
                 item = QTableWidgetItem(celda.get("texto", ""))
-                item.setTextAlignment(Qt.AlignCenter)
+                item.setTextAlignment(Qt.AlignCenter | Qt.AlignVCenter)
                 item.setToolTip(celda.get("tooltip", ""))
                 item.setBackground(
                     QBrush(QColor(
@@ -1334,7 +1344,14 @@ class VistaCuadrantes(QWidget):
 
             item_total = QTableWidgetItem(self.formatear_horas(total))
             item_total.setTextAlignment(Qt.AlignCenter)
-            item_total.setToolTip("Total de horas asignadas en la semana")
+            item_total.setToolTip(
+                "Total de horas asignadas en la semana"
+            )
+            self.aplicar_color_horas_total(
+                item_total,
+                total,
+                repartidor.get("contrato_horas", 0)
+            )
             self.tabla_empleados.setItem(fila, columna_total, item_total)
 
             item_complementarias = QTableWidgetItem(
@@ -1344,10 +1361,10 @@ class VistaCuadrantes(QWidget):
             item_complementarias.setToolTip(
                 "Horas por encima del contrato semanal"
             )
-            if complementarias > 0:
-
-                item_complementarias.setBackground(QBrush(QColor("#FEF3C7")))
-                item_complementarias.setForeground(QBrush(QColor("#78350F")))
+            self.aplicar_color_horas_complementarias(
+                item_complementarias,
+                complementarias
+            )
 
             self.tabla_empleados.setItem(
                 fila,
@@ -1355,7 +1372,6 @@ class VistaCuadrantes(QWidget):
                 item_complementarias
             )
 
-        self.tabla_empleados.resizeRowsToContents()
         self.asegurar_altura_filas_empleados()
         self.pintar_resumen_empleados()
 
@@ -1371,7 +1387,7 @@ class VistaCuadrantes(QWidget):
             fecha = inicio.addDays(indice).toString("dd/MM")
             cabeceras.append(f"{dia}\n{fecha}")
 
-        cabeceras.extend(["Total", "Complementarias"])
+        cabeceras.extend(["Total", "Horas comp."])
 
         return cabeceras
 
@@ -1382,7 +1398,7 @@ class VistaCuadrantes(QWidget):
         for fila in range(self.tabla_empleados.rowCount()):
 
             altura_actual = self.tabla_empleados.rowHeight(fila)
-            self.tabla_empleados.setRowHeight(fila, max(altura_actual, 74))
+            self.tabla_empleados.setRowHeight(fila, max(altura_actual, 86))
 
     # ======================================
 
@@ -1409,14 +1425,67 @@ class VistaCuadrantes(QWidget):
                     else Qt.AlignCenter
                 )
 
-                if columna == 3 and repartidor.get("complementarias", 0) > 0:
+                if columna == 2:
 
-                    item.setBackground(QBrush(QColor("#FEF3C7")))
-                    item.setForeground(QBrush(QColor("#78350F")))
+                    self.aplicar_color_horas_total(
+                        item,
+                        repartidor.get("total_horas", 0),
+                        repartidor.get("contrato_horas", 0)
+                    )
+
+                if columna == 3:
+
+                    self.aplicar_color_horas_complementarias(
+                        item,
+                        repartidor.get("complementarias", 0)
+                    )
 
                 self.tabla_resumen_empleados.setItem(fila, columna, item)
 
         self.tabla_resumen_empleados.resizeRowsToContents()
+
+    # ======================================
+
+    def aplicar_color_horas_total(self, item, total, contrato):
+
+        try:
+
+            total = float(total or 0)
+            contrato = float(contrato or 0)
+
+        except (TypeError, ValueError):
+
+            return
+
+        if contrato and total > contrato:
+
+            item.setBackground(QBrush(QColor("#FEF3C7")))
+            item.setForeground(QBrush(QColor("#78350F")))
+            item.setToolTip("Supera el contrato semanal")
+
+        elif contrato and 0 < total < contrato:
+
+            item.setBackground(QBrush(QColor("#EFF6FF")))
+            item.setForeground(QBrush(QColor("#1E3A8A")))
+            item.setToolTip("Quedan horas pendientes respecto al contrato")
+
+    # ======================================
+
+    def aplicar_color_horas_complementarias(self, item, complementarias):
+
+        try:
+
+            complementarias = float(complementarias or 0)
+
+        except (TypeError, ValueError):
+
+            complementarias = 0
+
+        if complementarias > 0:
+
+            item.setBackground(QBrush(QColor("#FEF3C7")))
+            item.setForeground(QBrush(QColor("#78350F")))
+            item.setToolTip("Horas por encima del contrato semanal")
 
     # ======================================
 

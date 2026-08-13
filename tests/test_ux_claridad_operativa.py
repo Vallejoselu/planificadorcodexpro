@@ -179,18 +179,23 @@ class TestUxClaridadOperativa(unittest.TestCase):
         self.assertFalse(vista.panel_empleados.isHidden())
         self.assertEqual(vista.tabla_empleados.columnCount(), 11)
         self.assertIn(
-            "Complementarias",
+            "Horas comp.",
             vista.tabla_empleados.horizontalHeaderItem(10).text()
         )
-        self.assertTrue(vista.tabla_resumen_empleados.isHidden())
+        self.assertFalse(vista.tabla_resumen_empleados.isHidden())
+        self.assertEqual(
+            vista.titulo_resumen_empleados.text(),
+            "Resumen de horas"
+        )
         self.assertTrue(vista.tabla_empleados.wordWrap())
         self.assertGreaterEqual(
             vista.tabla_empleados.verticalHeader().minimumSectionSize(),
-            70
+            84
         )
+        self.assertGreaterEqual(vista.tabla_empleados.minimumHeight(), 360)
         cabeceras = vista.cabeceras_empleados()
         self.assertIn("/", cabeceras[2])
-        self.assertEqual(cabeceras[-2:], ["Total", "Complementarias"])
+        self.assertEqual(cabeceras[-2:], ["Total", "Horas comp."])
 
     def test_cuadrantes_oculta_herramientas_avanzadas_por_defecto(self):
 
