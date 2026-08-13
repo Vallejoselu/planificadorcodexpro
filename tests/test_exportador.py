@@ -3,6 +3,8 @@ import unittest
 import json
 from pathlib import Path
 
+from openpyxl import load_workbook
+
 import database.database as database
 from database.database import (
     crear_base_datos,
@@ -76,6 +78,105 @@ class TestExportador(unittest.TestCase):
 
         self.assertTrue(salida.exists())
         self.assertGreater(salida.stat().st_size, 0)
+
+    def test_exportar_excel_incluye_cuadrante_semanal_profesional(self):
+
+        repartidor_id = insertar_repartidor(
+            "Ana",
+            10,
+            "Centro",
+            1,
+            1,
+            50,
+            50,
+            50,
+            descanso_inicio="martes",
+            descanso_fin="miercoles",
+            disponibilidad={
+                dia: "Ambos"
+                for dia in (
+                    "lunes",
+                    "martes",
+                    "miercoles",
+                    "jueves",
+                    "viernes",
+                    "sabado",
+                    "domingo"
+                )
+            }
+        )
+        restaurante_id = insertar_restaurante(
+            "Zona Centro",
+            "Rua 1",
+            "Centro",
+            "600000000",
+            50
+        )
+        comida_id = insertar_turno(
+            "Comida",
+            "Comida",
+            "13:00",
+            "16:00",
+            "#D9F0F2",
+            3
+        )
+        cena_id = insertar_turno(
+            "Cena",
+            "Cena",
+            "20:00",
+            "23:30",
+            "#D7E2F5",
+            3.5
+        )
+        valle_id = insertar_turno(
+            "Comida",
+            "Horas valle",
+            "00:30",
+            "04:30",
+            "#DCFCE7",
+            4
+        )
+        guardar_turno_calendario(
+            "lunes",
+            comida_id,
+            restaurante_id,
+            repartidor_id,
+            "2026-08-10"
+        )
+        guardar_turno_calendario(
+            "lunes",
+            cena_id,
+            restaurante_id,
+            repartidor_id,
+            "2026-08-10"
+        )
+        guardar_turno_calendario(
+            "viernes",
+            valle_id,
+            restaurante_id,
+            repartidor_id,
+            "2026-08-10"
+        )
+        salida = Path(self.temporal.name) / "cuadrante_profesional.xlsx"
+
+        exportar_excel(salida, "2026-08-10")
+
+        libro = load_workbook(salida)
+        hoja = libro["Cuadrante semanal"]
+        self.assertEqual(libro.sheetnames[0], "Cuadrante semanal")
+        self.assertIn("Horarios", libro.sheetnames)
+        self.assertEqual(hoja["A5"].value, "Ana")
+        self.assertEqual(hoja["B5"].value, "10h")
+        self.assertEqual(hoja["C4"].value, "Lunes\n10/08")
+        self.assertEqual(hoja["D4"].value, "Martes\n11/08")
+        self.assertIn("DOBLE", hoja["C5"].value)
+        self.assertIn("COMIDA 13:00-16:00 (3 h)", hoja["C5"].value)
+        self.assertIn("CENA 20:00-23:30 (3.5 h)", hoja["C5"].value)
+        self.assertEqual(hoja["D5"].value, "LIBRE")
+        self.assertIn("VALLE", hoja["G5"].value)
+        self.assertEqual(hoja["J5"].value, "10.5 h")
+        self.assertEqual(hoja["K5"].value, "0.5 h")
+        self.assertIn("Leyenda", [celda.value for celda in hoja["A"]])
 
     def test_exportar_ics_crea_evento_de_calendario(self):
 

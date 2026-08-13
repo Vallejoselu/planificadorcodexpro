@@ -4,8 +4,6 @@ from datetime import UTC, datetime, time, timedelta
 from html import escape
 from pathlib import Path
 
-from PySide6.QtGui import QPageSize, QPdfWriter, QTextDocument
-
 from database.schema import DIAS_SEMANA
 from repositories.calendario_repository import CalendarioRepository
 from repositories.historial_repository import HistorialRepository
@@ -15,6 +13,7 @@ from repositories.turnos_repository import TurnosRepository
 from services.descansos import descanso_es_valido
 from services.delivery_payload import crear_payload_delivery
 from services.fechas import normalizar_fecha_inicio_semana
+from services.cuadrantes_service import CuadrantesService
 
 
 calendario_repository = CalendarioRepository()
@@ -23,20 +22,36 @@ restaurantes_repository = RestaurantesRepository()
 turnos_repository = TurnosRepository()
 historial_repository = HistorialRepository()
 
+PALETA_CUADRANTE_EXCEL = {
+    "libre": ("F4B6C2", "9F1239"),
+    "doble": ("FDE68A", "111827"),
+    "comida": ("D9F0F2", "111827"),
+    "cena": ("D7E2F5", "111827"),
+    "valle": ("DCFCE7", "14532D"),
+    "turno": ("E5E7EB", "111827"),
+    "disponible": ("FFFFFF", "6B7280"),
+    "pendiente": ("FEF3C7", "92400E")
+}
+
 
 def exportar_excel(ruta, fecha_inicio_semana=None):
 
     from openpyxl import Workbook
-    from openpyxl.styles import Font, PatternFill
+    from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 
     fecha_inicio_semana = normalizar_fecha_inicio_semana(fecha_inicio_semana)
     datos = preparar_datos_exportacion(fecha_inicio_semana)
     libro = Workbook()
-    hoja = libro.active
-    hoja.title = "Horarios"
+    hoja_cuadrante = libro.active
+    hoja_cuadrante.title = "Cuadrante semanal"
+    datos_cuadrante = preparar_cuadrante_semanal_exportacion(
+        fecha_inicio_semana
+    )
+    _escribir_cuadrante_semanal_excel(hoja_cuadrante, datos_cuadrante)
 
-    _escribir_hoja(
-        hoja,
+    _crear_hoja(
+        libro,
+        "Horarios",
         datos["horarios"],
         ["Dia", "Turno", "Tipo", "Restaurante", "Zona", "Repartidor", "Inicio", "Fin", "Horas"]
     )
@@ -61,15 +76,21 @@ def exportar_excel(ruta, fecha_inicio_semana=None):
 
     for hoja in libro.worksheets:
 
-        for celda in hoja[1]:
+        if hoja.title == "Cuadrante semanal":
 
-            celda.font = Font(bold=True)
-            celda.fill = PatternFill("solid", fgColor="D9EAF7")
+            continue
 
-        for columna in hoja.columns:
+        _aplicar_estilo_hoja_datos(hoja, Font, PatternFill)
 
-            ancho = max(len(str(celda.value or "")) for celda in columna)
-            hoja.column_dimensions[columna[0].column_letter].width = ancho + 2
+    _aplicar_estilo_cuadrante(
+        hoja_cuadrante,
+        datos_cuadrante,
+        Alignment,
+        Border,
+        Font,
+        PatternFill,
+        Side
+    )
 
     libro.save(ruta)
     registrar_exportacion("Excel", ruta, fecha_inicio_semana)
@@ -140,6 +161,8 @@ def exportar_delivery_json(ruta, fecha_inicio_semana=None):
 
 def exportar_pdf(ruta, fecha_inicio_semana=None):
 
+    from PySide6.QtGui import QPageSize, QPdfWriter, QTextDocument
+
     fecha_inicio_semana = normalizar_fecha_inicio_semana(fecha_inicio_semana)
     documento = QTextDocument()
     documento.setHtml(_crear_html(preparar_datos_exportacion(fecha_inicio_semana)))
@@ -193,6 +216,248 @@ def preparar_datos_exportacion(fecha_inicio_semana=None):
         "totales": totales,
         "fecha_inicio_semana": fecha_inicio_semana
     }
+
+
+def preparar_cuadrante_semanal_exportacion(fecha_inicio_semana=None):
+
+    fecha_inicio_semana = normalizar_fecha_inicio_semana(
+        fecha_inicio_semana
+    )
+    servicio = CuadrantesService(
+        calendario_repository=calendario_repository,
+        repartidores_repository=repartidores_repository,
+        restaurantes_repository=restaurantes_repository,
+        turnos_repository=turnos_repository
+    )
+    calendario = calendario_repository.listar_semana(fecha_inicio_semana)
+    asignaciones = servicio.agrupar_calendario(calendario)
+    turnos = turnos_repository.listar_todos()
+    restaurantes = restaurantes_repository.listar_todos()
+    repartidores = repartidores_repository.listar_activos()
+    filas = servicio.construir_filas_repartidores(
+        asignaciones,
+        turnos,
+        restaurantes,
+        repartidores,
+        fecha_inicio_semana
+    )
+
+    return {
+        "fecha_inicio_semana": fecha_inicio_semana,
+        "dias": _dias_exportacion(fecha_inicio_semana),
+        "filas": filas
+    }
+
+
+def _dias_exportacion(fecha_inicio_semana):
+
+    inicio = datetime.strptime(fecha_inicio_semana, "%Y-%m-%d").date()
+
+    return [
+        {
+            "dia": dia,
+            "fecha": inicio + timedelta(days=indice),
+            "cabecera": (
+                f"{dia.capitalize()}\n"
+                f"{(inicio + timedelta(days=indice)).strftime('%d/%m')}"
+            )
+        }
+        for indice, dia in enumerate(DIAS_SEMANA)
+    ]
+
+
+def _escribir_cuadrante_semanal_excel(hoja, datos):
+
+    hoja.append(["Planificador Delivery Pro"])
+    hoja.append([f"Cuadrante semanal desde {datos['fecha_inicio_semana']}"])
+    hoja.append([])
+    hoja.append(
+        ["Empleado", "Contrato"]
+        + [dia["cabecera"] for dia in datos["dias"]]
+        + ["Total", "Horas comp."]
+    )
+
+    for fila in datos["filas"]:
+
+        hoja.append(
+            [
+                fila["nombre"],
+                fila["contrato"],
+                *[
+                    fila["celdas"].get(dia["dia"], {}).get("texto", "-")
+                    for dia in datos["dias"]
+                ],
+                _formatear_horas_excel(fila.get("total_horas", 0)),
+                _formatear_horas_excel(fila.get("complementarias", 0))
+            ]
+        )
+
+    hoja.append([])
+    hoja.append(["Leyenda"])
+
+    for estado, etiqueta in (
+        ("libre", "LIBRE: dia no laborable, descanso, vacaciones o baja"),
+        ("comida", "COMIDA: turno de comida"),
+        ("cena", "CENA: turno de cena"),
+        ("valle", "VALLE: horas valle"),
+        ("doble", "DOBLE: comida y cena el mismo dia"),
+        ("pendiente", "PENDIENTE: plaza sin repartidor")
+    ):
+
+        hoja.append([etiqueta])
+        hoja.cell(hoja.max_row, 1).value = etiqueta
+        hoja.cell(hoja.max_row, 2).value = estado
+
+
+def _aplicar_estilo_cuadrante(
+    hoja,
+    datos,
+    Alignment,
+    Border,
+    Font,
+    PatternFill,
+    Side
+):
+
+    max_columna = 11
+    borde = Border(
+        left=Side(style="thin", color="D1D5DB"),
+        right=Side(style="thin", color="D1D5DB"),
+        top=Side(style="thin", color="D1D5DB"),
+        bottom=Side(style="thin", color="D1D5DB")
+    )
+    hoja.merge_cells(start_row=1, start_column=1, end_row=1, end_column=max_columna)
+    hoja.merge_cells(start_row=2, start_column=1, end_row=2, end_column=max_columna)
+    hoja.freeze_panes = "C5"
+    hoja.sheet_view.showGridLines = False
+
+    hoja["A1"].font = Font(bold=True, size=16, color="FFFFFF")
+    hoja["A1"].fill = PatternFill("solid", fgColor="164E63")
+    hoja["A1"].alignment = Alignment(horizontal="center")
+    hoja["A2"].font = Font(bold=True, color="164E63")
+    hoja["A2"].alignment = Alignment(horizontal="center")
+
+    for celda in hoja[4]:
+
+        celda.font = Font(bold=True, color="FFFFFF")
+        celda.fill = PatternFill("solid", fgColor="164E63")
+        celda.alignment = Alignment(
+            horizontal="center",
+            vertical="center",
+            wrap_text=True
+        )
+        celda.border = borde
+
+    inicio_filas = 5
+    fin_filas = inicio_filas + len(datos["filas"]) - 1
+
+    for indice_fila, fila in enumerate(datos["filas"], start=inicio_filas):
+
+        for columna in (1, 2):
+
+            celda = hoja.cell(indice_fila, columna)
+            celda.font = Font(bold=True if columna == 1 else False)
+            celda.fill = PatternFill("solid", fgColor="F3F4F6")
+            celda.alignment = Alignment(vertical="center", wrap_text=True)
+            celda.border = borde
+
+        for indice_dia, dia in enumerate(datos["dias"], start=3):
+
+            info = fila["celdas"].get(dia["dia"], {})
+            estado = info.get("estado", "disponible")
+            fondo, texto = PALETA_CUADRANTE_EXCEL.get(
+                estado,
+                PALETA_CUADRANTE_EXCEL["disponible"]
+            )
+            celda = hoja.cell(indice_fila, indice_dia)
+            celda.fill = PatternFill("solid", fgColor=fondo)
+            celda.font = Font(
+                bold=estado in ("libre", "doble"),
+                color=texto
+            )
+            celda.alignment = Alignment(
+                horizontal="center",
+                vertical="center",
+                wrap_text=True
+            )
+            celda.border = borde
+
+        for columna in (10, 11):
+
+            celda = hoja.cell(indice_fila, columna)
+            celda.fill = PatternFill(
+                "solid",
+                fgColor=(
+                    "FEF3C7"
+                    if columna == 11 and fila.get("complementarias", 0)
+                    else "F9FAFB"
+                )
+            )
+            celda.font = Font(
+                bold=bool(columna == 11 and fila.get("complementarias", 0))
+            )
+            celda.alignment = Alignment(horizontal="center", vertical="center")
+            celda.border = borde
+
+        hoja.row_dimensions[indice_fila].height = 58
+
+    if fin_filas >= inicio_filas:
+
+        hoja.auto_filter.ref = f"A4:K{fin_filas}"
+
+    fila_leyenda = 6 + len(datos["filas"])
+    hoja.cell(fila_leyenda, 1).font = Font(bold=True, color="164E63")
+
+    for fila_excel in range(fila_leyenda + 1, hoja.max_row + 1):
+
+        estado = hoja.cell(fila_excel, 2).value
+        fondo, texto = PALETA_CUADRANTE_EXCEL.get(
+            estado,
+            PALETA_CUADRANTE_EXCEL["disponible"]
+        )
+        hoja.cell(fila_excel, 1).fill = PatternFill("solid", fgColor=fondo)
+        hoja.cell(fila_excel, 1).font = Font(color=texto)
+        hoja.cell(fila_excel, 2).value = ""
+
+    hoja.column_dimensions["A"].width = 24
+    hoja.column_dimensions["B"].width = 12
+
+    for columna in ("C", "D", "E", "F", "G", "H", "I"):
+
+        hoja.column_dimensions[columna].width = 20
+
+    hoja.column_dimensions["J"].width = 12
+    hoja.column_dimensions["K"].width = 14
+
+
+def _aplicar_estilo_hoja_datos(hoja, Font, PatternFill):
+
+    for celda in hoja[1]:
+
+        celda.font = Font(bold=True)
+        celda.fill = PatternFill("solid", fgColor="D9EAF7")
+
+    for columna in hoja.columns:
+
+        ancho = max(len(str(celda.value or "")) for celda in columna)
+        hoja.column_dimensions[columna[0].column_letter].width = ancho + 2
+
+
+def _formatear_horas_excel(valor):
+
+    try:
+
+        numero = float(valor or 0)
+
+    except (TypeError, ValueError):
+
+        numero = 0
+
+    if numero.is_integer():
+
+        return f"{int(numero)} h"
+
+    return f"{numero:.1f} h"
 
 
 def _preparar_horarios(turnos, restaurantes, fecha_inicio_semana):

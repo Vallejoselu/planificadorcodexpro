@@ -161,6 +161,10 @@ def categoria_turno(turno):
 
     texto = normalizar_texto(nombre)
 
+    if "valle" in texto:
+
+        return "valle"
+
     if "comida" in texto:
 
         return "comida"
