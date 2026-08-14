@@ -1272,6 +1272,61 @@ class TestCuadrantesServicePorCapa(unittest.TestCase):
         self.assertEqual(cambio["nuevo"], cambio["anterior"])
         self.assertEqual(len(cambio["nuevo"]), 1)
 
+    def test_asignaciones_repartidor_dia_simple_filtra_empleado_y_dia(self):
+
+        servicio = CuadrantesService()
+        asignaciones = {
+            ("lunes", 1): [{"restaurante_id": 2, "repartidor_id": 10}],
+            ("lunes", 2): [{"restaurante_id": 3, "repartidor_id": 11}],
+            ("martes", 1): [{"restaurante_id": 2, "repartidor_id": 10}]
+        }
+
+        resultado = servicio.asignaciones_repartidor_dia_simple(
+            asignaciones,
+            "lunes",
+            10
+        )
+
+        self.assertEqual(len(resultado), 1)
+        self.assertEqual(resultado[0]["turno_id"], 1)
+        self.assertEqual(
+            resultado[0]["asignacion"],
+            {"restaurante_id": 2, "repartidor_id": 10}
+        )
+
+    def test_quitar_asignaciones_repartidor_dia_no_toca_otras_plazas(self):
+
+        servicio = CuadrantesService()
+        asignaciones = {
+            ("lunes", 1): [
+                {"restaurante_id": 2, "repartidor_id": 10},
+                {"restaurante_id": 2, "repartidor_id": 11},
+                {"restaurante_id": 2, "repartidor_id": None}
+            ],
+            ("lunes", 2): [{"restaurante_id": 3, "repartidor_id": 10}],
+            ("martes", 1): [{"restaurante_id": 2, "repartidor_id": 10}]
+        }
+
+        resultado = servicio.quitar_asignaciones_repartidor_dia(
+            asignaciones,
+            "lunes",
+            10
+        )
+
+        self.assertEqual(len(resultado["cambios"]), 2)
+        self.assertEqual(
+            resultado["asignaciones"][("lunes", 1)],
+            [
+                {"restaurante_id": 2, "repartidor_id": 11},
+                {"restaurante_id": 2, "repartidor_id": None}
+            ]
+        )
+        self.assertNotIn(("lunes", 2), resultado["asignaciones"])
+        self.assertEqual(
+            resultado["asignaciones"][("martes", 1)],
+            [{"restaurante_id": 2, "repartidor_id": 10}]
+        )
+
     def test_vista_empleado_calcula_doble_total_y_complementarias(self):
 
         servicio = CuadrantesService()

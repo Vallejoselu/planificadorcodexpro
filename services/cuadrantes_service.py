@@ -3263,6 +3263,96 @@ class CuadrantesService:
             "nuevo": nuevo
         }
 
+    def asignaciones_repartidor_dia_simple(
+        self,
+        asignaciones,
+        dia,
+        repartidor_id
+    ):
+
+        if repartidor_id is None:
+
+            return []
+
+        resultado = []
+
+        for (dia_actual, turno_id), elementos in (asignaciones or {}).items():
+
+            if dia_actual != dia:
+
+                continue
+
+            for asignacion in elementos or []:
+
+                if asignacion.get("repartidor_id") == repartidor_id:
+
+                    resultado.append({
+                        "dia": dia_actual,
+                        "turno_id": turno_id,
+                        "asignacion": dict(asignacion)
+                    })
+
+        return resultado
+
+    def quitar_asignaciones_repartidor_dia(
+        self,
+        asignaciones,
+        dia,
+        repartidor_id
+    ):
+
+        nuevas = {
+            clave: self.clonar_asignaciones_turno(elementos)
+            for clave, elementos in (asignaciones or {}).items()
+        }
+        cambios = []
+
+        if repartidor_id is None:
+
+            return {
+                "asignaciones": nuevas,
+                "cambios": cambios
+            }
+
+        for clave, elementos in list(nuevas.items()):
+
+            dia_actual, turno_id = clave
+
+            if dia_actual != dia:
+
+                continue
+
+            anterior = self.clonar_asignaciones_turno(elementos)
+            nuevo = [
+                asignacion
+                for asignacion in anterior
+                if asignacion.get("repartidor_id") != repartidor_id
+            ]
+
+            if len(nuevo) == len(anterior):
+
+                continue
+
+            cambios.append({
+                "dia": dia_actual,
+                "turno_id": turno_id,
+                "anterior": anterior,
+                "nuevo": self.clonar_asignaciones_turno(nuevo)
+            })
+
+            if nuevo:
+
+                nuevas[clave] = nuevo
+
+            else:
+
+                nuevas.pop(clave, None)
+
+        return {
+            "asignaciones": nuevas,
+            "cambios": cambios
+        }
+
     def agregar_asignacion(
         self,
         asignaciones,

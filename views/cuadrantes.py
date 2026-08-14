@@ -259,6 +259,9 @@ class VistaCuadrantes(QWidget):
         self.tabla_empleados.horizontalHeader().setMinimumSectionSize(96)
         self.tabla_empleados.verticalHeader().setMinimumSectionSize(84)
         self.tabla_empleados.setMinimumHeight(360)
+        self.tabla_empleados.cellDoubleClicked.connect(
+            self.editar_celda_empleado
+        )
 
         self.tabla_resumen_empleados = QTableWidget(self)
         configure_table(self.tabla_resumen_empleados)
@@ -1424,6 +1427,13 @@ class VistaCuadrantes(QWidget):
                 item = QTableWidgetItem(celda.get("texto", ""))
                 item.setTextAlignment(Qt.AlignCenter | Qt.AlignVCenter)
                 item.setToolTip(celda.get("tooltip", ""))
+                item.setData(
+                    Qt.UserRole,
+                    {
+                        "dia": dia,
+                        "repartidor_id": repartidor.get("repartidor_id")
+                    }
+                )
                 item.setBackground(
                     QBrush(QColor(
                         self.color_celda_empleado(celda.get("estado"))
@@ -1960,6 +1970,118 @@ class VistaCuadrantes(QWidget):
         self.actualizar_presentacion_asignaciones()
         self.pintar_tabla()
         self.pintar_tabla_locales()
+        self.pintar_tabla_empleados()
+        self.pintar_tabla_cobertura()
+
+    # ======================================
+
+    def editar_celda_empleado(self, fila, columna):
+
+        if columna < 2 or columna >= len(DIAS_SEMANA) + 2:
+
+            return
+
+        if fila < 0 or fila >= len(self.filas_repartidores):
+
+            return
+
+        repartidor = self.filas_repartidores[fila]
+        dia = DIAS_SEMANA[columna - 2]
+        repartidor_id = repartidor.get("repartidor_id")
+
+        if repartidor_id is None:
+
+            return
+
+        actuales = cuadrantes_service.asignaciones_repartidor_dia_simple(
+            self.asignaciones,
+            dia,
+            repartidor_id
+        )
+        dialogo = DialogoEdicionRapidaEmpleado(
+            self,
+            dia,
+            repartidor,
+            self.turnos,
+            self.restaurantes,
+            actuales
+        )
+
+        if dialogo.exec() != QDialog.Accepted:
+
+            return
+
+        if dialogo.vaciar():
+
+            self.vaciar_dia_empleado(dia, repartidor_id)
+            return
+
+        turno_id = dialogo.turno_id()
+        restaurante_id = dialogo.restaurante_id()
+
+        if turno_id is None or restaurante_id is None:
+
+            QMessageBox.warning(
+                self,
+                "Editar empleado",
+                "Selecciona un turno y un restaurante para guardar."
+            )
+            return
+
+        fila_turno = self.fila_turno(turno_id)
+
+        if fila_turno is None:
+
+            QMessageBox.warning(
+                self,
+                "Editar empleado",
+                "El turno seleccionado no esta disponible en la semana."
+            )
+            return
+
+        self.aplicar_comando(
+            dia,
+            turno_id,
+            restaurante_id,
+            repartidor_id,
+            fila_turno,
+            columna - 2
+        )
+
+    # ======================================
+
+    def vaciar_dia_empleado(self, dia, repartidor_id):
+
+        resultado = cuadrantes_service.quitar_asignaciones_repartidor_dia(
+            self.asignaciones,
+            dia,
+            repartidor_id
+        )
+        cambios = resultado["cambios"]
+
+        if not cambios:
+
+            QMessageBox.information(
+                self,
+                "Vaciar dia",
+                "Ese empleado no tiene turnos asignados ese dia."
+            )
+            return
+
+        for cambio in cambios:
+
+            self.aplicar_asignacion_semana(
+                self.fecha_inicio_semana(),
+                cambio["dia"],
+                cambio["turno_id"],
+                cambio["nuevo"]
+            )
+
+        QMessageBox.information(
+            self,
+            "Vaciar dia",
+            "Se han quitado los turnos de ese empleado en el dia seleccionado."
+        )
 
     # ======================================
 
@@ -1985,6 +2107,12 @@ class VistaCuadrantes(QWidget):
                 self.repartidores,
                 self.fecha_inicio_semana()
             )
+        )
+        self.filas_cobertura = cuadrantes_service.construir_filas_cobertura(
+            self.asignaciones,
+            self.turnos,
+            self.restaurantes,
+            self.fecha_inicio_semana()
         )
 
     # ======================================
@@ -2525,6 +2653,148 @@ class VistaCuadrantes(QWidget):
         return None
 
     # ======================================
+
+class DialogoEdicionRapidaEmpleado(QDialog):
+
+    def __init__(
+        self,
+        parent,
+        dia,
+        repartidor,
+        turnos,
+        restaurantes,
+        asignaciones_actuales=None
+    ):
+        super().__init__(parent)
+
+        self._vaciar = False
+        self.setWindowTitle("Editar dia del empleado")
+        self.setMinimumWidth(460)
+        asignaciones_actuales = asignaciones_actuales or []
+
+        layout = QVBoxLayout(self)
+        resumen = QLabel(
+            f"{repartidor.get('nombre', 'Empleado')} | {dia.capitalize()}"
+        )
+        resumen.setWordWrap(True)
+        resumen.setStyleSheet("font-weight:bold;")
+        layout.addWidget(resumen)
+
+        texto_actual = self.texto_asignaciones_actuales(
+            parent,
+            asignaciones_actuales
+        )
+        actuales = QLabel(texto_actual)
+        actuales.setWordWrap(True)
+        actuales.setObjectName("infoPanel")
+        layout.addWidget(actuales)
+
+        layout.addWidget(QLabel("Turno"))
+        self.selector_turno = QComboBox()
+
+        for turno in turnos:
+
+            nombre = turno[2] if len(turno) > 2 else "Turno"
+            horario = cuadrantes_service.texto_horario_turno(turno)
+            texto = nombre + (f" | {horario}" if horario else "")
+            self.selector_turno.addItem(texto, turno[0])
+
+        layout.addWidget(self.selector_turno)
+
+        layout.addWidget(QLabel("Restaurante o zona"))
+        self.selector_restaurante = QComboBox()
+
+        for restaurante in restaurantes:
+
+            self.selector_restaurante.addItem(restaurante[1], restaurante[0])
+
+        layout.addWidget(self.selector_restaurante)
+
+        if asignaciones_actuales:
+
+            primera = asignaciones_actuales[0]
+            self.seleccionar_valor(
+                self.selector_turno,
+                primera.get("turno_id")
+            )
+            self.seleccionar_valor(
+                self.selector_restaurante,
+                primera["asignacion"].get("restaurante_id")
+            )
+
+        botones = QDialogButtonBox()
+        guardar = botones.addButton(
+            "Guardar cambio",
+            QDialogButtonBox.AcceptRole
+        )
+        vaciar = botones.addButton(
+            "Vaciar dia",
+            QDialogButtonBox.DestructiveRole
+        )
+        cancelar = botones.addButton(
+            "Cancelar",
+            QDialogButtonBox.RejectRole
+        )
+        guardar.clicked.connect(self.accept)
+        vaciar.clicked.connect(self.aceptar_vacio)
+        cancelar.clicked.connect(self.reject)
+        layout.addWidget(botones)
+
+    def texto_asignaciones_actuales(self, parent, asignaciones_actuales):
+
+        if not asignaciones_actuales:
+
+            return "Ahora mismo no tiene turnos asignados este dia."
+
+        lineas = ["Turnos actuales:"]
+
+        for item in asignaciones_actuales:
+
+            turno = parent.turno_por_id(item.get("turno_id"))
+            asignacion = item.get("asignacion", {})
+            restaurante = parent.restaurante_por_id(
+                asignacion.get("restaurante_id")
+            )
+            nombre_turno = turno[2] if turno else "Turno"
+            horario = cuadrantes_service.texto_horario_turno(turno)
+            nombre_restaurante = (
+                restaurante[1]
+                if restaurante
+                else "Restaurante desconocido"
+            )
+            lineas.append(
+                f"- {nombre_turno}"
+                + (f" {horario}" if horario else "")
+                + f" | {nombre_restaurante}"
+            )
+
+        return "\n".join(lineas)
+
+    def seleccionar_valor(self, combo, valor):
+
+        indice = combo.findData(valor)
+
+        if indice >= 0:
+
+            combo.setCurrentIndex(indice)
+
+    def aceptar_vacio(self):
+
+        self._vaciar = True
+        self.accept()
+
+    def vaciar(self):
+
+        return self._vaciar
+
+    def turno_id(self):
+
+        return self.selector_turno.currentData()
+
+    def restaurante_id(self):
+
+        return self.selector_restaurante.currentData()
+
 
 class DialogoEditarAsignacion(QDialog):
 

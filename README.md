@@ -6,6 +6,10 @@ Tambien permite definir preferencias semanales de restaurante por repartidor,
 por ejemplo lunes en un local y martes en otro autorizado, para que el motor
 priorice esa organizacion sin bloquear alternativas si falta cobertura.
 
+La vista semanal por empleado permite revisar el cuadrante completo con fechas,
+totales y horas complementarias, y editar rapidamente el dia de un empleado
+desde la propia tabla.
+
 Version actual: 2.2.4
 
 ## Autoria y uso permitido
