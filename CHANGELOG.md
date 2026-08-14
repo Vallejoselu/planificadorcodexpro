@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## Proxima version
+## 2.2.5 - Edicion rapida y preferencias semanales
 
 ### Incluido
 
@@ -9,6 +9,21 @@
 - El motor de planificacion prioriza el restaurante configurado para cada dia
   sin convertirlo en una restriccion absoluta.
 - Migracion idempotente para guardar `dia_semana` en preferencias.
+- Edicion rapida desde la vista semanal por empleado para cambiar o vaciar el
+  dia de un repartidor sin salir del cuadrante.
+- Refresco automatico de las vistas de empleados y cobertura tras asignar,
+  editar o vaciar una celda.
+
+### Preparacion
+
+- Actualizacion de version a 2.2.5.
+- Instalador preparado como `PlanificadorDeliveryPro-Setup-2.2.5.exe`.
+
+## Proxima version
+
+### Incluido
+
+- Sin cambios todavia.
 
 ## 2.2.4 - Autoria y entrega protegida
 

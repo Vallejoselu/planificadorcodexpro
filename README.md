@@ -10,7 +10,7 @@ La vista semanal por empleado permite revisar el cuadrante completo con fechas,
 totales y horas complementarias, y editar rapidamente el dia de un empleado
 desde la propia tabla.
 
-Version actual: 2.2.4
+Version actual: 2.2.5
 
 ## Autoria y uso permitido
 
@@ -245,7 +245,7 @@ Con Inno Setup 6 instalado, ejecuta:
 El instalador se genera en:
 
 ```text
-installer_output\PlanificadorDeliveryPro-Setup-2.2.4.exe
+installer_output\PlanificadorDeliveryPro-Setup-2.2.5.exe
 ```
 
 ## Limitaciones conocidas

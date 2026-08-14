@@ -1,14 +1,14 @@
 import unittest
 from pathlib import Path
 
+import app_info
+
 
 class TestAutoriaCopyright(unittest.TestCase):
 
     def test_metadatos_de_autoria(self):
 
-        import app_info
-
-        self.assertEqual(app_info.VERSION, "2.2.4")
+        self.assertRegex(app_info.VERSION, r"^\d+\.\d+\.\d+$")
         self.assertEqual(app_info.AUTHOR, "Valle")
         self.assertIn(
             "Todos los derechos reservados",
@@ -34,7 +34,10 @@ class TestAutoriaCopyright(unittest.TestCase):
 
         self.assertIn("No se autoriza la copia", copyright)
         self.assertIn('#define MyAppPublisher "Valle"', instalador)
-        self.assertIn('#define MyAppVersion "2.2.4"', instalador)
+        self.assertIn(
+            f'#define MyAppVersion "{app_info.VERSION}"',
+            instalador
+        )
         self.assertIn("AppCopyright=(c) 2026 Valle", instalador)
 
 

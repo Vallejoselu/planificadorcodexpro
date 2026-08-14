@@ -1,6 +1,6 @@
 APP_NAME = "Planificador Delivery Pro"
 APP_ID = "PlanificadorDeliveryPro"
-VERSION = "2.2.4"
+VERSION = "2.2.5"
 AUTHOR = "Valle"
 COPYRIGHT_NOTICE = "(c) 2026 Valle. Todos los derechos reservados."
 USAGE_NOTICE = (
